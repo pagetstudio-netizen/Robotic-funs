@@ -155,7 +155,18 @@ function AppNavigationShell() {
   const { user } = useAuth();
   const [location] = useLocation();
   const publicPaths = ["/login", "/register", "/invitation", "/rejoindre"];
-  const showNavigation = Boolean(user) && !publicPaths.includes(location);
+  const servicePaths = [
+    "/deposit",
+    "/robotpay",
+    "/withdrawal",
+    "/change-password",
+    "/wallet",
+    "/history",
+    "/service",
+    "/about",
+  ];
+  const showNavigation =
+    Boolean(user) && !publicPaths.includes(location) && !servicePaths.includes(location);
 
   return (
     <div
