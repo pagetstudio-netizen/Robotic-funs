@@ -6,11 +6,11 @@ import inviteTabIcon from "@assets/tab_invite_1791380085617.png";
 import accountTabIcon from "@assets/tab_mine_1791380085655.png";
 
 const navItems = [
-  { path: "/", label: "Accueil", icon: homeTabIcon, testId: "nav-accueil" },
-  { path: "/my-products", label: "Produits", icon: productTabIcon, testId: "nav-produits" },
+  { path: "/", label: "Maison", icon: homeTabIcon, testId: "nav-accueil" },
+  { path: "/my-products", label: "Produit", icon: productTabIcon, testId: "nav-produits" },
   { path: "/team", label: "Partager", icon: shareTabIcon, testId: "nav-partager" },
   { path: "/tasks", label: "Inviter", icon: inviteTabIcon, testId: "nav-inviter" },
-  { path: "/account", label: "Compte", icon: accountTabIcon, testId: "nav-moi" },
+  { path: "/account", label: "Mon", icon: accountTabIcon, testId: "nav-moi" },
 ];
 
 export default function BottomNav() {

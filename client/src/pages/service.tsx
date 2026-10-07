@@ -84,20 +84,20 @@ export default function ServicePage() {
         />
 
         <section className="service-client-contacts" aria-label="Contacts officiels">
-            <ServiceContact
-              title="Service Telegram"
-              action="Durée de connexion : 10h-22h"
-              href={settings?.supportLink || "https://t.me/sybotx"}
-              enabled={isEnabled(settings?.supportEnabled)}
-              testId="button-support-link"
-            />
-            <ServiceContact
-              title="Groupe officiel"
-              action="Rejoignez le groupe Telegram"
-              href={settings?.groupLink || "https://t.me/sybotx"}
-              enabled={isEnabled(settings?.groupEnabled)}
-              testId="button-group-link"
-            />
+          <ServiceContact
+            title="Service Telegram"
+            action="Durée de connexion : 10h-22h"
+            href={settings?.supportLink || "https://t.me/sybotx"}
+            enabled={isEnabled(settings?.supportEnabled)}
+            testId="button-support-link"
+          />
+          <ServiceContact
+            title="Groupe officiel"
+            action="Rejoignez le groupe Telegram"
+            href={settings?.groupLink || "https://t.me/sybotx"}
+            enabled={isEnabled(settings?.groupEnabled)}
+            testId="button-group-link"
+          />
         </section>
       </div>
     </main>
