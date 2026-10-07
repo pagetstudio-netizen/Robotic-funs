@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { FALLBACK_COUNTRIES, type ApiCountry } from "@/lib/countries";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { CountrySelector } from "@/components/country-selector";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   phone: z.string().min(8, "Numéro de téléphone invalide"),
@@ -25,7 +25,6 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
-  const [hasChosenCountry, setHasChosenCountry] = useState(false);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -82,7 +81,6 @@ export default function LoginPage() {
   }
 
   const displayedPrefix = countryData?.phonePrefix || (countriesLoading ? "..." : "");
-  const countryLabel = hasChosenCountry && countryData ? countryData.name : "Nation";
 
   return (
     <AuthPageShell mode="login">
@@ -90,9 +88,6 @@ export default function LoginPage() {
         <input type="hidden" {...form.register("country")} />
         <div className="auth-fields">
           <div className="auth-field auth-phone-field">
-            <span className="auth-orb auth-orb-left" aria-hidden="true">
-              <img src="/john-deere/user-icon.png" alt="" />
-            </span>
             <button
               type="button"
               className="auth-country-button"
@@ -102,10 +97,8 @@ export default function LoginPage() {
               aria-label={`Pays : ${countryData?.name || "non sélectionné"}, indicatif +${displayedPrefix}`}
               data-testid="button-select-country"
             >
-              <span className="auth-country-label">{countryLabel}</span>
               <span className="auth-country-value">
                 <span className="auth-country-code">+{displayedPrefix}</span>
-                <ChevronDown aria-hidden="true" />
               </span>
             </button>
             <span className="auth-field-divider" aria-hidden="true" />
@@ -127,20 +120,21 @@ export default function LoginPage() {
               {...form.register("password")}
               type="password"
               autoComplete="current-password"
-              placeholder="Password"
+              placeholder="Mot de passe"
               aria-label="Mot de passe"
               aria-invalid={Boolean(form.formState.errors.password)}
               data-testid="input-password"
             />
-            <span className="auth-orb auth-orb-right" aria-hidden="true">
-              <img src="/john-deere/security-icon.png" alt="" />
-            </span>
           </label>
           {form.formState.errors.password && <p className="auth-error">{form.formState.errors.password.message}</p>}
+          <label className="auth-remember">
+            <input type="checkbox" defaultChecked aria-label="Se souvenir du mot de passe" />
+            <span>Se souvenir du mot de passe</span>
+          </label>
         </div>
 
         <button type="submit" disabled={isLoading} className="auth-submit" data-testid="button-login">
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "connecter to app"}
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Se connecter"}
         </button>
         <button
           type="button"
@@ -148,7 +142,7 @@ export default function LoginPage() {
           onClick={() => navigate("/register")}
           data-testid="link-register"
         >
-          Pas encore inscrit ? Créer un compte
+          Créer un compte
         </button>
       </form>
       <CountrySelector
@@ -156,7 +150,6 @@ export default function LoginPage() {
         open={countryModalOpen}
         onClose={() => setCountryModalOpen(false)}
         onSelect={(code) => {
-          setHasChosenCountry(true);
           form.setValue("country", code, { shouldValidate: true });
         }}
       />

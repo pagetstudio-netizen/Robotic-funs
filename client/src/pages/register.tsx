@@ -9,8 +9,16 @@ import { useAuth } from "@/lib/auth";
 import { FALLBACK_COUNTRIES, type ApiCountry } from "@/lib/countries";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { CountrySelector } from "@/components/country-selector";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { normalizeBeninPhone } from "@shared/phone";
+
+const visualCodeCharacters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
+function createVisualCode() {
+  return Array.from({ length: 4 }, () =>
+    visualCodeCharacters[Math.floor(Math.random() * visualCodeCharacters.length)],
+  ).join("");
+}
 
 const registerSchema = z.object({
   phone: z.string().min(8, "Numéro de téléphone invalide"),
@@ -35,7 +43,8 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
-  const [hasChosenCountry, setHasChosenCountry] = useState(false);
+  const [visualCode, setVisualCode] = useState(createVisualCode);
+  const [enteredVisualCode, setEnteredVisualCode] = useState("");
 
   const params = new URLSearchParams(searchString);
   // Keep accepting legacy invitation links that placed a second "?" before code.
@@ -83,6 +92,13 @@ export default function RegisterPage() {
   })();
 
   async function onSubmit(data: RegisterForm) {
+    if (enteredVisualCode.trim().toUpperCase() !== visualCode) {
+      toast({ title: "Code incorrect", description: "Saisissez le code affiché sur l’écran.", variant: "destructive" });
+      setVisualCode(createVisualCode());
+      setEnteredVisualCode("");
+      return;
+    }
+
     const phone = data.country.toUpperCase() === "BJ"
       ? normalizeBeninPhone(data.phone)
       : data.phone.trim();
@@ -110,7 +126,6 @@ export default function RegisterPage() {
   }
 
   const displayedPrefix = countryData?.phonePrefix || (countriesLoading ? "..." : "");
-  const countryLabel = hasChosenCountry && countryData ? countryData.name : "Nation";
   const phoneField = form.register("phone");
 
   return (
@@ -119,9 +134,6 @@ export default function RegisterPage() {
         <input type="hidden" {...form.register("country")} />
         <div className="auth-fields">
           <div className="auth-field auth-phone-field">
-            <span className="auth-orb auth-orb-left" aria-hidden="true">
-              <img src="/john-deere/user-icon.png" alt="" />
-            </span>
             <button
               type="button"
               className="auth-country-button"
@@ -131,10 +143,8 @@ export default function RegisterPage() {
               aria-label={`Pays : ${countryData?.name || "non sélectionné"}, indicatif +${displayedPrefix}`}
               data-testid="button-select-country"
             >
-              <span className="auth-country-label">{countryLabel}</span>
               <span className="auth-country-value">
                 <span className="auth-country-code">+{displayedPrefix}</span>
-                <ChevronDown aria-hidden="true" />
               </span>
             </button>
             <span className="auth-field-divider" aria-hidden="true" />
@@ -159,53 +169,77 @@ export default function RegisterPage() {
             />
           </div>
           {form.formState.errors.phone && <p className="auth-error">{form.formState.errors.phone.message}</p>}
-          <label className="auth-field auth-register-password auth-icon-right">
+          <label className="auth-field auth-field-stacked">
+            <span className="auth-field-caption">Mot de passe</span>
             <input
               {...form.register("password")}
               type="password"
               autoComplete="new-password"
-              placeholder="entrée votre mot de passe"
+              placeholder="Mot de passe"
               aria-label="Mot de passe"
               aria-invalid={Boolean(form.formState.errors.password)}
               data-testid="input-password"
             />
-            <span className="auth-orb auth-orb-right" aria-hidden="true">
-              <img src="/john-deere/security-icon.png" alt="" />
-            </span>
           </label>
           {form.formState.errors.password && <p className="auth-error">{form.formState.errors.password.message}</p>}
 
-          <label className="auth-field auth-confirm-password auth-icon-left">
+          <label className="auth-field auth-field-stacked">
+            <span className="auth-field-caption">Confirmer le mot de passe</span>
             <input
               {...form.register("confirmPassword")}
               type="password"
               autoComplete="new-password"
-              placeholder="confirmé votre mot de passe"
               aria-label="Confirmer le mot de passe"
               aria-invalid={Boolean(form.formState.errors.confirmPassword)}
               data-testid="input-confirm-password"
             />
-            <span className="auth-orb auth-orb-left" aria-hidden="true">
-              <img src="/john-deere/security-icon.png" alt="" />
-            </span>
           </label>
           {form.formState.errors.confirmPassword && <p className="auth-error">{form.formState.errors.confirmPassword.message}</p>}
 
-          <label className="auth-field auth-invitation-code auth-icon-right">
+          <div className="auth-field auth-verification-field">
+            <ShieldCheck className="auth-verification-icon" aria-hidden="true" />
+            <input
+              value={enteredVisualCode}
+              onChange={(event) => setEnteredVisualCode(event.target.value)}
+              type="text"
+              autoComplete="off"
+              autoCapitalize="characters"
+              maxLength={4}
+              placeholder="Code"
+              aria-label="Code affiché"
+              data-testid="input-visual-code"
+            />
+            <button
+              className="auth-visual-code"
+              type="button"
+              onClick={() => {
+                setVisualCode(createVisualCode());
+                setEnteredVisualCode("");
+              }}
+              aria-label="Afficher un nouveau code"
+              data-testid="button-refresh-visual-code"
+            >
+              {Array.from(visualCode).map((character, index) => (
+                <span key={`${index}-${character}`} className={`auth-visual-char auth-visual-char-${index + 1}`}>
+                  {character}
+                </span>
+              ))}
+            </button>
+          </div>
+
+          <label className="auth-field auth-field-stacked">
+            <span className="auth-field-caption">Code d’invitation</span>
             <input
               {...form.register("invitationCode")}
               placeholder="Code d’invitation"
               aria-label="Code d’invitation"
               data-testid="input-invitation-code"
             />
-            <span className="auth-orb auth-orb-right" aria-hidden="true">
-              <img src="/john-deere/share-icon.png" alt="" />
-            </span>
           </label>
         </div>
 
         <button type="submit" disabled={isLoading} className="auth-submit" data-testid="button-register">
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "s'inscrire"}
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Créer un compte"}
         </button>
         <button
           type="button"
@@ -213,7 +247,7 @@ export default function RegisterPage() {
           onClick={() => navigate("/login")}
           data-testid="link-login"
         >
-          Déjà inscrit ? Se connecter
+          Se connecter
         </button>
       </form>
       <CountrySelector
@@ -221,7 +255,6 @@ export default function RegisterPage() {
         open={countryModalOpen}
         onClose={() => setCountryModalOpen(false)}
         onSelect={(code) => {
-          setHasChosenCountry(true);
           form.setValue("country", code, { shouldValidate: true });
         }}
       />

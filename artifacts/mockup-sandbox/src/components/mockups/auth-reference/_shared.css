@@ -1,0 +1,592 @@
+.rf-reference {
+  --rf-ink: #161615;
+  --rf-cream: #fff2cf;
+  --rf-muted: #807a70;
+  position: relative;
+  width: 100%;
+  max-width: 390px;
+  margin-inline: 0;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background-color: #111110;
+  background-image: url("/__mockup/images/auth-background-pattern.png");
+  background-position: center top;
+  background-repeat: repeat;
+  background-size: 512px 256px;
+  color: var(--rf-ink);
+  font-family: "DM Sans", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rf-reference *,
+.rf-reference *::before,
+.rf-reference *::after {
+  box-sizing: border-box;
+}
+
+.rf-reference .rf-header {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 auto;
+  height: 24%;
+}
+
+.rf-reference .rf-title {
+  position: absolute;
+  top: 7.1%;
+  left: 20px;
+  z-index: 2;
+  margin: 0;
+  color: #f8f7f3;
+  font-size: clamp(25px, 7vw, 31px);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: 1.1;
+}
+
+.rf-reference .rf-robot {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  z-index: 2;
+  display: block;
+  width: clamp(164px, 47vw, 198px);
+  height: auto;
+  object-fit: contain;
+}
+
+.rf-reference .rf-panel {
+  position: absolute;
+  z-index: 3;
+  top: 21.7%;
+  right: auto;
+  bottom: 0;
+  left: 0;
+  width: 96%;
+  overflow: hidden;
+  border-radius: 48px 38px 27px 25px;
+  background: linear-gradient(108deg, #efc95e 0%, #f2b347 53%, #f29832 100%);
+}
+
+.rf-reference .rf-form {
+  position: absolute;
+  top: 8.9%;
+  left: 20px;
+  width: calc(100% - 40px);
+  margin: 0;
+}
+
+.rf-reference .rf-field {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 62px;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 20px;
+  background: var(--rf-cream);
+  color: var(--rf-ink);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .36);
+}
+
+.rf-reference .rf-field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  padding: 0;
+  background: transparent;
+  color: #242321;
+  font: 600 17px/1.25 "DM Sans", sans-serif;
+}
+
+.rf-reference .rf-field input::placeholder {
+  color: #807b72;
+  opacity: 1;
+}
+
+.rf-reference .rf-phone {
+  gap: 17px;
+}
+
+.rf-reference .rf-prefix {
+  flex: none;
+  color: #191918;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+.rf-reference .rf-login-password {
+  margin-top: 26px;
+}
+
+.rf-reference .rf-remember {
+  display: flex;
+  min-height: 35px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  color: #827a68;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rf-reference .rf-remember input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #282723;
+}
+
+.rf-reference .rf-submit {
+  display: flex;
+  width: 100%;
+  height: 63px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 18px;
+  background: linear-gradient(105deg, rgba(246, 218, 111, .92), rgba(245, 203, 88, .94));
+  color: #302a1e;
+  font: 800 21px/1 "DM Sans", sans-serif;
+  letter-spacing: -.035em;
+  cursor: pointer;
+  transition: transform .15s ease, filter .15s ease;
+}
+
+.rf-reference .rf-submit:hover {
+  filter: brightness(1.035);
+}
+
+.rf-reference .rf-submit:active {
+  transform: scale(.985);
+}
+
+.rf-reference .rf-switch {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 17px auto 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #fff8e8;
+  font: 800 19px/1.3 "DM Sans", sans-serif;
+  letter-spacing: -.025em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rf-reference .rf-switch:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rf-reference .rf-register-form .rf-password {
+  margin-top: 22px;
+}
+
+.rf-reference .rf-register-form .rf-confirm {
+  margin-top: 22px;
+}
+
+.rf-reference .rf-register-form .rf-verification {
+  margin-top: 22px;
+  justify-content: center;
+  color: #817b70;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rf-reference .rf-register-form .rf-invitation {
+  margin-top: 22px;
+}
+
+.rf-reference .rf-stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+
+.rf-reference .rf-label {
+  color: #8b8271;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.rf-reference .rf-stacked input {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.rf-reference .rf-stacked input::placeholder {
+  color: #716d66;
+}
+
+.rf-reference .rf-register-form .rf-submit {
+  margin-top: 25px;
+}
+
+.rf-reference .rf-register-form .rf-switch {
+  margin-top: 17px;
+}
+
+.rf-reference .rf-notice {
+  margin: 10px 12px 0;
+  color: #4f4025;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.rf-reference :is(button, input, a):focus-visible {
+  outline: 2px solid #30291e;
+  outline-offset: 3px;
+}
+
+@media (max-width: 360px) {
+  .rf-reference .rf-form {
+    left: 16px;
+    width: calc(100% - 32px);
+  }
+
+  .rf-reference .rf-field {
+    height: 57px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .rf-reference .rf-title {
+    left: 16px;
+  }
+
+  .rf-reference .rf-register-form .rf-verification {
+    font-size: 14px;
+  }
+}
+
+@media (max-height: 760px) {
+  .rf-reference .rf-form {
+    top: 7.3%;
+  }
+
+  .rf-reference .rf-field {
+    height: 56px;
+  }
+
+  .rf-reference .rf-login-password,
+  .rf-reference .rf-register-form .rf-password,
+  .rf-reference .rf-register-form .rf-confirm,
+  .rf-reference .rf-register-form .rf-verification,
+  .rf-reference .rf-register-form .rf-invitation {
+    margin-top: 16px;
+  }
+
+  .rf-reference .rf-submit {
+    height: 56px;
+  }
+
+  .rf-reference .rf-register-form .rf-submit {
+    margin-top: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-reference .rf-submit {
+    transition: none;
+  }
+}
+
+/* Match the production login and registration panels. */
+.rf-reference {
+  --rf-ink: #171615;
+  --rf-cream: #fff1cc;
+  width: min(100%, 512px);
+  max-width: 512px;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #101010;
+  background-image: url("/__mockup/images/auth-background-pattern.png");
+  background-position: top center;
+  background-repeat: repeat;
+  background-size: 432px 160px;
+  color: var(--rf-ink);
+  font-family: Roboto, Arial, sans-serif;
+}
+
+.rf-reference .rf-clip-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.rf-reference .rf-header {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  height: auto;
+  pointer-events: none;
+}
+
+.rf-reference .rf-title {
+  top: 8%;
+  left: 4%;
+  color: #fff;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: clamp(25px, 6.2vw, 30px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.rf-reference .rf-robot {
+  top: 6.7%;
+  right: 3.5%;
+  width: min(40%, 184px);
+  max-width: 184px;
+  height: auto;
+}
+
+.rf-reference .rf-panel {
+  position: absolute;
+  z-index: 1;
+  inset: 14% 0 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0;
+  background: linear-gradient(105deg, #f0cd66 0%, #f0ad43 47%, #f0922e 100%);
+  clip-path: url("#rf-panel-clip");
+}
+
+.rf-reference .rf-form {
+  position: absolute;
+  z-index: 2;
+  top: 18.6%;
+  left: 4%;
+  display: flex;
+  width: 92%;
+  flex-direction: column;
+  gap: clamp(14px, 2.9dvh, 22px);
+  margin: 0;
+}
+
+.rf-reference .rf-field {
+  display: flex;
+  width: 100%;
+  height: clamp(52px, 7.5dvh, 56px);
+  flex: 0 0 auto;
+  align-items: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  background: var(--rf-cream);
+  color: var(--rf-ink);
+  box-shadow: none;
+}
+
+.rf-reference .rf-field:focus-within {
+  outline: 2px solid rgba(49, 37, 17, .42);
+  outline-offset: 1px;
+}
+
+.rf-reference .rf-field input {
+  width: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: #211f1b;
+  font: 600 17px/1.2 Roboto, Arial, sans-serif;
+}
+
+.rf-reference .rf-field input::placeholder {
+  color: #73716b;
+}
+
+.rf-reference .rf-phone {
+  gap: 0;
+}
+
+.rf-reference .rf-prefix {
+  width: 66px;
+  flex: 0 0 66px;
+  color: #171615;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.rf-reference .rf-login-password,
+.rf-reference .rf-register-form .rf-password,
+.rf-reference .rf-register-form .rf-confirm,
+.rf-reference .rf-register-form .rf-verification,
+.rf-reference .rf-register-form .rf-invitation {
+  margin: 0;
+}
+
+.rf-reference .rf-remember {
+  min-height: 17px;
+  margin: -4px 0 -10px;
+  color: #81735a;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.rf-reference .rf-remember input {
+  width: 14px;
+  height: 14px;
+  accent-color: #25221e;
+}
+
+.rf-reference .rf-submit {
+  height: clamp(52px, 7.5dvh, 56px);
+  border-radius: 999px;
+  margin-top: 3px;
+  padding: 0 16px;
+  background: linear-gradient(105deg, #e9c85b 0%, #f0d073 100%);
+  color: #29231b;
+  font: 700 18px/1 Roboto, Arial, sans-serif;
+  letter-spacing: 0;
+}
+
+.rf-reference .rf-login-form .rf-submit {
+  margin-top: -10px;
+}
+
+.rf-reference .rf-switch {
+  margin: 15px 0 0;
+  align-self: center;
+  color: #fff;
+  font: 700 17px/1.2 Roboto, Arial, sans-serif;
+  letter-spacing: 0;
+}
+
+.rf-reference .rf-register-form .rf-switch {
+  margin-top: 15px;
+}
+
+.rf-reference .rf-stacked {
+  align-items: stretch;
+  gap: 1px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.rf-reference .rf-label {
+  max-width: 100%;
+  overflow: hidden;
+  color: #897e69;
+  font: 400 11px/1.15 Roboto, Arial, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rf-reference .rf-stacked input {
+  width: 100%;
+  height: 20px;
+  flex: 0 0 20px;
+  font-size: 17px;
+}
+
+.rf-reference .rf-verification {
+  gap: 12px;
+  padding-right: 12px;
+  padding-left: 17px;
+}
+
+.rf-reference .rf-shield {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  stroke: #27231c;
+  stroke-width: 1.5;
+}
+
+.rf-reference .rf-visual-code {
+  display: flex;
+  width: clamp(92px, 28vw, 122px);
+  height: 42px;
+  flex: 0 0 clamp(92px, 28vw, 122px);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 5px;
+  background:
+    radial-gradient(circle at 12% 25%, rgba(31, 170, 203, .43) 0 1px, transparent 2px),
+    radial-gradient(circle at 77% 67%, rgba(235, 91, 117, .42) 0 1px, transparent 2px),
+    radial-gradient(circle at 46% 18%, rgba(221, 176, 38, .44) 0 1px, transparent 2px),
+    repeating-linear-gradient(165deg, transparent 0 8px, rgba(210, 85, 105, .32) 9px 11px, transparent 12px 19px);
+  cursor: pointer;
+}
+
+.rf-reference .rf-char {
+  display: inline-block;
+  color: #397a9c;
+  font: 700 23px/1 Georgia, serif;
+  text-shadow: 1px 1px rgba(226, 167, 42, .5);
+}
+
+.rf-reference .rf-char-one {
+  color: #df5671;
+  transform: rotate(-12deg) translateY(1px);
+}
+
+.rf-reference .rf-char-two {
+  color: #327597;
+  transform: rotate(9deg) translateY(-2px);
+}
+
+.rf-reference .rf-char-three {
+  color: #d29a22;
+  transform: rotate(-7deg) translateY(2px);
+}
+
+.rf-reference .rf-char-four {
+  color: #416b91;
+  transform: rotate(12deg) translateY(-1px);
+}
+
+@media (max-width: 360px) {
+  .rf-reference .rf-robot {
+    width: 39%;
+  }
+
+  .rf-reference .rf-form {
+    left: 4%;
+    width: 92%;
+  }
+
+  .rf-reference .rf-prefix {
+    width: 62px;
+    flex-basis: 62px;
+  }
+
+  .rf-reference .rf-visual-code {
+    width: 88px;
+    flex-basis: 88px;
+  }
+}
+
+@media (max-height: 720px) {
+  .rf-reference {
+    height: 760px;
+    min-height: 760px;
+    overflow-y: auto;
+  }
+
+  .rf-reference .rf-form {
+    top: 17%;
+  }
+}
