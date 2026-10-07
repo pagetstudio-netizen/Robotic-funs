@@ -454,11 +454,11 @@ declare module "express-session" {
 }
 
 const PgSession = ConnectPgSimple(session);
-const sessionDatabaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+const sessionDatabaseUrl = process.env.DATABASE_URL;
 const sessionSecret = process.env.SESSION_SECRET;
 
 if (!sessionDatabaseUrl) {
-  throw new Error("No database URL configured for session storage.");
+  throw new Error("DATABASE_URL is not configured for session storage.");
 }
 if (!sessionSecret) {
   throw new Error("SESSION_SECRET must be configured.");

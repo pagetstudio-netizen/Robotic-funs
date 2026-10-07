@@ -65,7 +65,7 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 ### Database
-- **PostgreSQL**: Primary database (connection via `DATABASE_URL` environment variable)
+- **PostgreSQL**: Replit-managed database (connection via `DATABASE_URL`)
 - **Drizzle ORM**: Type-safe database queries and schema management
 
 ### Frontend Libraries
@@ -84,13 +84,13 @@ Preferred communication style: Simple, everyday language.
 - **TypeScript**: Type checking across full stack
 
 ### Environment Variables Required
-- `SUPABASE_DATABASE_URL` or `DATABASE_URL`: PostgreSQL connection string used for application data and sessions
+- `DATABASE_URL`: Replit PostgreSQL connection string used for application data and sessions
 - `SESSION_SECRET`: Secret for session encryption (required)
 
 ## Running on Replit
 
 ### Prerequisites
-- Replit provides the PostgreSQL database through `DATABASE_URL`. The application can alternatively use an existing Supabase database through `SUPABASE_DATABASE_URL`.
+- Replit provides the PostgreSQL database through `DATABASE_URL`; application runtime and Drizzle use this database directly.
 - `SESSION_SECRET` is configured as a Replit Secret.
 
 ### First-time setup
@@ -99,7 +99,7 @@ npm install          # install dependencies
 npm run dev          # start the development server on port 5000
 ```
 
-The imported baseline schema must be applied before its first start. The development database is already initialized and the app now seeds countries, products, tasks, payment channels, and platform settings automatically when empty.
+The Replit development database is initialized with the application schema and seeds countries, products, tasks, payment channels, and platform settings when empty. The switch to Replit does not import or delete Supabase data.
 
 ### Initial administrator
 The initial administrator is created only when `ADMIN_PASSWORD` is configured as a secret. Existing administrator records are preserved and are not reset during startup.
