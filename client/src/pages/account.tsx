@@ -1,24 +1,17 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import {
-  ChevronRight,
-  Loader2,
-  LogOut,
-  Shield,
-} from "lucide-react";
-import aboutIcon from "@assets/info_(1)_1790682898817.png";
-import passwordIcon from "@assets/sign_in_1790682898843.png";
-import giftCodeIcon from "@assets/rewards_1790682898867.png";
-import supportIcon from "@assets/help_1790682898889.png";
-import historyIcon from "@assets/withdraw_record_(1)_1790682898914.png";
-import depositIcon from "@assets/a90f54732fab3ff150753cf117ce6a24_1790690575928.png";
-import withdrawalIcon from "@assets/fa6620bc07e2128cfd6a47b85bb73129_1790690575968.png";
-import bankAccountIcon from "@assets/a96d355bc25b348d27c903a0be9d6798_1790690576005.png";
-import balanceIcon from "@assets/téléchargement_(63)_1790690576065.png";
-import type { WithdrawalWallet } from "@shared/schema";
+import { Loader2, MessageSquareText, Power, type LucideIcon } from "lucide-react";
+import accountCardArt from "@assets/file_0000000060b081f5b0594d312204e2bc_1791383580790.png";
+import depositIcon from "@assets/Rechange_(1)_1791383388650.png";
+import withdrawalIcon from "@assets/Withdraw_(1)_1791383388618.png";
+import passwordIcon from "@assets/item2_1791383388379.png";
+import bankAccountIcon from "@assets/item3_1791383388468.png";
+import historyIcon from "@assets/item4_1791383388497.png";
+import aboutIcon from "@assets/item6_1791383388543.png";
+import giftCodeIcon from "@assets/item7_1791383388518.png";
+import downloadIcon from "@assets/item8_1791383388572.png";
 import { useAuth } from "@/lib/auth";
-import { getCountryByCode, type ApiCountry } from "@/lib/countries";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -29,8 +22,17 @@ import { ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 import GiftCodeModal from "@/components/gift-code-modal";
 import "./account.css";
 
-interface TeamStatsSummary {
-  totalCommission: number;
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+interface AccountMenuItem {
+  label: string;
+  lines: string[];
+  image?: string;
+  Icon?: LucideIcon;
+  onSelect: () => void;
 }
 
 export default function AccountPage() {
@@ -43,30 +45,14 @@ export default function AccountPage() {
   );
   const [adminPin, setAdminPin] = useState("");
 
-  const { data: apiCountries = [] } = useQuery<ApiCountry[]>({
-    queryKey: ["/api/countries"],
-  });
-
-  const { data: teamStats, isLoading: teamStatsLoading, isError: teamStatsError } =
-    useQuery<TeamStatsSummary>({
-      queryKey: ["/api/team/stats"],
-      enabled: Boolean(user),
-    });
-
-  const { data: wallets, isLoading: walletsLoading, isError: walletsError } =
-    useQuery<WithdrawalWallet[]>({
-      queryKey: ["/api/wallets"],
-      enabled: Boolean(user),
-    });
-
   const verifyPinMutation = useMutation({
     mutationFn: async (pin: string) => {
-      const res = await apiRequest("POST", "/api/admin/verify-pin", { pin });
-      if (!res.ok) {
-        const data = await res.json();
+      const response = await apiRequest("POST", "/api/admin/verify-pin", { pin });
+      if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.message || "Code PIN incorrect");
       }
-      return res.json();
+      return response.json();
     },
     onSuccess: () => {
       setShowPinModal(false);
@@ -78,12 +64,9 @@ export default function AccountPage() {
 
   if (!user) return null;
 
-  const country = getCountryByCode(user.country, apiCountries);
-  const currency = country?.currency || "XOF";
-  const formatAmount = (value: string | number | null | undefined) => {
+  const formatFcfa = (value: string | number | null | undefined) => {
     const amount = Number(value || 0);
-    const safeAmount = Number.isFinite(amount) ? amount : 0;
-    return `${Math.round(safeAmount).toLocaleString("fr-FR")} ${currency}`;
+    return `${Math.round(Number.isFinite(amount) ? amount : 0).toLocaleString("fr-FR")} FCFA`;
   };
 
   const handleLogout = async () => {
@@ -99,6 +82,30 @@ export default function AccountPage() {
     setShowPinModal(true);
   };
 
+  const handleInstall = async () => {
+    const installPrompt = (window as Window & {
+      _installPrompt?: BeforeInstallPromptEvent | null;
+    })._installPrompt;
+    if (!installPrompt) {
+      toast({
+        title: "Téléchargement indisponible",
+        description: "Ouvrez ce site dans un navigateur compatible pour l’installer.",
+      });
+      return;
+    }
+    try {
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+    } catch {
+      toast({
+        title: "Installation non disponible",
+        description: "Vous pourrez réessayer depuis le menu de votre navigateur.",
+      });
+    } finally {
+      (window as Window & { _installPrompt?: BeforeInstallPromptEvent | null })._installPrompt = null;
+    }
+  };
+
   const handleGiftCodeModalChange = (open: boolean) => {
     setShowGiftCodeModal(open);
     if (!open && new URLSearchParams(window.location.search).get("giftCode") === "open") {
@@ -106,135 +113,113 @@ export default function AccountPage() {
     }
   };
 
-  const accountLinks = [
-    { label: "Historique", image: historyIcon, onSelect: () => navigate("/history") },
-    { label: "Code cadeau", image: giftCodeIcon, onSelect: () => setShowGiftCodeModal(true) },
-    { label: "À propos", image: aboutIcon, onSelect: () => navigate("/about") },
-    { label: "Mot de passe", image: passwordIcon, onSelect: () => navigate("/change-password") },
-    { label: "Déconnexion", Icon: LogOut, onSelect: () => void handleLogout() },
+  const menuItems: AccountMenuItem[] = [
+    {
+      label: "Changer le mot de passe",
+      lines: ["Changer", "le mot de", "passe"],
+      image: passwordIcon,
+      onSelect: () => navigate("/change-password"),
+    },
+    {
+      label: "Ma carte bancaire",
+      lines: ["Ma", "carte bancaire"],
+      image: bankAccountIcon,
+      onSelect: () => navigate("/wallet"),
+    },
+    {
+      label: "Relevé de solde",
+      lines: ["Relevé de solde"],
+      image: historyIcon,
+      onSelect: () => navigate("/history"),
+    },
+    {
+      label: "Contactez-nous",
+      lines: ["Contactez", "-nous"],
+      Icon: MessageSquareText,
+      onSelect: () => navigate("/service"),
+    },
+    {
+      label: "À propos de nous",
+      lines: ["À propos", "de nous"],
+      image: aboutIcon,
+      onSelect: () => navigate("/about"),
+    },
+    {
+      label: "Trésor",
+      lines: ["Trésor"],
+      image: giftCodeIcon,
+      onSelect: () => setShowGiftCodeModal(true),
+    },
+    {
+      label: "Télécharger l'application",
+      lines: ["Télécharger", "l'application"],
+      image: downloadIcon,
+      onSelect: () => void handleInstall(),
+    },
+    {
+      label: "Se déconnecter",
+      lines: ["Se déconnecter"],
+      Icon: Power,
+      onSelect: () => void handleLogout(),
+    },
   ];
-
-  const walletStatus = walletsLoading
-    ? "Vérification…"
-    : walletsError
-      ? "Indisponible"
-      : wallets?.length
-        ? "Lié"
-        : "Non lié";
 
   return (
     <main className="account-page">
       <div className="account-shell">
-        <header className="account-header">
-          <div className="account-profile">
-            <div className="account-brand-mark">
-              <img src={ROBOTICSFUND_LOGO} alt="RoboticsFund" />
-            </div>
-            <div className="account-profile-copy">
-              <h1>{user.fullName || "Mon compte"}</h1>
-              <p>
-                {country?.phonePrefix ? `+${country.phonePrefix} ${user.phone}` : user.phone}
-              </p>
+        <section className="account-stage" aria-label="Mon compte">
+          <div className="account-card">
+            <img className="account-card-art" src={accountCardArt} alt="" aria-hidden="true" />
+            <div className="account-card-shade" aria-hidden="true" />
+            <div className="account-card-content">
+              <div className="account-balance-pill">
+                <span className="account-phone">{user.phone}</span>
+                <span className="account-balance">Solde actuel : {formatFcfa(user.balance)}</span>
+              </div>
+              <div className="account-shortcuts" aria-label="Opérations du compte">
+                <button type="button" onClick={() => navigate("/deposit")}>
+                  <img src={depositIcon} alt="" aria-hidden="true" />
+                  <span>Recharger</span>
+                </button>
+                <button type="button" onClick={() => navigate("/withdrawal")}>
+                  <img src={withdrawalIcon} alt="" aria-hidden="true" />
+                  <span>Retirer</span>
+                </button>
+              </div>
             </div>
           </div>
-        </header>
-
-        <section className="account-overview" aria-label="Résumé du compte">
-          <article className="account-balance-card">
-            <div className="account-balance-main">
-              <div className="account-balance-icon" aria-hidden="true">
-                <img src={balanceIcon} alt="" />
-              </div>
-              <div className="account-balance-copy">
-                <span>Solde</span>
-                <strong>{formatAmount(user.balance)}</strong>
-              </div>
-              <button
-                type="button"
-                className="account-statement-button"
-                onClick={() => navigate("/history")}
-              >
-                Relevé
-              </button>
-            </div>
-            <div className="account-revenue-grid">
-              <div className="account-revenue-item">
-                <span>Revenus du jour</span>
-                <strong>{formatAmount(user.todayEarnings)}</strong>
-              </div>
-              <div className="account-revenue-item">
-                <span>Revenus d’équipe</span>
-                <strong>
-                  {teamStatsLoading
-                    ? "Chargement…"
-                    : teamStatsError
-                      ? "Indisponible"
-                      : formatAmount(teamStats?.totalCommission)}
-                </strong>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section className="account-shortcuts" aria-label="Opérations du compte">
-          <button type="button" onClick={() => navigate("/deposit")}>
-            <span className="account-shortcut-icon" aria-hidden="true">
-              <img src={depositIcon} alt="" />
-            </span>
-            Recharger
-          </button>
-          <button type="button" onClick={() => navigate("/withdrawal")}>
-            <span className="account-shortcut-icon" aria-hidden="true">
-              <img src={withdrawalIcon} alt="" />
-            </span>
-            Retirer
+          <button
+            type="button"
+            className={`account-brand-mark${user.isAdmin ? " is-admin-access" : ""}`}
+            onClick={user.isAdmin ? handleAdminClick : undefined}
+            aria-label={user.isAdmin ? "Accès administrateur" : "RoboticsFund"}
+            tabIndex={user.isAdmin ? 0 : -1}
+          >
+            <img src={ROBOTICSFUND_LOGO} alt="" />
           </button>
         </section>
 
-        <button
-          type="button"
-          className="account-wallet-card"
-          onClick={() => navigate("/wallet")}
-          aria-label="Gérer le compte bancaire"
-        >
-          <span className="account-wallet-icon" aria-hidden="true">
-            <img src={bankAccountIcon} alt="" />
-          </span>
-          <span className="account-wallet-copy">
-            <strong>Compte bancaire</strong>
-            <span>Enregistrez vos coordonnées pour vos retraits</span>
-          </span>
-          <span className={`account-wallet-status${wallets?.length ? " is-linked" : ""}`}>
-            {walletStatus}
-          </span>
-          <ChevronRight className="account-wallet-chevron" aria-hidden="true" />
-        </button>
-
-        <section className="account-services" aria-labelledby="account-services-title">
-          <h2 id="account-services-title">Autres services</h2>
-          <div className="account-links">
-            {accountLinks.map(({ label, Icon, image, onSelect }) => (
+        <nav className="account-menu" aria-label="Services du compte">
+          <div className="account-menu-grid">
+            {menuItems.map(({ label, lines, image, Icon, onSelect }) => (
               <button
                 key={label}
                 type="button"
-                className={`account-link${label === "Déconnexion" ? " account-link-logout" : ""}`}
+                className="account-menu-item"
                 onClick={onSelect}
+                aria-label={label}
               >
-                <span className="account-link-icon" aria-hidden="true">
-                  {image ? <img src={image} alt="" /> : Icon && <Icon />}
+                <span className={`account-menu-icon${Icon === Power ? " is-power" : ""}`} aria-hidden="true">
+                  {image ? <img src={image} alt="" /> : Icon ? <Icon /> : null}
                 </span>
-                <span>{label}</span>
+                <span className="account-menu-label">
+                  {lines.map((line) => <span key={line}>{line}</span>)}
+                </span>
               </button>
             ))}
           </div>
-        </section>
-
-        {user.isAdmin && (
-          <button type="button" className="account-admin-button" onClick={handleAdminClick}>
-            <Shield aria-hidden="true" />
-            Panel Admin
-          </button>
-        )}
+          <div className="account-menu-divider" aria-hidden="true" />
+        </nav>
       </div>
 
       <Dialog open={showPinModal} onOpenChange={setShowPinModal}>

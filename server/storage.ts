@@ -7,6 +7,7 @@ import {
   type GiftCode, type GiftCodeClaim, type Country
 } from "@shared/schema";
 import { db } from "./db";
+import { INVITATION_TASK_KEY_PREFIX, countQualifiedDirectReferrals } from "./invitation-tasks";
 import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -1158,7 +1159,8 @@ export class DatabaseStorage implements IStorage {
 
   // Tasks
   async getTasks(): Promise<Task[]> {
-    return await db.select().from(tasks).where(eq(tasks.isActive, true)).orderBy(tasks.sortOrder);
+    const activeTasks = await db.select().from(tasks).where(eq(tasks.isActive, true)).orderBy(tasks.sortOrder);
+    return activeTasks.filter(task => task.name.startsWith(INVITATION_TASK_KEY_PREFIX));
   }
 
   async getTasksWithStatus(userId: number): Promise<(Task & { isCompleted: boolean; canClaim: boolean; currentInvites: number })[]> {
@@ -1167,36 +1169,30 @@ export class DatabaseStorage implements IStorage {
     if (!user) return [];
 
     const level1Refs = await this.getReferrals(userId, 1);
-    
+    const referralIds = level1Refs.map(ref => ref.id);
     let currentInvites = 0;
-    for (const ref of level1Refs) {
-      const hasApprovedDeposit = ref.hasDeposited === true;
-      
-      if (!hasApprovedDeposit) {
-        const refDeposits = await db.select().from(deposits)
-          .where(and(eq(deposits.userId, ref.id), eq(deposits.status, "approved")))
-          .limit(1);
-        if (refDeposits.length > 0) {
-          currentInvites++;
-          continue;
-        }
-      } else {
-        currentInvites++;
-        continue;
-      }
 
-      const refProducts = await db.select()
+    if (referralIds.length > 0) {
+      const approvedDepositRows = await db.selectDistinct({ userId: deposits.userId })
+        .from(deposits)
+        .where(and(
+          inArray(deposits.userId, referralIds),
+          eq(deposits.status, "approved"),
+        ));
+      const purchasedProductRows = await db.selectDistinct({ userId: userProducts.userId })
         .from(userProducts)
         .innerJoin(products, eq(userProducts.productId, products.id))
         .where(and(
-          eq(userProducts.userId, ref.id),
-          eq(products.isFree, false)
-        ))
-        .limit(1);
+          inArray(userProducts.userId, referralIds),
+          eq(userProducts.assignedByAdmin, false),
+          eq(products.isFree, false),
+        ));
 
-      if (refProducts.length > 0) {
-        currentInvites++;
-      }
+      currentInvites = countQualifiedDirectReferrals(
+        level1Refs,
+        approvedDepositRows.map(row => row.userId),
+        purchasedProductRows.map(row => row.userId),
+      );
     }
 
     const completedTasks = await db.select().from(userTasks).where(eq(userTasks.userId, userId));
@@ -1211,26 +1207,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async claimTask(userId: number, taskId: number): Promise<void> {
-    const tasksStatus = await this.getTasksWithStatus(userId);
-    const taskStatus = tasksStatus.find(t => t.id === taskId);
+    await db.transaction(async tx => {
+      const [user] = await tx.select({ balance: users.balance })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for("update");
+      if (!user) throw new Error("Utilisateur non trouvé");
 
-    if (!taskStatus) throw new Error("Tâche non trouvée");
-    if (taskStatus.isCompleted) throw new Error("Tâche déjà réclamée");
-    if (!taskStatus.canClaim) throw new Error("Conditions non remplies (recharge et achat requis)");
+      const tasksStatus = await this.getTasksWithStatus(userId);
+      const taskStatus = tasksStatus.find(task => task.id === taskId);
 
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("Utilisateur non trouvé");
+      if (!taskStatus) throw new Error("Tâche non trouvée");
+      if (taskStatus.isCompleted) throw new Error("Tâche déjà réclamée");
+      if (!taskStatus.canClaim) throw new Error("Conditions non remplies : recharge approuvée et achat d'un produit requis");
 
-    await db.insert(userTasks).values({ userId, taskId });
-    
-    const newBalance = parseFloat(user.balance) + taskStatus.reward;
-    await this.updateUser(userId, { balance: newBalance.toFixed(2) });
-    
-    await this.createTransaction({
-      userId,
-      type: "task_reward",
-      amount: taskStatus.reward.toString(),
-      description: `Récompense: ${taskStatus.name}`,
+      await tx.insert(userTasks).values({ userId, taskId });
+
+      const newBalance = parseFloat(user.balance) + taskStatus.reward;
+      await tx.update(users)
+        .set({ balance: newBalance.toFixed(2) })
+        .where(eq(users.id, userId));
+
+      await tx.insert(transactions).values({
+        userId,
+        type: "task_reward",
+        amount: taskStatus.reward.toString(),
+        description: `Récompense d'invitation — ${taskStatus.requiredInvites} membres de niveau 1`,
+      });
     });
   }
 

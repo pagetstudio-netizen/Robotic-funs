@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { users, products, tasks, paymentChannels, platformSettings, countries } from "@shared/schema";
 import { JOHN_DEERE_PRODUCT_CATALOG, JOHN_DEERE_PRODUCT_IMAGE_PATHS } from "@shared/product-catalog";
+import { INVITATION_TASK_DEFAULTS } from "./invitation-tasks";
 import bcrypt from "bcrypt";
 import { eq, sql } from "drizzle-orm";
 
@@ -239,6 +240,17 @@ export async function seed() {
     console.log("Tasks seeded (first install)");
   } else {
     console.log(`Tasks skipped — ${existingTasks.length} existing tasks preserved`);
+  }
+
+  const knownTaskKeys = new Set(
+    (await db.select({ name: tasks.name }).from(tasks)).map(({ name }) => name),
+  );
+  const missingInvitationTasks = INVITATION_TASK_DEFAULTS
+    .filter(({ taskKey }) => !knownTaskKeys.has(taskKey))
+    .map(({ taskKey: _taskKey, ...task }) => task);
+  if (missingInvitationTasks.length > 0) {
+    await db.insert(tasks).values(missingInvitationTasks);
+    console.log(`Invitation reward tiers added: ${missingInvitationTasks.length}`);
   }
 
   // Check if payment channels exist

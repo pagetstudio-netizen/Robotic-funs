@@ -1,0 +1,80 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #111111;
+  color: #f3f3f3;
+  font-family: Inter, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.invite-current-preview {
+  position: relative;
+  width: 100%;
+  max-width: 512px;
+  height: 100dvh;
+  min-height: 100svh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.invite-current-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 68px;
+}
+
+.invite-current-nav {
+  position: absolute;
+  z-index: 50;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  height: 68px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid #343434;
+  background: #1d1d1d;
+}
+
+.invite-current-nav-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #a0a0a0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.invite-current-nav-item img {
+  width: auto;
+  max-width: 41px;
+  height: 36px;
+  object-fit: contain;
+  filter: grayscale(1) brightness(0.62);
+}
+
+.invite-current-nav-item.is-active {
+  color: #f3c244;
+}
+
+.invite-current-nav-item.is-active img {
+  filter: brightness(0) saturate(100%) invert(79%) sepia(48%) saturate(710%) hue-rotate(4deg) brightness(101%) contrast(96%);
+}

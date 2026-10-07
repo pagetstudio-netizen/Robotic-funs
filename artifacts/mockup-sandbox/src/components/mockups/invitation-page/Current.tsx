@@ -1,24 +1,78 @@
-import { useAuth } from "@/lib/auth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { getCountryByCode } from "@/lib/countries";
+import "./_group.css";
+import type { ReactNode } from "react";
 import { ChevronLeft, Loader2, Trophy, CheckCircle2 } from "lucide-react";
-import { Link } from "wouter";
-import type { Task } from "@shared/schema";
-import { ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
-import EmptyState from "@/components/empty-state";
-import iconBronze from "@assets/344464_1773318022355.png";
-import iconArgent from "@assets/817729_1773318022328.png";
-import iconOr from "@assets/sac-argent-gros-tas-illustration-icone-argent-comptant-icone-p_1773318022388.jpg";
-import iconPlatine from "@assets/1751761_1773318022264.png";
-import iconDiamant from "@assets/3275655_1773318022415.png";
+type Task = {
+  id: number;
+  name: string;
+  description: string;
+  requiredInvites: number;
+  reward: number;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 interface TaskWithStatus extends Task {
   isCompleted: boolean;
   canClaim: boolean;
   currentInvites: number;
+}
+
+const currentTasks: TaskWithStatus[] = [
+  { id: 1, name: "Parrain Bronze", description: "Inviter 3 personnes a investir", requiredInvites: 3, reward: 350, sortOrder: 1, isActive: true, isCompleted: false, canClaim: false, currentInvites: 1 },
+  { id: 2, name: "Parrain Argent", description: "Inviter 5 personnes a investir", requiredInvites: 5, reward: 750, sortOrder: 2, isActive: true, isCompleted: false, canClaim: false, currentInvites: 1 },
+  { id: 3, name: "Parrain Or", description: "Inviter 10 personnes a investir", requiredInvites: 10, reward: 2500, sortOrder: 3, isActive: true, isCompleted: false, canClaim: false, currentInvites: 1 },
+  { id: 4, name: "Parrain Platine", description: "Inviter 30 personnes a investir", requiredInvites: 30, reward: 6500, sortOrder: 4, isActive: true, isCompleted: false, canClaim: false, currentInvites: 1 },
+  { id: 5, name: "Parrain Diamant", description: "Inviter 100 personnes a investir", requiredInvites: 100, reward: 15000, sortOrder: 5, isActive: true, isCompleted: false, canClaim: false, currentInvites: 1 },
+  { id: 6, name: "Parrain Elite", description: "Inviter 300 personnes a investir", requiredInvites: 300, reward: 50000, sortOrder: 6, isActive: true, isCompleted: false, canClaim: false, currentInvites: 1 },
+];
+const ROBOTICSFUND_LOGO = "/__mockup/images/roboticsfund-logo.jpg";
+const iconBronze = "/__mockup/images/icon-bronze.png";
+const iconArgent = "/__mockup/images/icon-argent.png";
+const iconOr = "/__mockup/images/icon-or.jpg";
+const iconPlatine = "/__mockup/images/icon-platine.png";
+const iconDiamant = "/__mockup/images/icon-diamant.png";
+
+function useAuth() {
+  return { user: { country: "TG" }, refreshUser: () => undefined };
+}
+
+function useToast() {
+  return { toast: (_options?: { title?: string; description?: string; variant?: string }) => undefined };
+}
+
+function useQuery<T>(_options?: unknown) {
+  return { data: currentTasks as unknown as T, isLoading: false };
+}
+
+function useMutation(options: { mutationFn?: (value: number) => Promise<unknown>; onSuccess?: () => void; onError?: (error: Error) => void }) {
+  return {
+    isPending: false,
+    mutate: (value: number) => {
+      const pending = options.mutationFn?.(value);
+      if (pending) void pending.then(() => options.onSuccess?.()).catch(options.onError);
+    },
+    mutateAsync: async (value: number) => {
+      const result = await options.mutationFn?.(value);
+      options.onSuccess?.();
+      return result;
+    },
+  };
+}
+
+const queryClient = { invalidateQueries: (_options?: unknown) => undefined };
+const apiRequest = async (_method: string, _url: string, _body?: unknown) => ({
+  ok: true,
+  json: async (): Promise<{ message?: string }> => ({}),
+});
+const getCountryByCode = (_countryCode: string) => ({ currency: "FCFA" });
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={className} />;
+}
+function Link({ children }: { href: string; children: ReactNode }) {
+  return <>{children}</>;
+}
+function EmptyState({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={className}>{children}</div>;
 }
 
 const TIER_LABELS = [
@@ -41,7 +95,7 @@ const TIER_COLORS = [
 
 const TIER_ICONS = [iconBronze, iconArgent, iconOr, iconPlatine, iconDiamant, iconBronze];
 
-export default function TasksPage() {
+function TasksPage() {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
 
@@ -271,6 +325,32 @@ export default function TasksPage() {
            </EmptyState>
         )}
       </div>
+    </div>
+  );
+}
+
+const previewNavItems = [
+  { label: "Accueil", icon: "/__mockup/images/tab-home.png" },
+  { label: "Produits", icon: "/__mockup/images/tab-products.png" },
+  { label: "Partager", icon: "/__mockup/images/tab-share.png" },
+  { label: "Inviter", icon: "/__mockup/images/tab-invite.png" },
+  { label: "Compte", icon: "/__mockup/images/tab-account.png" },
+];
+
+export function Current() {
+  return (
+    <div className="invite-current-preview">
+      <div className="invite-current-scroll">
+        <TasksPage />
+      </div>
+      <nav className="invite-current-nav" aria-label="Navigation principale">
+        {previewNavItems.map(({ label, icon }) => (
+          <div className={`invite-current-nav-item ${label === "Inviter" ? "is-active" : ""}`} key={label}>
+            <img src={icon} alt="" />
+            <span>{label}</span>
+          </div>
+        ))}
+      </nav>
     </div>
   );
 }

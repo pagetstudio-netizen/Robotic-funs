@@ -1,9 +1,10 @@
 .account-page {
-  min-height: 100vh;
-  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-  background: #f3f5f2;
-  color: #202820;
-  font-family: Inter, Arial, sans-serif;
+  min-height: 100dvh;
+  padding: 0 0 calc(92px + env(safe-area-inset-bottom, 0px));
+  background: #111;
+  color: #f5f5f5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .account-page,
@@ -14,486 +15,295 @@
 .account-shell {
   width: 100%;
   max-width: 512px;
-  min-height: 100vh;
   margin: 0 auto;
-  overflow: hidden;
-  background: #f7f8f6;
 }
 
-.account-header {
-  min-height: 188px;
-  padding: 26px 18px 67px;
-  background: linear-gradient(145deg, #164d25 0%, #367c2b 72%, #4b9137 100%);
-  color: #fff;
-}
-
-.account-profile {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 14px;
-}
-
-.account-brand-mark {
-  display: grid;
-  width: 68px;
-  height: 68px;
-  flex: 0 0 68px;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 15px;
-  background: #fff;
-  box-shadow: 0 3px 10px rgba(10, 47, 20, .18);
-}
-
-.account-brand-mark img {
-  display: block;
-  width: 55px;
-  height: 55px;
-  object-fit: contain;
-}
-
-.account-profile-copy {
-  min-width: 0;
-}
-
-.account-profile-copy h1 {
-  margin: 0;
-  color: #fff;
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-
-.account-profile-copy p {
-  margin: 5px 0 0;
-  color: rgba(255, 255, 255, .92);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-
-.account-overview {
+.account-stage {
   position: relative;
-  z-index: 1;
-  margin: -49px 16px 0;
+  width: min(396px, calc(100% - 36px));
+  margin: 98px auto 0;
 }
 
-.account-balance-card {
-  overflow: hidden;
-  border: 1px solid #e3e9e1;
-  border-radius: 15px;
-  padding: 14px 15px 0;
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(24, 63, 31, .1);
-}
-
-.account-balance-main {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 11px;
-  padding-bottom: 13px;
-}
-
-.account-balance-icon {
-  display: grid;
-  width: 39px;
-  height: 39px;
-  flex: 0 0 39px;
-  place-items: center;
-  border-radius: 11px;
-  background: #e6f1e2;
-  color: #367c2b;
-}
-
-.account-balance-icon svg {
-  width: 23px;
-  height: 23px;
-  stroke-width: 2.3;
-}
-
-.account-balance-icon img {
-  display: block;
-  width: 33px;
-  height: 33px;
-  object-fit: contain;
-}
-
-.account-balance-copy {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.account-balance-copy span {
-  color: #667066;
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.account-balance-copy strong {
-  color: #286d35;
-  font-size: clamp(18px, 5vw, 22px);
-  font-weight: 800;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-}
-
-.account-statement-button {
-  min-height: 32px;
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 999px;
-  padding: 0 13px;
-  background: #e4f5df;
-  color: #286d35;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.account-revenue-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid #e4e8e2;
-}
-
-.account-revenue-item {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 13px 5px 14px;
-  text-align: center;
-}
-
-.account-revenue-item + .account-revenue-item {
+.account-card {
   position: relative;
+  min-height: 276px;
+  aspect-ratio: 396 / 276;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(120deg, #080d35 0%, #101743 57%, #1a2b70 100%);
+  isolation: isolate;
 }
 
-.account-revenue-item + .account-revenue-item::before {
+.account-card-art {
   position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 0;
-  width: 1px;
-  background: #e0e5de;
-  content: "";
+  z-index: -2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 57%;
+  opacity: .97;
 }
 
-.account-revenue-item span {
-  color: #717970;
-  font-size: 12px;
+.account-card-shade {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(9, 14, 51, .18) 0%, rgba(9, 14, 51, .04) 55%, rgba(6, 9, 37, .35) 100%);
+  pointer-events: none;
+}
+
+.account-card-content {
+  position: absolute;
+  inset: 0;
+  padding: 46px 15px 20px;
+}
+
+.account-balance-pill {
+  display: flex;
+  width: min(286px, 84%);
+  min-height: 72px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: rgba(55, 70, 150, .82);
+  color: #f3f0e3;
+  text-align: center;
+  backdrop-filter: blur(2px);
+}
+
+.account-phone {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .01em;
   line-height: 1.25;
 }
 
-.account-revenue-item strong {
+.account-balance {
   max-width: 100%;
-  color: #202820;
-  font-size: clamp(14px, 4vw, 17px);
-  font-weight: 700;
-  line-height: 1.2;
   overflow-wrap: anywhere;
+  color: #e3ce70;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.25;
 }
 
 .account-shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 19px 16px 17px;
+  align-items: start;
+  margin-top: 26px;
 }
 
 .account-shortcuts button {
   display: flex;
   min-width: 0;
-  min-height: 60px;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 1px solid #e8ece6;
-  border-radius: 13px;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(28, 49, 29, .06);
-  color: #242b24;
-  cursor: pointer;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.account-shortcut-icon {
-  display: grid;
-  width: 33px;
-  height: 33px;
-  flex: 0 0 33px;
-  place-items: center;
-  border-radius: 11px;
-  background: #e8f3e4;
-  color: #367c2b;
-}
-
-.account-shortcut-icon svg {
-  width: 19px;
-  height: 19px;
-  stroke-width: 2.2;
-}
-
-.account-shortcut-icon img {
-  display: block;
-  width: 29px;
-  height: 29px;
-  object-fit: contain;
-}
-
-.account-wallet-card {
-  position: relative;
-  display: grid;
-  width: calc(100% - 32px);
-  min-height: 87px;
-  grid-template-columns: 47px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  margin: 0 16px 20px;
-  border: 1px solid #e7ece4;
-  border-radius: 14px;
-  padding: 13px 15px;
-  background: #fff;
-  box-shadow: 0 2px 7px rgba(28, 49, 29, .06);
-  color: #202820;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.account-wallet-icon {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 50%;
-  background: #e4f4df;
-  color: #367c2b;
-}
-
-.account-wallet-icon svg {
-  width: 25px;
-  height: 25px;
-  stroke-width: 2;
-}
-
-.account-wallet-icon img {
-  display: block;
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-}
-
-.account-wallet-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.account-wallet-copy strong {
-  color: #253027;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.account-wallet-copy > span {
-  color: #687168;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.account-wallet-status {
-  position: absolute;
-  top: 0;
-  right: 0;
-  max-width: 110px;
-  overflow: hidden;
-  border-radius: 0 13px 0 10px;
-  padding: 5px 10px;
-  background: #fce8e7;
-  color: #b83e36;
-  font-size: 11px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-wallet-status.is-linked {
-  background: #e4f5df;
-  color: #286d35;
-}
-
-.account-wallet-chevron {
-  width: 20px;
-  height: 20px;
-  color: #3f4a40;
-}
-
-.account-services {
-  margin: 0 16px 18px;
-}
-
-.account-services h2 {
-  margin: 0 0 10px;
-  color: #263128;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.account-links {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-  border: 1px solid #e7ece4;
-  border-radius: 14px;
-  padding: 9px 7px;
-  background: #fff;
-  box-shadow: 0 2px 7px rgba(28, 49, 29, .06);
-}
-
-.account-link {
-  display: flex;
-  min-width: 0;
-  min-height: 79px;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 0;
-  border-radius: 10px;
-  padding: 7px 3px;
-  background: transparent;
-  color: #303830;
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.account-link-icon {
-  display: grid;
-  width: 35px;
-  height: 35px;
-  flex: 0 0 35px;
-  place-items: center;
-  border-radius: 11px;
-  background: #e9f3e5;
-  color: #367c2b;
-}
-
-.account-link-icon svg {
-  width: 21px;
-  height: 21px;
-  stroke-width: 2;
-}
-
-.account-link-icon img {
-  display: block;
-  width: 27px;
-  height: 27px;
-  object-fit: contain;
-}
-
-.account-link-logout .account-link-icon {
-  background: #f8ecea;
-  color: #ad493e;
-}
-
-.account-admin-button {
-  display: flex;
-  width: calc(100% - 32px);
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  margin: 0 16px 18px;
   border: 0;
-  border-radius: 12px;
-  background: #367c2b;
+  padding: 0 4px;
+  background: transparent;
   color: #fff;
   cursor: pointer;
   font: inherit;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .65);
 }
 
-.account-admin-button svg {
-  width: 17px;
-  height: 17px;
+.account-shortcuts button:active,
+.account-menu-item:active {
+  transform: scale(.97);
+}
+
+.account-shortcuts img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.account-brand-mark {
+  position: absolute;
+  z-index: 2;
+  top: -34px;
+  left: 50%;
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: 0;
+  border-radius: 2px;
+  padding: 0;
+  background: transparent;
+}
+
+.account-brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.account-brand-mark.is-admin-access {
+  cursor: pointer;
+}
+
+.account-menu {
+  width: 100%;
+  margin: 44px auto 0;
+}
+
+.account-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 130px;
+  column-gap: 0;
+  row-gap: 36px;
+}
+
+.account-menu-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  border: 0;
+  padding: 0 3px;
+  background: transparent;
+  color: #d1d1d1;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 300;
+  text-align: center;
+  transition: transform .14s ease, opacity .14s ease;
+}
+
+.account-menu-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+}
+
+.account-menu-icon img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.account-menu-icon svg {
+  display: block;
+  width: 39px;
+  height: 39px;
+  color: #18d9e8;
+  stroke-width: 2.7;
+}
+
+.account-menu-icon.is-power svg {
+  width: 40px;
+  height: 40px;
+  color: #fff;
+  stroke-width: 2.6;
+}
+
+.account-menu-label {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  color: #d2d2d2;
+  font-size: clamp(14px, 3.52vw, 18px);
+  font-weight: 300;
+  letter-spacing: -.025em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.account-menu-divider {
+  height: 1px;
+  margin: 5px 28px 0;
+  background: #505050;
 }
 
 .account-page button:focus-visible {
-  outline: 3px solid #ffde00;
-  outline-offset: 2px;
+  outline: 2px solid #21d7e8;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+@media (min-width: 600px) {
+  .account-stage {
+    width: min(396px, calc(100% - 48px));
+  }
+
+  .account-menu {
+    width: min(512px, 100%);
+  }
 }
 
 @media (max-width: 380px) {
-  .account-header {
-    padding-right: 14px;
-    padding-left: 14px;
+  .account-stage {
+    width: calc(100% - 26px);
+    margin-top: 78px;
   }
 
-  .account-overview,
-  .account-shortcuts,
-  .account-services {
-    margin-right: 12px;
-    margin-left: 12px;
+  .account-card-content {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .account-balance-pill {
+    min-height: 68px;
   }
 
   .account-shortcuts {
-    gap: 8px;
+    margin-top: 22px;
   }
 
-  .account-wallet-card,
-  .account-admin-button {
-    width: calc(100% - 24px);
-    margin-right: 12px;
-    margin-left: 12px;
+  .account-shortcuts button {
+    font-size: 15px;
   }
 
-  .account-wallet-card {
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    gap: 8px;
-    padding-right: 11px;
-    padding-left: 11px;
+  .account-shortcuts img {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
   }
 
-  .account-wallet-icon {
-    width: 39px;
-    height: 39px;
+  .account-menu {
+    margin-top: 36px;
   }
 
-  .account-wallet-copy strong {
-    font-size: 14px;
+  .account-menu-grid {
+    grid-auto-rows: 122px;
+    row-gap: 28px;
   }
 
-  .account-wallet-copy > span {
-    font-size: 11px;
+  .account-menu-icon,
+  .account-menu-icon img {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
   }
 
-  .account-links {
-    gap: 4px;
-    padding-right: 5px;
-    padding-left: 5px;
-  }
-
-  .account-link {
-    font-size: 10px;
+  .account-menu-label {
+    font-size: 13px;
   }
 }
 
@@ -502,5 +312,6 @@
   .account-page *::before,
   .account-page *::after {
     scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
   }
 }
