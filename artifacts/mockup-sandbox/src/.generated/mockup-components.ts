@@ -10,6 +10,9 @@ export const modules: ModuleMap = {
   "./components/mockups/revenue-page/ReferenceMatch.tsx": () => import("../components/mockups/revenue-page/ReferenceMatch.tsx"),
   "./components/mockups/service-client-page/Current.tsx": () => import("../components/mockups/service-client-page/Current.tsx"),
   "./components/mockups/service-client-page/FrenchMatch.tsx": () => import("../components/mockups/service-client-page/FrenchMatch.tsx"),
+  "./components/mockups/share-team/Current.tsx": () => import("../components/mockups/share-team/Current.tsx"),
+  "./components/mockups/share-team/LevelDetails.tsx": () => import("../components/mockups/share-team/LevelDetails.tsx"),
+  "./components/mockups/share-team/ShareReference.tsx": () => import("../components/mockups/share-team/ShareReference.tsx"),
   "./components/mockups/transaction-history-cards/Current.tsx": () => import("../components/mockups/transaction-history-cards/Current.tsx"),
   "./components/mockups/transaction-history-cards/ReferenceMatch.tsx": () => import("../components/mockups/transaction-history-cards/ReferenceMatch.tsx")
 };

@@ -24,7 +24,8 @@ export default function BottomNav() {
     >
       <div className="mx-auto grid h-[68px] max-w-[512px] grid-cols-5 items-center">
         {navItems.map(({ path, label, icon, testId }) => {
-          const isActive = location === path ||
+          const isActive = (location === "/team-details" && path === "/") ||
+            location === path ||
             (path === "/my-products" && location === "/invest") ||
             (path !== "/" && location.startsWith(`${path}/`));
           const iconFilter = isActive

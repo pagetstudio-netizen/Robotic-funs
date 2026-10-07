@@ -1,0 +1,114 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --button-outline: rgba(0, 0, 0, .10);
+  --badge-outline: rgba(0, 0, 0, .05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0, 0, 0, .03);
+  --elevate-2: rgba(0, 0, 0, .08);
+  --background: 0 0% 96%;
+  --foreground: 0 0% 10%;
+  --border: 0 0% 85%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --card-border: 0 0% 90%;
+  --sidebar: 16 100% 18%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 16 80% 12%;
+  --sidebar-primary: 0 0% 100%;
+  --sidebar-primary-foreground: 16 100% 18%;
+  --sidebar-accent: 16 80% 26%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 16 100% 18%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --popover-border: 0 0% 90%;
+  --primary: 16 100% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 10%;
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 16 70% 93%;
+  --accent-foreground: 16 100% 35%;
+  --destructive: 0 75% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 0 0% 85%;
+  --ring: 16 100% 35%;
+  --chart-1: 0 75% 50%;
+  --chart-2: 160 65% 45%;
+  --chart-3: 200 70% 50%;
+  --chart-4: 280 65% 55%;
+  --chart-5: 340 70% 55%;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: .5rem;
+  --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+  --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0px 2px 4px 0px rgba(0, 0, 0, 0.08);
+  --shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0px 6px 10px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0px 20px 25px -5px rgba(0, 0, 0, 0.12);
+  --shadow-2xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --button-outline: rgba(255, 255, 255, .10);
+  --badge-outline: rgba(255, 255, 255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255, 255, 255, .04);
+  --elevate-2: rgba(255, 255, 255, .09);
+  --background: 0 0% 8%;
+  --foreground: 0 0% 95%;
+  --border: 0 0% 20%;
+  --card: 0 0% 12%;
+  --card-foreground: 0 0% 95%;
+  --card-border: 0 0% 18%;
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-border: 0 0% 15%;
+  --sidebar-primary: 16 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 15%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-ring: 16 100% 50%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 0 0% 18%;
+  --primary: 16 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 18%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 55%;
+  --accent: 16 80% 45%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 0 0% 22%;
+  --ring: 16 100% 50%;
+  --chart-1: 16 100% 50%;
+  --chart-2: 160 65% 45%;
+  --chart-3: 200 70% 50%;
+  --chart-4: 280 65% 55%;
+  --chart-5: 340 70% 55%;
+  --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.2);
+  --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0px 2px 4px 0px rgba(0, 0, 0, 0.3);
+  --shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0px 6px 10px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0px 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0px 20px 25px -5px rgba(0, 0, 0, 0.45);
+  --shadow-2xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}

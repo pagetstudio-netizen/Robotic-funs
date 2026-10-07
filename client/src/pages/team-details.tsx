@@ -1,11 +1,12 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, Menu, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
-import { ChevronLeft, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 import { getCountryByCode } from "@/lib/countries";
-import EmptyState from "@/components/empty-state";
+import "./team-details.css";
+
+type TeamLevel = 1 | 2 | 3;
 
 interface TeamMember {
   id: number;
@@ -23,191 +24,152 @@ interface TeamDetails {
   totalLevel1Invested: number;
   totalLevel2Invested: number;
   totalLevel3Invested: number;
+  level1DailyRechargeAmount: number;
+  level2DailyRechargeAmount: number;
+  level3DailyRechargeAmount: number;
+  level1DailyRechargeCount: number;
+  level2DailyRechargeCount: number;
+  level3DailyRechargeCount: number;
 }
 
 function maskPhone(phone: string): string {
-  if (phone.length <= 4) return phone;
-  const last4 = phone.slice(-4);
-  return `******${last4}`;
+  return phone.length <= 4 ? phone : `******${phone.slice(-4)}`;
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
+function formatMemberDate(dateString: string): string {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-const GREEN = "#367C2B";
-const GREEN_BG = "#e9f9ec";
+function formatToday(): string {
+  const date = new Date();
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}-${month}-${date.getFullYear()}`;
+}
+
+function formatAmount(value: number): string {
+  return new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+}
 
 export default function TeamDetailsPage() {
-  const [activeLevel, setActiveLevel] = useState<1 | 2 | 3>(() => {
-    const requestedLevel = Number(new URLSearchParams(window.location.search).get("level"));
-    return requestedLevel === 2 || requestedLevel === 3 ? requestedLevel : 1;
-  });
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const requestedLevel = Number(new URLSearchParams(window.location.search).get("level"));
+  const activeLevel: TeamLevel = requestedLevel === 2 || requestedLevel === 3 ? requestedLevel : 1;
 
-  const { data: team, isLoading } = useQuery<TeamDetails>({
+  const {
+    data: team,
+    isLoading,
+    isError,
+  } = useQuery<TeamDetails>({
     queryKey: ["/api/team/details"],
   });
 
-  const country = getCountryByCode(user?.country || "");
-  const currency = country?.currency || "FCFA";
+  const country = getCountryByCode(user?.country || "TG");
+  const rawCurrency = country?.currency || "FCFA";
+  const currency = ["XOF", "XAF", "FCFA"].includes(rawCurrency) ? "FCFA" : rawCurrency;
 
-  const levels = [
-    {
-      num: 1 as const,
-      label: "Niveau 1",
-      members: team?.level1 || [],
-      totalInvested: team?.totalLevel1Invested || 0,
+  const membersByLevel = {
+    1: team?.level1 ?? [],
+    2: team?.level2 ?? [],
+    3: team?.level3 ?? [],
+  }[activeLevel];
+  const dailySummary = {
+    1: {
+      amount: team?.level1DailyRechargeAmount ?? 0,
+      count: team?.level1DailyRechargeCount ?? 0,
     },
-    {
-      num: 2 as const,
-      label: "Niveau 2",
-      members: team?.level2 || [],
-      totalInvested: team?.totalLevel2Invested || 0,
+    2: {
+      amount: team?.level2DailyRechargeAmount ?? 0,
+      count: team?.level2DailyRechargeCount ?? 0,
     },
-    {
-      num: 3 as const,
-      label: "Niveau 3",
-      members: team?.level3 || [],
-      totalInvested: team?.totalLevel3Invested || 0,
+    3: {
+      amount: team?.level3DailyRechargeAmount ?? 0,
+      count: team?.level3DailyRechargeCount ?? 0,
     },
-  ];
-
-  const activeData = levels[activeLevel - 1];
-  const members = activeData.members;
-  const memberCount = members.length;
-  const totalInvested = activeData.totalInvested;
+  }[activeLevel];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-
-      {/* ── Header ── */}
-      <div className="bg-white flex items-center px-4 py-4 shadow-sm">
+    <main className="team-details-page">
+      <header className="team-details-header">
         <button
+          type="button"
+          className="team-details-back"
           onClick={() => navigate("/team")}
-          className="p-1 text-gray-600"
           data-testid="button-back-team"
+          aria-label="Retour à la page Partager"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft aria-hidden="true" />
+          <span>Retour</span>
         </button>
-        <h1
-          className="flex-1 text-center font-bold text-base pr-7"
-          style={{ color: GREEN }}
-          data-testid="text-page-title"
-        >
-          Historique d'équipe
-        </h1>
-      </div>
+        <h1 data-testid="text-page-title">Détails de l'équipe LV{activeLevel}</h1>
+      </header>
 
-      {/* ── Level tabs ── */}
-      <div className="bg-white border-b border-gray-100 flex">
-        {levels.map((level) => (
-          <button
-            key={level.num}
-            onClick={() => setActiveLevel(level.num)}
-            className="flex-1 py-3 text-center text-sm font-medium relative"
-            style={{ color: activeLevel === level.num ? GREEN : "#9ca3af" }}
-            data-testid={`tab-level-${level.num}`}
-          >
-            {level.label}
-            {activeLevel === level.num && (
-              <span
-                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
-                style={{ backgroundColor: GREEN }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
+      <section className="team-details-cards" aria-label="Recharges du jour">
+        <article className="team-details-stat-card">
+          <Menu className="team-details-card-menu" aria-hidden="true" />
+          <span className="team-details-stat-label">Recharge du jour</span>
+          <strong className="team-details-stat-value" data-testid="text-daily-recharge">
+            {isLoading ? "—" : formatAmount(dailySummary.amount)}
+            {!isLoading && <small> {currency}</small>}
+          </strong>
+          <time className="team-details-stat-date">{formatToday()}</time>
+        </article>
 
-      {/* ── Stats row ── */}
-      <div className="mx-3 mt-3 flex gap-3">
-        {/* Membres */}
-        <div className="flex-1 bg-white rounded-2xl shadow-sm px-4 py-3">
-          <p className="text-xs text-gray-400 mb-1">Membres de l'équipe</p>
-          <p className="text-3xl font-black text-gray-900" data-testid="text-member-count">
-            {isLoading ? "—" : memberCount}
-          </p>
-        </div>
+        <article className="team-details-stat-card">
+          <Menu className="team-details-card-menu" aria-hidden="true" />
+          <span className="team-details-stat-label">Nombre de recharges</span>
+          <strong className="team-details-stat-value" data-testid="text-daily-recharge-count">
+            {isLoading ? "—" : dailySummary.count.toLocaleString("fr-FR")}
+          </strong>
+          <time className="team-details-stat-date">{formatToday()}</time>
+        </article>
+      </section>
 
-        {/* Dépôts */}
-        <div className="flex-1 bg-white rounded-2xl shadow-sm px-4 py-3">
-          <p className="text-xs text-gray-400 mb-1">Dépôts de l'équipe</p>
-          <p
-            className="text-xl font-black"
-            style={{ color: GREEN }}
-            data-testid="text-total-invested"
-          >
-            {isLoading
-              ? "—"
-              : `${currency} ${Number(totalInvested).toLocaleString("fr-FR")}`}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Members list ── */}
-      <div className="mx-3 mt-3 mb-8 flex-1 space-y-2">
+      <section className="team-details-members" aria-label={`Filleuls du niveau ${activeLevel}`}>
         {isLoading ? (
-          Array(5).fill(0).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-2xl" />
-          ))
-        ) : members.length === 0 ? (
-           <EmptyState className="bg-white rounded-2xl shadow-sm text-center py-10 px-6 flex flex-col items-center gap-2">
-            <p className="text-gray-500 text-sm font-medium">
-              Aucun membre au niveau {activeLevel}
-            </p>
-            <p className="text-gray-400 text-xs mt-1">
-              Invitez des amis pour agrandir votre équipe
-            </p>
-           </EmptyState>
+          <div className="team-details-loading" aria-label="Chargement des filleuls">
+            <Skeleton className="h-16 w-full rounded-2xl" />
+            <Skeleton className="h-16 w-full rounded-2xl" />
+          </div>
+        ) : isError ? (
+          <p className="team-details-message team-details-error" role="alert">
+            Impossible de charger les détails de l’équipe.
+          </p>
+        ) : membersByLevel.length === 0 ? (
+          <p className="team-details-message">Plus de données</p>
         ) : (
-          members.map((member) => (
-            <div
-              key={member.id}
-              className="bg-white rounded-2xl shadow-sm flex items-center px-4 py-3 gap-3"
-              data-testid={`team-member-${member.id}`}
-            >
-              {/* Green avatar circle */}
-              <div
-                className="w-11 h-11 rounded-full border-2 flex items-center justify-center shrink-0"
-                style={{ borderColor: GREEN, backgroundColor: GREEN_BG }}
+          <div className="team-details-member-list">
+            {membersByLevel.map((member) => (
+              <article
+                key={member.id}
+                className="team-details-member"
+                data-testid={`team-member-${member.id}`}
               >
-                <User className="w-5 h-5" style={{ color: GREEN }} />
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-semibold text-gray-800 truncate"
-                  data-testid={`text-member-phone-${member.id}`}
-                >
-                  Compte : {maskPhone(member.phone)}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Date : {formatDate(member.createdAt)}
-                </p>
-              </div>
-
-              {/* Amount */}
-              <p
-                className="text-sm font-bold shrink-0 text-gray-700"
-                data-testid={`text-member-invested-${member.id}`}
-              >
-                {currency} {Number(member.totalInvested).toLocaleString("fr-FR")}
-              </p>
-            </div>
-          ))
+                <span className="team-details-member-avatar" aria-hidden="true">
+                  <UserRound />
+                </span>
+                <span className="team-details-member-copy">
+                  <strong>Compte : {maskPhone(member.phone)}</strong>
+                  <small>Date : {formatMemberDate(member.createdAt)}</small>
+                </span>
+                <strong className="team-details-member-amount">
+                  {Number(member.totalInvested).toLocaleString("fr-FR")} {currency}
+                </strong>
+              </article>
+            ))}
+          </div>
         )}
-      </div>
-
-    </div>
+      </section>
+    </main>
   );
 }

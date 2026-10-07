@@ -7,10 +7,30 @@ import {
   type GiftCode, type GiftCodeClaim, type Country
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const DRIMPAY_STATUS_CHECK_SETTING_PREFIX = "__internal_drimpay_status_checks:";
+
+async function getApprovedDepositSummary(userIds: number[], startAt?: Date, endAt?: Date) {
+  if (userIds.length === 0) return { amount: 0, count: 0 };
+
+  const conditions = [
+    eq(deposits.status, "approved"),
+    inArray(deposits.userId, userIds),
+    ...(startAt ? [gte(deposits.createdAt, startAt)] : []),
+    ...(endAt ? [lt(deposits.createdAt, endAt)] : []),
+  ];
+  const [summary] = await db.select({
+    amount: sql<string>`COALESCE(SUM(${deposits.amount}), 0)`,
+    count: sql<number>`COUNT(*)`,
+  }).from(deposits).where(and(...conditions));
+
+  return {
+    amount: Number(summary?.amount ?? 0),
+    count: Number(summary?.count ?? 0),
+  };
+}
 
 export interface IStorage {
   // Users
@@ -94,7 +114,7 @@ export interface IStorage {
   getReferrals(userId: number, level: number): Promise<User[]>;
   createReferralCommission(data: Partial<ReferralCommission>): Promise<ReferralCommission>;
   getUserCommissions(userId: number): Promise<number>;
-  getTeamStats(userId: number): Promise<{ level1Count: number; level2Count: number; level3Count: number; totalCommission: number; level1Commission: number; level2Commission: number; level3Commission: number; level1Invested: number; level2Invested: number; level3Invested: number; level1Recharged: number }>;
+  getTeamStats(userId: number): Promise<{ level1Count: number; level2Count: number; level3Count: number; totalCommission: number; level1Commission: number; level2Commission: number; level3Commission: number; level1Invested: number; level2Invested: number; level3Invested: number; level1Recharged: number; teamRechargeAmount: number; level1RechargeAmount: number; level2RechargeAmount: number; level3RechargeAmount: number }>;
   getTeamStatsSimple(userId: number): Promise<{ level1Count: number; level2Count: number; level3Count: number; totalCommission: number }>;
   
   // Tasks
@@ -1018,11 +1038,16 @@ export class DatabaseStorage implements IStorage {
     return { level1Count, level2Count, level3Count, totalCommission };
   }
 
-  async getTeamStats(userId: number): Promise<{ level1Count: number; level2Count: number; level3Count: number; totalCommission: number; level1Commission: number; level2Commission: number; level3Commission: number; level1Invested: number; level2Invested: number; level3Invested: number; level1Recharged: number }> {
+  async getTeamStats(userId: number): Promise<{ level1Count: number; level2Count: number; level3Count: number; totalCommission: number; level1Commission: number; level2Commission: number; level3Commission: number; level1Invested: number; level2Invested: number; level3Invested: number; level1Recharged: number; teamRechargeAmount: number; level1RechargeAmount: number; level2RechargeAmount: number; level3RechargeAmount: number }> {
     const level1 = await this.getReferrals(userId, 1);
     const level2 = await this.getReferrals(userId, 2);
     const level3 = await this.getReferrals(userId, 3);
     const totalCommission = await this.getUserCommissions(userId);
+    const [level1Deposits, level2Deposits, level3Deposits] = await Promise.all([
+      getApprovedDepositSummary(level1.map((u) => u.id)),
+      getApprovedDepositSummary(level2.map((u) => u.id)),
+      getApprovedDepositSummary(level3.map((u) => u.id)),
+    ]);
 
     const getCommissionByLevel = async (level: number) => {
       const result = await db.select({ total: sql<string>`COALESCE(SUM(${referralCommissions.amount}), 0)` })
@@ -1061,6 +1086,10 @@ export class DatabaseStorage implements IStorage {
       level2Invested: await countInvested(level2),
       level3Invested: await countInvested(level3),
       level1Recharged: await countRecharged(level1),
+      teamRechargeAmount: level1Deposits.amount + level2Deposits.amount + level3Deposits.amount,
+      level1RechargeAmount: level1Deposits.amount,
+      level2RechargeAmount: level2Deposits.amount,
+      level3RechargeAmount: level3Deposits.amount,
     };
   }
 
@@ -1068,6 +1097,15 @@ export class DatabaseStorage implements IStorage {
     const level1 = await this.getReferrals(userId, 1);
     const level2 = await this.getReferrals(userId, 2);
     const level3 = await this.getReferrals(userId, 3);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    const [level1DailyDeposits, level2DailyDeposits, level3DailyDeposits] = await Promise.all([
+      getApprovedDepositSummary(level1.map((u) => u.id), startOfToday, startOfTomorrow),
+      getApprovedDepositSummary(level2.map((u) => u.id), startOfToday, startOfTomorrow),
+      getApprovedDepositSummary(level3.map((u) => u.id), startOfToday, startOfTomorrow),
+    ]);
 
     const enrichUser = async (user: User) => {
       const userProductsList = await db.select({ 
@@ -1109,6 +1147,12 @@ export class DatabaseStorage implements IStorage {
       totalLevel1Invested: level1Details.reduce((sum, u) => sum + u.totalInvested, 0),
       totalLevel2Invested: level2Details.reduce((sum, u) => sum + u.totalInvested, 0),
       totalLevel3Invested: level3Details.reduce((sum, u) => sum + u.totalInvested, 0),
+      level1DailyRechargeAmount: level1DailyDeposits.amount,
+      level2DailyRechargeAmount: level2DailyDeposits.amount,
+      level3DailyRechargeAmount: level3DailyDeposits.amount,
+      level1DailyRechargeCount: level1DailyDeposits.count,
+      level2DailyRechargeCount: level2DailyDeposits.count,
+      level3DailyRechargeCount: level3DailyDeposits.count,
     };
   }
 
