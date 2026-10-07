@@ -129,7 +129,7 @@ export default function TeamPage() {
         <svg className="team-rate-clip-defs" aria-hidden="true" focusable="false">
           <defs>
             <clipPath id="team-rate-banner-clip" clipPathUnits="objectBoundingBox">
-              <path d="M 0 0.178571 Q 0.5 -0.035714 1 0.178571 L 1 0.821429 Q 0.5 1.035714 0 0.821429 Z" />
+              <path d="M 0 0.05 Q 0.5 0.27 1 0.05 L 1 0.95 Q 0.5 0.73 0 0.95 Z" />
             </clipPath>
           </defs>
         </svg>
