@@ -1147,6 +1147,10 @@ export default function DepositPage() {
           color: #f1d11b;
           font-weight: 700;
         }
+        .recharge-reference .instruction strong {
+          color: #f1d11b;
+          font-weight: 700;
+        }
         @media (max-width: 380px) {
           .recharge-reference .amount-panel {
             margin-right: 4%;
@@ -1243,7 +1247,7 @@ export default function DepositPage() {
             <p className="instruction"><span className="instruction-number">1.</span> Montant minimum de recharge : <strong>{MIN_DEPOSIT.toLocaleString("fr-FR")} {currency}</strong>.</p>
             <p className="instruction"><span className="instruction-number">2.</span> Le service de recharge est disponible 24h/24 et 7j/7. Vous pouvez soumettre une demande de recharge à tout moment.</p>
             <p className="instruction"><span className="instruction-number">3.</span> Avant chaque recharge, vérifiez les dernières informations du compte de réception affichées sur la plateforme.</p>
-            <p className="instruction"><span className="instruction-number">4.</span> Après le paiement, le système traite généralement la transaction dans un délai de 10 à 30 minutes.</p>
+            <p className="instruction"><span className="instruction-number">4.</span> Après le paiement, le système traite généralement la transaction dans un délai <strong>de 10 à 30 minutes</strong>.</p>
             <p className="instruction"><span className="instruction-number">5.</span> Effectuez vos rechargements et transactions uniquement via l’application officielle de la plateforme.</p>
           </section>
         </section>
