@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Loader2, MessageSquareText, Power, type LucideIcon } from "lucide-react";
+import { Loader2, MessagesSquare, Power, type LucideIcon } from "lucide-react";
 import accountCardArt from "@assets/file_0000000060b081f5b0594d312204e2bc_1791383580790.png";
 import depositIcon from "@assets/Rechange_(1)_1791383388650.png";
 import withdrawalIcon from "@assets/Withdraw_(1)_1791383388618.png";
@@ -135,7 +135,7 @@ export default function AccountPage() {
     {
       label: "Contactez-nous",
       lines: ["Contactez", "-nous"],
-      Icon: MessageSquareText,
+      Icon: MessagesSquare,
       onSelect: () => navigate("/service"),
     },
     {
@@ -209,7 +209,10 @@ export default function AccountPage() {
                 onClick={onSelect}
                 aria-label={label}
               >
-                <span className={`account-menu-icon${Icon === Power ? " is-power" : ""}`} aria-hidden="true">
+                <span
+                  className={`account-menu-icon${Icon === MessagesSquare ? " is-contact" : ""}${Icon === Power ? " is-power" : ""}`}
+                  aria-hidden="true"
+                >
                   {image ? <img src={image} alt="" /> : Icon ? <Icon /> : null}
                 </span>
                 <span className="account-menu-label">

@@ -30,7 +30,7 @@
   gap: 10px;
   height: 87px;
   padding: 25px 16px 10px;
-  background: var(--team-black);
+  background: #080808;
 }
 
 .team-overview-item {
@@ -151,10 +151,8 @@
   padding: 0;
   overflow: visible;
   border: 0;
-  border-radius: 34px;
-  background:
-    radial-gradient(ellipse at 57% 48%, rgba(255, 229, 43, 0.96) 0%, rgba(255, 205, 20, 0.82) 38%, transparent 69%),
-    linear-gradient(112deg, #f3a20c 0%, #ffd51a 52%, #f6a00a 100%);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
   color: #161616;
   cursor: pointer;
@@ -162,11 +160,27 @@
   transition: filter 150ms ease, transform 150ms ease;
 }
 
-.team-rate-banner::before {
+.team-rate-clip-defs {
   position: absolute;
-  z-index: -1;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.team-rate-banner-shape {
+  position: absolute;
+  z-index: 0;
   inset: 0;
-  border-radius: inherit;
+  clip-path: url(#team-rate-banner-clip);
+  clip-path: path("M 0 25 Q 50% -5 100% 25 L 100% 115 Q 50% 145 0 115 Z");
+  background: linear-gradient(90deg, #FFB800 0%, #FFD400 100%);
+  pointer-events: none;
+}
+
+.team-rate-banner-shape::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
   background:
     repeating-linear-gradient(90deg, transparent 0 24px, rgba(255, 248, 101, 0.12) 25px 28px),
     radial-gradient(ellipse at 54% 45%, rgba(255, 242, 84, 0.6), transparent 48%);
@@ -176,10 +190,10 @@
 .team-rate-robot {
   position: absolute;
   z-index: 2;
-  bottom: -8px;
-  left: -8px;
-  width: 39%;
-  height: 112%;
+  bottom: -10px;
+  left: -5px;
+  width: 130px;
+  height: auto;
   object-fit: contain;
   object-position: center bottom;
   pointer-events: none;
@@ -188,8 +202,9 @@
 
 .team-rate-copy {
   position: absolute;
+  z-index: 3;
   top: 50%;
-  left: 57%;
+  left: 50%;
   display: flex;
   min-width: 90px;
   flex-direction: column;

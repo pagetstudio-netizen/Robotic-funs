@@ -126,6 +126,14 @@ export default function TeamPage() {
           <p className="team-active-count">Tous {formatWholeNumber(selected.count)}</p>
         </section>
 
+        <svg className="team-rate-clip-defs" aria-hidden="true" focusable="false">
+          <defs>
+            <clipPath id="team-rate-banner-clip" clipPathUnits="objectBoundingBox">
+              <path d="M 0 0.178571 Q 0.5 -0.035714 1 0.178571 L 1 0.821429 Q 0.5 1.035714 0 0.821429 Z" />
+            </clipPath>
+          </defs>
+        </svg>
+
         <button
           type="button"
           className="team-rate-banner"
@@ -133,6 +141,7 @@ export default function TeamPage() {
           aria-label={`Voir les détails de l’équipe au niveau ${activeLevel}`}
           data-testid="button-team-rate-details"
         >
+          <span className="team-rate-banner-shape" aria-hidden="true" />
           <img className="team-rate-robot" src={shareRobot} alt="" aria-hidden="true" />
           <span className="team-rate-copy">
             <strong>{rateLabel}</strong>

@@ -1,5 +1,4 @@
 .account-page {
-  display: flow-root;
   min-height: 100dvh;
   padding: 0 0 calc(92px + env(safe-area-inset-bottom, 0px));
   background: #111;
@@ -271,4 +270,54 @@
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
   }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: #111;
+}
+
+.account-preview-page .account-page {
+  display: flow-root;
+}
+
+.account-capture {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  object-fit: fill;
+}
+
+.account-preview-page {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #111;
+}
+
+.account-preview-page .account-page {
+  display: flow-root;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.account-preview-nav {
+  position: fixed;
+  z-index: 20;
+  bottom: 0;
+  left: 50%;
+  display: block;
+  width: min(100%, 432px);
+  height: auto;
+  transform: translateX(-50%);
+  pointer-events: none;
 }

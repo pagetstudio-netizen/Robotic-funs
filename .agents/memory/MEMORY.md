@@ -14,3 +14,5 @@
 - [Toast appearance](toast-notifications.md) — Keep John Deere toasts as compact, centered charcoal popups with a white exclamation and copy; leave RobotPay's legacy toast style unchanged.
 - [Transaction history rules](transaction-history-rules.md) — User histories omit provider names; deposits show no fees; admins search by the shared `deqmsll` order number.
 - [DrimPay integration](drimpay-integration.md) — Keep credentials in server Secrets, activate per country, and retain guarded, idempotent payment reconciliation.
+- [Mobile screenshot scale](mobile-screenshot-scale.md) — Derive CSS viewport dimensions from original phone captures; chat thumbnails are not CSS pixels.
+- [Responsive clip paths](responsive-clip-paths.md) — CSS `path()` in Chromium rejects percentage coordinates; use an object-bounding-box SVG clip for responsive curves.
