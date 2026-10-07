@@ -138,24 +138,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function AppLayout({
   children,
-  reserveBottomNavSpace = true,
 }: {
   children: React.ReactNode;
-  reserveBottomNavSpace?: boolean;
 }) {
-  return (
-    <div
-      className="min-h-screen bg-background"
-      style={{
-        paddingBottom: reserveBottomNavSpace
-          ? "calc(80px + env(safe-area-inset-bottom, 0px))"
-          : 0,
-      }}
-    >
-      {children}
-      <BottomNav />
-    </div>
-  );
+  return <div className="min-h-screen bg-background">{children}</div>;
 }
 
 function BrandThemeScope({ children }: { children: React.ReactNode }) {
@@ -163,6 +149,23 @@ function BrandThemeScope({ children }: { children: React.ReactNode }) {
   const isRobotPay = location === "/robotpay";
 
   return <div className={isRobotPay ? "ton-theme" : "john-deere-theme"}>{children}</div>;
+}
+
+function AppNavigationShell() {
+  const { user } = useAuth();
+  const [location] = useLocation();
+  const publicPaths = ["/login", "/register", "/invitation", "/rejoindre"];
+  const showNavigation = Boolean(user) && !publicPaths.includes(location);
+
+  return (
+    <div
+      className="min-h-screen"
+      style={showNavigation ? { paddingBottom: "calc(68px + env(safe-area-inset-bottom, 0px))" } : undefined}
+    >
+      <Router />
+      {showNavigation && <BottomNav />}
+    </div>
+  );
 }
 
 function Router() {
@@ -289,7 +292,7 @@ function Router() {
       </Route>
       <Route path="/service">
         <ProtectedRoute>
-          <AppLayout reserveBottomNavSpace={false}>
+          <AppLayout>
             <ServicePage />
           </AppLayout>
         </ProtectedRoute>
@@ -370,7 +373,7 @@ function App() {
         <AuthProvider>
           <BrandThemeScope>
             <Suspense fallback={<DelayedPageLoading />}>
-              <Router />
+              <AppNavigationShell />
             </Suspense>
             <HomeWelcomePopup />
             <Toaster />

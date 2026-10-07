@@ -259,3 +259,166 @@
     scroll-behavior: auto !important;
   }
 }
+
+.products-reference {
+  min-height: 100dvh;
+  padding-bottom: 0;
+  background: #000;
+  color: #f4f4f4;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.products-screen {
+  width: min(100%, 512px);
+  min-height: 100dvh;
+  background: #000;
+}
+
+.products-header {
+  position: relative;
+  display: grid;
+  height: 44px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  color: #f5f5f5;
+}
+
+.products-header h1 {
+  grid-column: 2;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+}
+
+.products-back {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-self: start;
+  gap: 0;
+  border: 0;
+  padding: 0 0 0 12px;
+  background: transparent;
+  color: #f5f5f5;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.products-back svg {
+  width: 22px;
+  height: 24px;
+  stroke-width: 1.6;
+}
+
+.products-back:focus-visible,
+.products-retry:focus-visible {
+  outline: 2px solid #eac35b;
+  outline-offset: 3px;
+}
+
+.products-header-spacer {
+  grid-column: 3;
+}
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 27px;
+  padding: 0 12px 24px;
+}
+
+.products-empty {
+  display: block;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: #666;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.products-loading {
+  justify-content: center;
+  padding: 10px 0;
+  color: #666;
+}
+
+.products-error {
+  padding: 12px;
+  color: #858585;
+  font-size: 14px;
+  text-align: center;
+}
+
+.products-retry {
+  color: #eac35b;
+}
+
+.purchased-product-card {
+  overflow: hidden;
+  border: 1px solid #262626;
+  border-radius: 10px;
+  background: #0a0a0a;
+  box-shadow: none;
+  color: #f4f4f4;
+}
+
+.product-card-main {
+  padding: 12px 14px;
+}
+
+.purchase-date {
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: #777;
+}
+
+.product-metric strong {
+  color: #eac35b;
+}
+
+.product-metric span {
+  color: #7c7c7c;
+}
+
+.product-image {
+  border-radius: 9px;
+  background: #1d1d1d;
+}
+
+.product-name {
+  color: #f1f1f1;
+}
+
+.product-duration {
+  color: #8a8a8a;
+}
+
+.product-received {
+  border-top: 1px solid #2c2c2c;
+  background: #1d1d1d;
+  color: #dedede;
+}
+
+@media (max-width: 360px) {
+  .products-back {
+    padding-left: 9px;
+  }
+
+  .product-list {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+}

@@ -1,11 +1,11 @@
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { getCountryByCode } from "@/lib/countries";
-import { Info, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 
 import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
-import EmptyState from "@/components/empty-state";
 import "./my-products.css";
 
 interface UserProduct {
@@ -35,6 +35,7 @@ function getPurchasedProductImage(imageUrl: string | null | undefined, index: nu
 
 export default function MyProductsPage() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
 
   const {
     data: userProducts,
@@ -51,7 +52,6 @@ export default function MyProductsPage() {
   const currency = country?.currency || "XOF";
   const currencyLabel = /^(XOF|XAF|FCFA)$/i.test(currency) ? "FCFA" : currency;
   const allUserProducts = userProducts || [];
-  const totalUserEarnings = Math.round(Number(user.totalEarnings || 0));
   const formatAmount = (amount: number | string | null | undefined) => {
     const value = Number(amount);
     return Math.round(Number.isFinite(value) ? value : 0).toLocaleString("fr-FR");
@@ -63,32 +63,28 @@ export default function MyProductsPage() {
     if (!dateStr) return "—";
     const d = new Date(dateStr);
     if (Number.isNaN(d.getTime())) return "—";
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-    const seconds = String(d.getSeconds()).padStart(2, "0");
-    return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
+    return new Intl.DateTimeFormat("fr-FR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(d);
   };
 
   return (
     <main className="products-reference">
       <div className="products-screen">
-        <header className="products-total" aria-label="Revenus totaux">
-          <p className="products-total-value">{formatCurrency(totalUserEarnings)}</p>
-          <h1>Revenus totaux</h1>
+        <header className="products-header">
+          <button
+            type="button"
+            className="products-back"
+            onClick={() => navigate("/")}
+            aria-label="Retour à l’accueil"
+          >
+            <ChevronLeft aria-hidden="true" />
+            <span>Retour</span>
+          </button>
+          <h1>Gains</h1>
+          <span className="products-header-spacer" aria-hidden="true" />
         </header>
-
-        <aside className="revenue-notice" aria-label="Informations sur les revenus">
-          <p className="revenue-notice-primary">
-            <Info aria-hidden="true" />
-            <span>Les revenus des produits sont réglés toutes les 24 heures</span>
-          </p>
-          <p className="revenue-notice-secondary">
-            Vous pouvez acheter plusieurs appareils pour augmenter vos revenus
-          </p>
-        </aside>
 
         <section className="product-list" aria-label="Produits achetés">
           {loadingUserProducts ? (
@@ -107,10 +103,7 @@ export default function MyProductsPage() {
               </button>
             </div>
           ) : allUserProducts.length === 0 ? (
-            <EmptyState className="products-empty">
-              <p>Aucun produit RoboticsFund</p>
-              <p className="text-sm text-gray-400">Achetez des produits pour commencer à gagner</p>
-            </EmptyState>
+            <p className="products-empty">Plus de données</p>
           ) : (
             allUserProducts.map((up, index) => {
               const cycleDays = Number(up.product?.cycleDays) || 60;
