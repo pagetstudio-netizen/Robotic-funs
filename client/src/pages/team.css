@@ -31,6 +31,7 @@
   height: 87px;
   padding: 25px 16px 10px;
   background: #080808;
+  border-radius: 0 0 22px 22px;
 }
 
 .team-overview-item {
