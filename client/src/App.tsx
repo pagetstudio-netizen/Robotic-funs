@@ -39,6 +39,7 @@ const WithdrawalHistoryPage = lazy(() => import("@/pages/withdrawal-history"));
 const DepositOrdersPage = lazy(() => import("@/pages/deposit-orders"));
 const SalaryBonusPage = lazy(() => import("@/pages/salary-bonus"));
 const ProductDetailsPage = lazy(() => import("@/pages/product-details"));
+const GiftCodePage = lazy(() => import("@/pages/gift-code"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function PageLoading() {
@@ -326,7 +327,7 @@ function Router() {
       </Route>
       <Route path="/gift-code">
         <ProtectedRoute>
-          <Redirect to="/account?giftCode=open" />
+          <GiftCodePage />
         </ProtectedRoute>
       </Route>
       <Route path="/team-details">

@@ -151,6 +151,10 @@ export default function TeamPage() {
           </span>
         </button>
 
+        <p className="team-rate-hint">
+          Cher utilisateur, veuillez cliquer sur le bandeau jaune pour consulter les détails de vos filleuls.
+        </p>
+
         {(statsError || settingsError) && (
           <p className="team-page-error" role="status">
             Certaines données de l’équipe ne sont pas disponibles pour le moment.

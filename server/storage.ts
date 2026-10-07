@@ -8,7 +8,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { INVITATION_TASK_KEY_PREFIX, countQualifiedDirectReferrals } from "./invitation-tasks";
-import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const DRIMPAY_STATUS_CHECK_SETTING_PREFIX = "__internal_drimpay_status_checks:";
@@ -898,10 +898,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWallet(data: Partial<WithdrawalWallet>): Promise<WithdrawalWallet> {
-    // Set other wallets as non-default
-    await db.update(withdrawalWallets).set({ isDefault: false }).where(eq(withdrawalWallets.userId, data.userId!));
-    
-    const [wallet] = await db.insert(withdrawalWallets).values({ ...data, isDefault: true } as any).returning();
+    const userId = data.userId!;
+    const existingWallets = await this.getWallets(userId);
+    const existing = existingWallets.find((wallet) => wallet.isDefault) ?? existingWallets[0];
+
+    if (existing) {
+      const [wallet] = await db.update(withdrawalWallets)
+        .set({
+          accountName: data.accountName!,
+          accountNumber: data.accountNumber!,
+          paymentMethod: data.paymentMethod!,
+          country: data.country!,
+          isDefault: true,
+        })
+        .where(and(
+          eq(withdrawalWallets.id, existing.id),
+          eq(withdrawalWallets.userId, userId),
+        ))
+        .returning();
+
+      if (!wallet) throw new Error("Compte de retrait introuvable");
+
+      await db.update(withdrawalWallets)
+        .set({ isDefault: false })
+        .where(and(
+          eq(withdrawalWallets.userId, userId),
+          ne(withdrawalWallets.id, existing.id),
+        ));
+
+      return wallet;
+    }
+
+    const [wallet] = await db.insert(withdrawalWallets)
+      .values({ ...data, isDefault: true } as any)
+      .returning();
     return wallet;
   }
 

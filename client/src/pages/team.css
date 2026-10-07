@@ -250,6 +250,14 @@
   transform: scale(0.99);
 }
 
+.team-rate-hint {
+  margin: 16px 28px 0;
+  color: #b9b9c0;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .team-page-error {
   margin: 18px 28px;
   color: #ffb6b6;
@@ -270,6 +278,11 @@
 
   .team-rate-banner {
     width: calc(100% - 40px);
+  }
+
+  .team-rate-hint {
+    margin-right: 20px;
+    margin-left: 20px;
   }
 }
 

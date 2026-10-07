@@ -47,6 +47,7 @@ export default function HomeDashboard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [confirmProduct, setConfirmProduct] = useState<HomeProduct | null>(null);
+  const [dailyBonusNoticeOpen, setDailyBonusNoticeOpen] = useState(false);
 
   const {
     data: products = [],
@@ -80,6 +81,38 @@ export default function HomeDashboard() {
       toast({
         title: "Achat impossible",
         description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dailyBonusMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/claim-daily-bonus", {});
+      return response.json() as Promise<{ success: boolean; message?: string }>;
+    },
+    onSuccess: async () => {
+      await Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
+        refreshUser(),
+      ]);
+      setDailyBonusNoticeOpen(true);
+    },
+    onError: async (error: Error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 400) {
+        await Promise.allSettled([
+          queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
+          refreshUser(),
+        ]);
+        setDailyBonusNoticeOpen(true);
+        return;
+      }
+
+      toast({
+        title: "Pointage impossible",
+        description: error.message || "Impossible de réclamer le bonus quotidien.",
         variant: "destructive",
       });
     },
@@ -250,6 +283,7 @@ export default function HomeDashboard() {
           z-index: 2;
           -webkit-background-clip: text;
         }
+        .rf-checkin:disabled { cursor: wait; }
         .rf-product-list {
           display: grid;
           gap: 16px;
@@ -419,45 +453,41 @@ export default function HomeDashboard() {
           font: inherit;
         }
         .rf-purchase-modal {
-          width: min(390px, calc(100vw - 36px));
+          display: flex;
+          width: min(388px, calc(100vw - 44px));
+          height: 192px;
+          flex-direction: column;
           overflow: hidden;
-          border: 1px solid #3a3b47;
-          border-radius: 15px;
+          border: 0;
+          border-radius: 6px;
           padding: 0;
-          background: #23242f;
-          color: #f4f4f5;
-          box-shadow: 0 20px 60px rgba(0,0,0,.5);
+          background: #fff;
+          color: #333;
+          font-family: Roboto, Arial, sans-serif;
+          box-shadow: 0 12px 34px rgba(0,0,0,.24);
           outline: none;
         }
-        .rf-purchase-title {
+        .rf-purchase-description {
+          display: flex;
+          min-height: 0;
+          flex: 1;
+          align-items: center;
+          justify-content: center;
           margin: 0;
-          padding: 21px 20px 17px;
-          border-bottom: 1px solid #3b3c48;
-          font-size: 20px;
-          font-weight: 700;
+          padding: 18px 16px;
+          color: #333;
+          font-size: 16px;
+          font-weight: 400;
+          line-height: 1.4;
           text-align: center;
         }
-        .rf-purchase-description {
-          margin: 0;
-          padding: 21px 23px 12px;
-          color: #c6c6ce;
-          font-size: 15px;
-          line-height: 1.5;
-        }
-        .rf-purchase-details {
-          display: grid;
-          gap: 9px;
-          padding: 0 23px 22px;
-          color: #e5e5e8;
-          font-size: 14px;
-        }
-        .rf-purchase-detail { display: flex; gap: 9px; }
-        .rf-purchase-bullet { color: #f3c244; }
         .rf-purchase-actions {
           display: grid;
-          min-height: 58px;
+          height: 56px;
+          flex: 0 0 56px;
           grid-template-columns: 1fr 1fr;
-          border-top: 1px solid #3b3c48;
+          border-top: 1px solid #dadada;
+          background: #f2f2f2;
         }
         .rf-purchase-action {
           display: flex;
@@ -465,21 +495,75 @@ export default function HomeDashboard() {
           justify-content: center;
           border: 0;
           background: transparent;
-          color: #b9bac3;
+          color: #333;
           cursor: pointer;
-          font: inherit;
-          font-size: 15px;
-          font-weight: 600;
+          font-family: inherit;
+          font-size: 16px;
+          font-weight: 400;
+          line-height: 1;
+          text-transform: uppercase;
         }
         .rf-purchase-action + .rf-purchase-action {
-          border-left: 1px solid #3b3c48;
-          color: #f3c244;
+          border-left: 1px solid #d5d5d5;
+          color: #71acd2;
         }
         .rf-purchase-action:focus-visible {
-          outline: 2px solid #f3c244;
+          outline: 2px solid #71acd2;
           outline-offset: -4px;
         }
         .rf-purchase-action:disabled { cursor: wait; opacity: .65; }
+        .rf-daily-bonus-notice {
+          display: flex;
+          width: min(388px, calc(100vw - 44px));
+          height: 192px;
+          flex-direction: column;
+          overflow: hidden;
+          border: 0;
+          border-radius: 6px;
+          padding: 0;
+          background: #fff;
+          color: #333;
+          font-family: Roboto, Arial, sans-serif;
+          box-shadow: 0 12px 34px rgba(0,0,0,.24);
+          outline: none;
+        }
+        .rf-daily-bonus-notice-message {
+          display: flex;
+          min-height: 0;
+          flex: 1;
+          align-items: center;
+          justify-content: center;
+          margin: 0;
+          padding: 18px 16px;
+          color: #333;
+          font-size: 16px;
+          font-weight: 400;
+          line-height: 1.4;
+          text-align: center;
+        }
+        .rf-daily-bonus-notice-action {
+          display: flex;
+          width: 100%;
+          height: 56px;
+          flex: 0 0 56px;
+          align-items: center;
+          justify-content: center;
+          border: 0;
+          border-top: 1px solid #dadada;
+          padding: 0;
+          background: #f2f2f2;
+          color: #71acd2;
+          cursor: pointer;
+          font-family: inherit;
+          font-size: 16px;
+          font-weight: 400;
+          line-height: 1;
+          text-transform: uppercase;
+        }
+        .rf-daily-bonus-notice-action:focus-visible {
+          outline: 2px solid #71acd2;
+          outline-offset: -4px;
+        }
         @media (prefers-reduced-motion: reduce) {
           .rf-home *, .rf-home *::before, .rf-home *::after {
             animation-duration: .01ms !important;
@@ -518,11 +602,16 @@ export default function HomeDashboard() {
         <button
           type="button"
           className="rf-checkin"
-          onClick={() => navigate("/checkin")}
-          aria-label="Ouvrir le pointage quotidien"
+          onClick={() => dailyBonusMutation.mutate()}
+          disabled={dailyBonusMutation.isPending}
+          aria-busy={dailyBonusMutation.isPending}
+          aria-label="Réclamer le bonus de pointage"
+          data-testid="button-home-claim-daily-bonus"
         >
           <img src="/roboticsfund-checkin-banner.png" alt="" />
-          <span className="rf-checkin-label">Pointage</span>
+          <span className="rf-checkin-label">
+            {dailyBonusMutation.isPending ? "Traitement…" : "Pointage"}
+          </span>
         </button>
 
         <section className="rf-product-list" aria-label="Offres disponibles">
@@ -604,60 +693,78 @@ export default function HomeDashboard() {
       </div>
 
       <Dialog
+        open={dailyBonusNoticeOpen}
+        onOpenChange={setDailyBonusNoticeOpen}
+      >
+        {dailyBonusNoticeOpen && (
+          <DialogPortal>
+            <DialogOverlay className="bg-black/75" />
+            <DialogPrimitive.Content
+              className="rf-daily-bonus-notice fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
+              aria-describedby="rf-daily-bonus-notice-message"
+              onEscapeKeyDown={(event) => event.preventDefault()}
+              onPointerDownOutside={(event) => event.preventDefault()}
+            >
+              <DialogTitle className="sr-only">Pointage terminé</DialogTitle>
+              <DialogDescription
+                id="rf-daily-bonus-notice-message"
+                className="rf-daily-bonus-notice-message"
+              >
+                La connexion d'aujourd'hui est terminée
+              </DialogDescription>
+              <button
+                type="button"
+                className="rf-daily-bonus-notice-action"
+                onClick={() => setDailyBonusNoticeOpen(false)}
+                data-testid="button-dismiss-daily-bonus-notice"
+              >
+                D'ACCORD
+              </button>
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        )}
+      </Dialog>
+
+      <Dialog
         open={Boolean(confirmProduct)}
         onOpenChange={(open) => {
           if (!open && !purchaseMutation.isPending) setConfirmProduct(null);
         }}
       >
-        {confirmProduct && (() => {
-          const dailyEarnings = Number(confirmProduct.dailyEarnings) || 0;
-          const cycleDays = Number(confirmProduct.cycleDays) || 0;
-          const totalReturn = Number(confirmProduct.totalReturn) || dailyEarnings * cycleDays;
-          return (
-            <DialogPortal>
-              <DialogOverlay className="bg-black/70" />
-              <DialogPrimitive.Content
-                className="rf-purchase-modal fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
-                aria-describedby="rf-purchase-description"
-              >
-                <DialogTitle className="rf-purchase-title">{confirmProduct.name}</DialogTitle>
-                <DialogDescription id="rf-purchase-description" className="rf-purchase-description">
-                  Confirmez-vous l’achat de ce produit ?
-                </DialogDescription>
-                <div className="rf-purchase-details">
-                  <div className="rf-purchase-detail">
-                    <span className="rf-purchase-bullet" aria-hidden="true">•</span>
-                    <span>Prix : {formatFcfa(Number(confirmProduct.price) || 0)}</span>
-                  </div>
-                  <div className="rf-purchase-detail">
-                    <span className="rf-purchase-bullet" aria-hidden="true">•</span>
-                    <span>Gains totaux : {formatFcfa(totalReturn)}</span>
-                  </div>
-                </div>
-                <div className="rf-purchase-actions">
-                  <button
-                    type="button"
-                    className="rf-purchase-action"
-                    onClick={() => setConfirmProduct(null)}
-                    disabled={purchaseMutation.isPending}
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    className="rf-purchase-action"
-                    onClick={() => purchaseMutation.mutate(confirmProduct)}
-                    disabled={purchaseMutation.isPending}
-                  >
-                    {purchaseMutation.isPending
-                      ? <Loader2 aria-label="Achat en cours" className="h-5 w-5 animate-spin" />
-                      : "Confirmer"}
-                  </button>
-                </div>
-              </DialogPrimitive.Content>
-            </DialogPortal>
-          );
-        })()}
+        {confirmProduct && (
+          <DialogPortal>
+            <DialogOverlay className="bg-black/75" />
+            <DialogPrimitive.Content
+              className="rf-purchase-modal fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
+              aria-describedby="rf-purchase-description"
+            >
+              <DialogTitle className="sr-only">Confirmation d’achat</DialogTitle>
+              <DialogDescription id="rf-purchase-description" className="rf-purchase-description">
+                Confirmer l'achat de ce produit ?
+              </DialogDescription>
+              <div className="rf-purchase-actions">
+                <button
+                  type="button"
+                  className="rf-purchase-action"
+                  onClick={() => setConfirmProduct(null)}
+                  disabled={purchaseMutation.isPending}
+                >
+                  NON
+                </button>
+                <button
+                  type="button"
+                  className="rf-purchase-action"
+                  onClick={() => purchaseMutation.mutate(confirmProduct)}
+                  disabled={purchaseMutation.isPending}
+                >
+                  {purchaseMutation.isPending
+                    ? <Loader2 aria-label="Achat en cours" className="h-5 w-5 animate-spin" />
+                    : "OUI"}
+                </button>
+              </div>
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        )}
       </Dialog>
     </main>
   );

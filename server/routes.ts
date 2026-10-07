@@ -2914,6 +2914,7 @@ export async function registerRoutes(
         channelType: settings.channelType || "telegram",
         groupType: settings.groupType || "telegram",
         supportEnabled: settings.supportEnabled !== "false",
+        support2Enabled: settings.support2Enabled !== "false",
         channelEnabled: settings.channelEnabled !== "false",
         groupEnabled: settings.groupEnabled !== "false",
         supportLabel: settings.supportLabel || "Service client",

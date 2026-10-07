@@ -54,7 +54,7 @@ export default function ChangePasswordPage() {
         className="mx-auto min-h-[100dvh] w-full max-w-[432px] bg-white text-[#282832]"
         style={{ fontFamily: "Roboto, Arial, sans-serif", containerType: "inline-size" }}
       >
-        <header className="relative flex h-[48px] items-center bg-[#23242f] px-4 text-white">
+        <header className="sticky top-0 z-50 flex h-[48px] items-center bg-[#23242f] px-4 text-white">
           <button
             type="button"
             onClick={() => navigate("/account")}

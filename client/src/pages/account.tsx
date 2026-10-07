@@ -148,7 +148,7 @@ export default function AccountPage() {
       label: "Trésor",
       lines: ["Trésor"],
       image: giftCodeIcon,
-      onSelect: () => setShowGiftCodeModal(true),
+      onSelect: () => navigate("/gift-code"),
     },
     {
       label: "Télécharger l'application",

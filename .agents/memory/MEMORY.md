@@ -16,3 +16,5 @@
 - [DrimPay integration](drimpay-integration.md) — Keep credentials in server Secrets, activate per country, and retain guarded, idempotent payment reconciliation.
 - [Mobile screenshot scale](mobile-screenshot-scale.md) — Derive CSS viewport dimensions from original phone captures; chat thumbnails are not CSS pixels.
 - [Responsive clip paths](responsive-clip-paths.md) — CSS `path()` in Chromium rejects percentage coordinates; use an object-bounding-box SVG clip for responsive curves.
+- [Screenshot artwork extraction](screenshot-artwork-extraction.md) — Crop distinctive artwork from original captures, isolate its silhouette, and animate surrounding layers separately.
+- [Withdrawal account editing](withdrawal-account-editing.md) — Each user has one editable primary withdrawal account; keep operators sourced from Admin-configured countries.

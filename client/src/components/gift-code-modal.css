@@ -86,6 +86,101 @@
   transition: transform 120ms ease, filter 120ms ease;
 }
 
+.gift-code-dialog--treasure {
+  display: block !important;
+  width: calc(100vw - 44px) !important;
+  max-width: 460px !important;
+  height: 278px;
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 5px !important;
+  padding: 25px 0 0 !important;
+  background: #fff !important;
+  color: #181818;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .3) !important;
+}
+
+.gift-code-dialog--treasure .gift-code-modal-title {
+  margin: 0;
+  color: #171717;
+  font-size: 18px !important;
+  font-weight: 400 !important;
+  line-height: 1.35 !important;
+  text-align: center;
+}
+
+.gift-code-treasure-form {
+  position: absolute;
+  inset: 0;
+}
+
+.gift-code-treasure-input {
+  position: absolute;
+  top: 122px;
+  left: 50%;
+  width: min(282px, calc(100% - 64px));
+  height: 43px;
+  border: 2px solid #171717;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #fff;
+  color: #171717;
+  font-size: 18px;
+  box-shadow: none;
+  transform: translateX(-50%);
+}
+
+.gift-code-treasure-input:focus-visible {
+  border-color: #171717;
+  box-shadow: 0 0 0 2px rgba(57, 143, 196, .22);
+}
+
+.gift-code-treasure-footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  height: 56px;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #d7d7d7;
+  background: #f2f2f2;
+}
+
+.gift-code-treasure-footer button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0 8px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.gift-code-treasure-footer button + button {
+  border-left: 1px solid #d1d1d1;
+}
+
+.gift-code-treasure-cancel {
+  color: #333;
+}
+
+.gift-code-treasure-confirm {
+  color: #7bb9df;
+}
+
+.gift-code-treasure-footer button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.gift-code-dialog--treasure > button:last-child {
+  display: none !important;
+}
+
 .gift-code-modal-submit:hover:not(:disabled) {
   filter: brightness(1.06);
 }
@@ -198,6 +293,18 @@
   .gift-code-modal-link {
     font-size: 15px;
   }
+
+  .gift-code-dialog--treasure {
+    width: calc(100vw - 40px) !important;
+  }
+
+  .gift-code-dialog--treasure .gift-code-modal-title {
+    font-size: 17px !important;
+  }
+
+  .gift-code-treasure-input {
+    width: calc(100% - 64px);
+  }
 }
 
 @media (max-height: 560px) {
@@ -231,6 +338,16 @@
 
   .gift-code-modal-link {
     margin-top: 17px;
+  }
+
+  .gift-code-dialog--treasure {
+    height: min(278px, calc(100dvh - 40px));
+    max-height: calc(100dvh - 40px);
+    padding-top: 25px !important;
+  }
+
+  .gift-code-treasure-input {
+    top: clamp(82px, 15.9dvh, 122px);
   }
 }
 

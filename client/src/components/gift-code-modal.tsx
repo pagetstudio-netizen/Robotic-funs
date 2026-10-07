@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +11,8 @@ import "./gift-code-modal.css";
 interface GiftCodeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  variant?: "default" | "treasure";
+  onClaimSuccess?: (message?: string) => void;
 }
 
 interface PlatformSettings {
@@ -21,7 +23,12 @@ interface ClaimResponse {
   message?: string;
 }
 
-export default function GiftCodeModal({ open, onOpenChange }: GiftCodeModalProps) {
+export default function GiftCodeModal({
+  open,
+  onOpenChange,
+  variant = "default",
+  onClaimSuccess,
+}: GiftCodeModalProps) {
   const { refreshUser } = useAuth();
   const { toast } = useToast();
   const [code, setCode] = useState("");
@@ -29,7 +36,7 @@ export default function GiftCodeModal({ open, onOpenChange }: GiftCodeModalProps
 
   const { data: settings, isLoading: settingsLoading } = useQuery<PlatformSettings>({
     queryKey: ["/api/settings"],
-    enabled: open,
+    enabled: open && variant === "default",
   });
 
   const claimMutation = useMutation({
@@ -37,9 +44,14 @@ export default function GiftCodeModal({ open, onOpenChange }: GiftCodeModalProps
       const response = await apiRequest("POST", "/api/gift-codes/claim", { code: giftCode });
       return response.json();
     },
-    onSuccess: (data) => {
-      refreshUser();
+    onSuccess: async (data) => {
+      await refreshUser();
       setCode("");
+      if (variant === "treasure") {
+        onClaimSuccess?.(data.message);
+        onOpenChange(false);
+        return;
+      }
       setSuccessMessage(data.message || "Votre code cadeau a été réclamé avec succès.");
     },
     onError: (error: Error) => {
@@ -57,7 +69,7 @@ export default function GiftCodeModal({ open, onOpenChange }: GiftCodeModalProps
     onOpenChange(nextOpen);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedCode = code.trim().toUpperCase();
     if (!normalizedCode) {
@@ -70,11 +82,51 @@ export default function GiftCodeModal({ open, onOpenChange }: GiftCodeModalProps
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="gift-code-dialog"
+        className={`gift-code-dialog${variant === "treasure" ? " gift-code-dialog--treasure" : ""}`}
         data-testid="dialog-gift-code"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        {successMessage ? (
+        {variant === "treasure" ? (
+          <>
+            <DialogTitle className="gift-code-modal-title">
+              Veuillez saisir la clé secrète
+            </DialogTitle>
+            <form className="gift-code-treasure-form" onSubmit={handleSubmit}>
+              <label className="sr-only" htmlFor="gift-code-treasure-input">
+                Clé secrète
+              </label>
+              <input
+                id="gift-code-treasure-input"
+                className="gift-code-modal-input gift-code-treasure-input"
+                type="text"
+                value={code}
+                onChange={(event) => setCode(event.target.value.toUpperCase())}
+                autoComplete="off"
+                data-testid="input-gift-code"
+              />
+              <div className="gift-code-treasure-footer">
+                <button
+                  className="gift-code-treasure-cancel"
+                  type="button"
+                  onClick={() => handleOpenChange(false)}
+                  data-testid="button-cancel-gift-code"
+                >
+                  Annuler
+                </button>
+                <button
+                  className="gift-code-treasure-confirm"
+                  type="submit"
+                  disabled={claimMutation.isPending}
+                  data-testid="button-submit-code"
+                >
+                  {claimMutation.isPending
+                    ? <Loader2 className="gift-code-modal-spinner" aria-label="Vérification en cours" />
+                    : "D'ACCORD"}
+                </button>
+              </div>
+            </form>
+          </>
+        ) : successMessage ? (
           <div className="gift-code-modal-success" role="status" aria-live="polite">
             <CheckCircle2 className="gift-code-modal-success-icon" aria-hidden="true" />
             <DialogTitle className="gift-code-modal-title">Code cadeau obtenu !</DialogTitle>

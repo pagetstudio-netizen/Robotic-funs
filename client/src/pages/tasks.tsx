@@ -86,6 +86,12 @@ export default function TasksPage() {
 
       setCopied(kind);
       window.setTimeout(() => setCopied(null), 1300);
+      toast({
+        title: "Copie réussie",
+        description: kind === "code"
+          ? "Code d’invitation copié."
+          : "Lien d’invitation copié.",
+      });
     } catch {
       toast({
         title: "Copie impossible",

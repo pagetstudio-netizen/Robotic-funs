@@ -4,6 +4,7 @@
   max-width: 512px;
   min-height: 100dvh;
   margin: 0 auto;
+  padding-top: 44px;
   overflow-x: hidden;
   background: #fff;
   color: #111;
@@ -17,14 +18,18 @@
 }
 
 .team-details-header {
-  position: relative;
+  position: fixed;
+  z-index: 30;
+  top: 0;
+  left: 50%;
   display: flex;
-  width: 100%;
+  width: min(100%, 512px);
   height: 44px;
   align-items: center;
   justify-content: center;
   background: #050505;
   color: #f5f5f5;
+  transform: translateX(-50%);
 }
 
 .team-details-header h1 {

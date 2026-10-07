@@ -808,7 +808,11 @@ export default function WithdrawalPage() {
           <p className="wallet-prompt">Veuillez sélectionner votre carte bancaire</p>
           <button
             type="button"
-            onClick={() => navigate(hasWallets ? "/wallet?from=withdrawal" : "/wallet")}
+            onClick={() => navigate(
+              hasWallets
+                ? "/wallet?from=withdrawal"
+                : "/wallet?mode=form&from=withdrawal"
+            )}
             className="wallet-choice"
             data-testid="button-select-wallet"
           >

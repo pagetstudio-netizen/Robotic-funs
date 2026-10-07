@@ -15,6 +15,7 @@ export function Toaster() {
   const { toasts } = useToast()
   const [location] = useLocation()
   const isRobotPay = location === "/robotpay"
+  const isInviteTab = location === "/tasks"
 
   return (
     <ToastProvider>
@@ -34,7 +35,7 @@ export function Toaster() {
           <Toast
             key={id}
             variant={variant}
-            duration={isDestructive ? 6000 : 2500}
+            duration={isInviteTab ? 3000 : isDestructive ? 6000 : 2500}
             className={
               isRobotPay
                 ? undefined
