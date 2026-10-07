@@ -708,19 +708,23 @@ export default function DepositPage() {
         .recharge-reference .recharge-topbar {
           position: relative;
           display: flex;
-          height: 60px;
+          height: 44px;
           align-items: center;
-          justify-content: center;
-          background: ${TON_GREEN_DARK};
+          justify-content: flex-start;
+          background: transparent;
           color: white;
         }
         .recharge-reference .recharge-back {
           position: absolute;
+          top: 2px;
           left: 15px;
           display: grid;
           width: 40px;
           height: 40px;
           place-items: center;
+          padding: 0;
+          border: 0;
+          background: transparent;
           color: white;
         }
         .recharge-reference .recharge-brand {
@@ -1168,6 +1172,17 @@ export default function DepositPage() {
       `}</style>
 
       <div className="recharge-screen">
+        <header className="recharge-topbar">
+          <button
+            type="button"
+            className="recharge-back"
+            onClick={() => navigate("/account")}
+            aria-label="Retour"
+            data-testid="button-back-deposit"
+          >
+            <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+          </button>
+        </header>
         <div className="recharge-top-row">
           <section className="balance-summary" aria-label="Solde actuel">
             <span className="balance-label">Solde actuel</span>
@@ -1176,7 +1191,7 @@ export default function DepositPage() {
                 maximumFractionDigits: 2,
               })} {currency}
             </strong>
-            <Link href="/account" className="wallet-link">Mon portefeuille</Link>
+            <Link href="/history" className="wallet-link">Mon portefeuille</Link>
           </section>
           <div
             className="recharge-promo"

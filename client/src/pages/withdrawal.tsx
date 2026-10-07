@@ -147,10 +147,6 @@ export default function WithdrawalPage() {
   if (!user) return null;
 
   const balance = parseFloat(user?.balance || "0");
-  const hasWallets = wallets.length > 0;
-  const walletRoute = hasWallets
-    ? "/wallet?from=withdrawal"
-    : "/wallet?mode=form&from=withdrawal";
 
   return (
     <main className="withdraw-reference">
@@ -1097,7 +1093,7 @@ export default function WithdrawalPage() {
               <button
                 type="button"
                 className="wallet-edit"
-                onClick={() => navigate(walletRoute)}
+                onClick={() => navigate("/history")}
               >
                 Enregistrer
               </button>
@@ -1140,7 +1136,7 @@ export default function WithdrawalPage() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate(walletRoute)}
+                onClick={() => navigate("/wallet")}
                 className="wallet-choice"
                 data-testid="button-select-wallet"
               >
