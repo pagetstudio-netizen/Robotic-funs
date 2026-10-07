@@ -49,6 +49,7 @@ export default function HomeDashboard() {
   const [, navigate] = useLocation();
   const [confirmProduct, setConfirmProduct] = useState<HomeProduct | null>(null);
   const [dailyBonusNoticeOpen, setDailyBonusNoticeOpen] = useState(false);
+  const [selectedProductType, setSelectedProductType] = useState<"stable" | "activity">("stable");
 
   const {
     data: products = [],
@@ -58,6 +59,7 @@ export default function HomeDashboard() {
   } = useQuery<HomeProduct[]>({
     queryKey: ["/api/products"],
     enabled: Boolean(user),
+    refetchInterval: 30_000,
   });
 
   const purchaseMutation = useMutation({
@@ -74,7 +76,7 @@ export default function HomeDashboard() {
       setConfirmProduct(null);
       toast({
         title: "Produit acheté !",
-        description: "Vous commencerez à recevoir des gains dès demain.",
+        description: "Vos gains seront versés en une fois à la fin de la période du produit.",
       });
     },
     onError: (error: Error) => {
@@ -119,7 +121,9 @@ export default function HomeDashboard() {
     },
   });
 
-  const visibleProducts = products.filter((product) => product.isActive);
+  const visibleProducts = products.filter(
+    (product) => product.isActive && product.productType === selectedProductType,
+  );
 
   const handleQuickAction = async (action: HomeQuickAction) => {
     if (action.download) {
@@ -694,11 +698,24 @@ export default function HomeDashboard() {
         </svg>
 
         <div className="rf-product-category-buttons" role="group" aria-label="Catégories de produits">
-          <button type="button" className="rf-product-category-button">
+          <button
+            type="button"
+            className="rf-product-category-button"
+            aria-pressed={selectedProductType === "stable"}
+            onClick={() => setSelectedProductType("stable")}
+          >
             <img className="rf-product-category-watermark" src={shareRobot} alt="" aria-hidden="true" />
             <span className="rf-product-category-label">Produits stable</span>
           </button>
-          <button type="button" className="rf-product-category-button">
+          <button
+            type="button"
+            className="rf-product-category-button"
+            aria-pressed={selectedProductType === "activity"}
+            onClick={() => {
+              setSelectedProductType("activity");
+              void refetchProducts();
+            }}
+          >
             <img className="rf-product-category-watermark" src={shareRobot} alt="" aria-hidden="true" />
             <span className="rf-product-category-label">Produits d'activité</span>
           </button>
@@ -729,6 +746,8 @@ export default function HomeDashboard() {
               const price = Number(product.price) || 0;
               const dailyEarnings = Number(product.dailyEarnings) || 0;
               const cycleDays = Number(product.cycleDays) || 0;
+              const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
+              const displayedGain = product.isFree ? dailyEarnings : totalReturn;
               const imageUrl = product.imageUrl;
               return (
                 <article className="rf-product" key={product.id}>
@@ -759,8 +778,8 @@ export default function HomeDashboard() {
                       <span className="rf-stat-label">Prix du produit</span>
                     </div>
                     <div className="rf-stat">
-                      <span className="rf-stat-value">{formatFcfa(dailyEarnings)}</span>
-                      <span className="rf-stat-label">Gain quotidien</span>
+                      <span className="rf-stat-value">{formatFcfa(displayedGain)}</span>
+                      <span className="rf-stat-label">{product.isFree ? "Bonus quotidien" : "Gain à l’échéance"}</span>
                     </div>
                     <button
                       type="button"
@@ -777,7 +796,11 @@ export default function HomeDashboard() {
               );
             })
           ) : (
-            <EmptyState className="rf-status">Aucune offre disponible pour le moment.</EmptyState>
+            <EmptyState className="rf-status">
+              {selectedProductType === "activity"
+                ? "Les produits d’activité ne sont pas encore disponibles. Revenez plus tard."
+                : "Aucune offre stable disponible pour le moment."}
+            </EmptyState>
           )}
         </section>
       </div>

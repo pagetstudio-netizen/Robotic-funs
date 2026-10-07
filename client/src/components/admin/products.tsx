@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,27 +23,45 @@ const productSchema = z.object({
   dailyEarnings: z.string().min(1, "Gains journaliers requis"),
   cycleDays: z.string().min(1, "Durée requise"),
   imageUrl: z.string().optional(),
+  launchDate: z.string().optional(),
+  launchTime: z.string().optional(),
 });
 
 type ProductForm = z.infer<typeof productSchema>;
+type ActivityProductDraft = Pick<ProductForm, "name" | "price" | "dailyEarnings" | "cycleDays" | "imageUrl">;
+
+const emptyActivityDraft = (): ActivityProductDraft => ({
+  name: "",
+  price: "",
+  dailyEarnings: "",
+  cycleDays: "80",
+  imageUrl: "",
+});
 
 export default function AdminProducts() {
   const { toast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showActivityBatch, setShowActivityBatch] = useState(false);
+  const [productView, setProductView] = useState<"stable" | "activity">("stable");
+  const [activityLaunchDate, setActivityLaunchDate] = useState("");
+  const [activityLaunchTime, setActivityLaunchTime] = useState("");
+  const [activityRows, setActivityRows] = useState<ActivityProductDraft[]>([emptyActivityDraft()]);
+  const [activityFormError, setActivityFormError] = useState("");
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products/all"],
   });
+  const visibleProducts = (products || []).filter((product) => product.productType === productView);
 
   const editForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "" },
+    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "", launchDate: "", launchTime: "" },
   });
 
   const createForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "" },
+    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "", launchDate: "", launchTime: "" },
   });
 
   const createMutation = useMutation({
@@ -63,6 +81,31 @@ export default function AdminProducts() {
       createForm.reset();
     },
     onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const activityBatchMutation = useMutation({
+    mutationFn: async (data: { launchDate: string; launchTime: string; products: ActivityProductDraft[] }) => {
+      const response = await apiRequest("POST", "/api/admin/products/bulk-activity", data);
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.message || "Erreur");
+      }
+      return response.json();
+    },
+    onSuccess: (created: Product[]) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: `${created.length} produit(s) d’activité créé(s)` });
+      setProductView("activity");
+      setShowActivityBatch(false);
+      setActivityRows([emptyActivityDraft()]);
+      setActivityLaunchDate("");
+      setActivityLaunchTime("");
+      setActivityFormError("");
+    },
+    onError: (error: Error) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
   });
@@ -132,6 +175,8 @@ export default function AdminProducts() {
       dailyEarnings: product.dailyEarnings.toString(),
       cycleDays: product.cycleDays.toString(),
       imageUrl: product.imageUrl || "",
+      launchDate: product.launchDate || "",
+      launchTime: product.launchTime || "",
     });
   };
 
@@ -142,7 +187,17 @@ export default function AdminProducts() {
     const cycleDays = parseInt(data.cycleDays);
     updateMutation.mutate({
       id: selectedProduct.id,
-      data: { name: data.name, price, dailyEarnings, cycleDays, totalReturn: dailyEarnings * cycleDays, imageUrl: data.imageUrl || null },
+      data: {
+        name: data.name,
+        price,
+        dailyEarnings,
+        cycleDays,
+        totalReturn: dailyEarnings * cycleDays,
+        imageUrl: data.imageUrl || null,
+        ...(selectedProduct.productType === "activity"
+          ? { launchDate: data.launchDate, launchTime: data.launchTime }
+          : {}),
+      },
     });
   };
 
@@ -150,7 +205,45 @@ export default function AdminProducts() {
     createMutation.mutate(data);
   };
 
-  const ProductFormFields = ({ form, isPending, submitLabel }: { form: any; isPending: boolean; submitLabel: string }) => (
+  const updateActivityRow = (index: number, field: keyof ActivityProductDraft, value: string) => {
+    setActivityRows((current) => current.map((row, rowIndex) =>
+      rowIndex === index ? { ...row, [field]: value } : row,
+    ));
+  };
+
+  const submitActivityBatch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!activityLaunchDate || !activityLaunchTime) {
+      setActivityFormError("Indiquez la date et l’heure locales de lancement.");
+      return;
+    }
+    if (activityRows.some((row) =>
+      row.name.trim().length < 2
+      || !Number.isSafeInteger(Number(row.price)) || Number(row.price) <= 0
+      || !Number.isSafeInteger(Number(row.dailyEarnings)) || Number(row.dailyEarnings) <= 0
+      || !Number.isSafeInteger(Number(row.cycleDays)) || Number(row.cycleDays) <= 0
+    )) {
+      setActivityFormError("Complétez le nom, le prix, le gain journalier et la durée de chaque produit.");
+      return;
+    }
+    setActivityFormError("");
+    activityBatchMutation.mutate({
+      launchDate: activityLaunchDate,
+      launchTime: activityLaunchTime,
+      products: activityRows.map((row) => ({
+        ...row,
+        name: row.name.trim(),
+        imageUrl: row.imageUrl?.trim() || "",
+      })),
+    });
+  };
+
+  const ProductFormFields = ({ form, isPending, submitLabel, showSchedule = false }: {
+    form: any;
+    isPending: boolean;
+    submitLabel: string;
+    showSchedule?: boolean;
+  }) => (
     <form onSubmit={form.handleSubmit(submitLabel === "Créer" ? handleCreate : handleUpdate)} className="space-y-4">
       <FormField control={form.control} name="name" render={({ field }) => (
         <FormItem>
@@ -189,6 +282,24 @@ export default function AdminProducts() {
           <FormMessage />
         </FormItem>
       )} />
+      {showSchedule && (
+        <div className="grid grid-cols-2 gap-4">
+          <FormField control={form.control} name="launchDate" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date de lancement</FormLabel>
+              <FormControl><Input {...field} type="date" required /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="launchTime" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Heure locale</FormLabel>
+              <FormControl><Input {...field} type="time" required /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+      )}
       {form.watch("price") && form.watch("dailyEarnings") && form.watch("cycleDays") && (
         <div className="bg-primary/10 rounded-lg p-3 text-sm">
           <p className="text-muted-foreground">Retour total estimé :</p>
@@ -205,18 +316,34 @@ export default function AdminProducts() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{products?.length || 0} produit(s)</p>
-        <Button onClick={() => { setShowCreateForm(true); createForm.reset(); }} data-testid="button-add-product">
-          <Plus className="w-4 h-4 mr-2" />
-          Nouveau produit
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant={productView === "stable" ? "default" : "outline"} onClick={() => setProductView("stable")}>
+          Produits stables ({products?.filter((product) => product.productType === "stable").length || 0})
         </Button>
+        <Button variant={productView === "activity" ? "default" : "outline"} onClick={() => setProductView("activity")}>
+          Produits d’activité ({products?.filter((product) => product.productType === "activity").length || 0})
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{visibleProducts.length} produit(s)</p>
+        {productView === "stable" ? (
+          <Button onClick={() => { setShowCreateForm(true); createForm.reset(); }} data-testid="button-add-product">
+            <Plus className="w-4 h-4 mr-2" />
+            Nouveau produit stable
+          </Button>
+        ) : (
+          <Button onClick={() => { setShowActivityBatch(true); setActivityFormError(""); }} data-testid="button-add-activity-batch">
+            <Plus className="w-4 h-4 mr-2" />
+            Créer un lot
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
         Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32" />)
-      ) : products && products.length > 0 ? (
-        products.map((product) => (
+      ) : visibleProducts.length > 0 ? (
+        visibleProducts.map((product) => (
           <Card key={product.id}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
@@ -231,14 +358,22 @@ export default function AdminProducts() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground">{product.name}</p>
+                      <Badge variant="outline" className="text-xs">
+                        {product.productType === "activity" ? "Activité" : "Stable"}
+                      </Badge>
                       {product.isFree && <Badge variant="secondary" className="text-xs">Gratuit</Badge>}
                       <Badge variant={product.isActive ? "default" : "outline"} className="text-xs">
                         {product.isActive ? "Actif" : "Inactif"}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {product.price.toLocaleString()} F — {product.dailyEarnings.toLocaleString()} F/jour
+                      {product.price.toLocaleString()} F — {product.dailyEarnings.toLocaleString()} F/jour, versés à l’échéance
                     </p>
+                    {product.productType === "activity" && product.launchDate && product.launchTime && (
+                      <p className="text-xs text-muted-foreground">
+                        Lancement local : {product.launchDate} à {product.launchTime}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -271,7 +406,7 @@ export default function AdminProducts() {
                   <p className="font-medium text-foreground">{product.price.toLocaleString()} F</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Gains/jour</p>
+                  <p className="text-muted-foreground">Gains/jour calculés</p>
                   <p className="font-medium text-foreground">{product.dailyEarnings.toLocaleString()} F</p>
                 </div>
                 <div>
@@ -284,7 +419,7 @@ export default function AdminProducts() {
         ))
       ) : (
         <EmptyState className="py-8">
-          Aucun produit
+          {productView === "activity" ? "Aucun produit d’activité planifié." : "Aucun produit stable."}
         </EmptyState>
       )}
 
@@ -292,7 +427,7 @@ export default function AdminProducts() {
       <Dialog open={showCreateForm} onOpenChange={(open) => { if (!open) { setShowCreateForm(false); createForm.reset(); } }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nouveau produit</DialogTitle>
+            <DialogTitle>Nouveau produit stable</DialogTitle>
           </DialogHeader>
           <Form {...createForm}>
             <ProductFormFields form={createForm} isPending={createMutation.isPending} submitLabel="Créer" />
@@ -307,8 +442,141 @@ export default function AdminProducts() {
             <DialogTitle>Modifier — {selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <ProductFormFields form={editForm} isPending={updateMutation.isPending} submitLabel="Enregistrer" />
+            <ProductFormFields
+              form={editForm}
+              isPending={updateMutation.isPending}
+              submitLabel="Enregistrer"
+              showSchedule={selectedProduct?.productType === "activity"}
+            />
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showActivityBatch} onOpenChange={(open) => {
+        setShowActivityBatch(open);
+        if (!open) {
+          setActivityRows([emptyActivityDraft()]);
+          setActivityLaunchDate("");
+          setActivityLaunchTime("");
+          setActivityFormError("");
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Créer un lot de produits d’activité</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitActivityBatch} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tous les produits du lot seront disponibles à cette date et à cette heure locale dans chaque pays.
+              Togo, Burkina Faso et Côte d’Ivoire partagent la même heure ; Bénin, Cameroun et Niger ont une heure d’avance.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="activity-launch-date">Date de lancement</label>
+                <Input
+                  id="activity-launch-date"
+                  type="date"
+                  value={activityLaunchDate}
+                  onChange={(event) => setActivityLaunchDate(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="activity-launch-time">Heure locale</label>
+                <Input
+                  id="activity-launch-time"
+                  type="time"
+                  value={activityLaunchTime}
+                  onChange={(event) => setActivityLaunchTime(event.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
+              {activityRows.map((row, index) => (
+                <div key={index} className="space-y-3 rounded-lg border p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">Produit {index + 1}</p>
+                    {activityRows.length > 1 && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Supprimer le produit ${index + 1} du lot`}
+                        onClick={() => setActivityRows((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      aria-label={`Nom du produit ${index + 1}`}
+                      value={row.name}
+                      onChange={(event) => updateActivityRow(index, "name", event.target.value)}
+                      placeholder="Nom du produit"
+                      required
+                    />
+                    <Input
+                      aria-label={`Prix du produit ${index + 1}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={row.price}
+                      onChange={(event) => updateActivityRow(index, "price", event.target.value)}
+                      placeholder="Prix (FCFA)"
+                      required
+                    />
+                    <Input
+                      aria-label={`Gain journalier du produit ${index + 1}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={row.dailyEarnings}
+                      onChange={(event) => updateActivityRow(index, "dailyEarnings", event.target.value)}
+                      placeholder="Gain journalier (FCFA)"
+                      required
+                    />
+                    <Input
+                      aria-label={`Durée du produit ${index + 1}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={row.cycleDays}
+                      onChange={(event) => updateActivityRow(index, "cycleDays", event.target.value)}
+                      placeholder="Durée (jours)"
+                      required
+                    />
+                    <Input
+                      className="col-span-2"
+                      aria-label={`URL de l'image du produit ${index + 1}`}
+                      value={row.imageUrl}
+                      onChange={(event) => updateActivityRow(index, "imageUrl", event.target.value)}
+                      placeholder="URL de l’image (facultatif)"
+                    />
+                    <p className="col-span-2 text-sm text-muted-foreground">
+                      Gain total à l’échéance :{" "}
+                      <strong className="text-foreground">
+                        {(Number(row.dailyEarnings || 0) * Number(row.cycleDays || 0)).toLocaleString("fr-FR")} FCFA
+                      </strong>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {activityRows.length < 50 && (
+              <Button type="button" variant="outline" onClick={() => setActivityRows((current) => [...current, emptyActivityDraft()])}>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un produit au lot
+              </Button>
+            )}
+            {activityFormError && <p className="text-sm text-destructive" role="alert">{activityFormError}</p>}
+            <Button type="submit" className="w-full" disabled={activityBatchMutation.isPending}>
+              {activityBatchMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : `Créer ${activityRows.length} produit${activityRows.length > 1 ? "s" : ""} planifié${activityRows.length > 1 ? "s" : ""}`}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

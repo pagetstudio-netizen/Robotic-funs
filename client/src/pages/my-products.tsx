@@ -13,6 +13,7 @@ interface UserProduct {
   purchasedAt: string;
   daysRemaining: number;
   totalEarned: string | number;
+  payoutMode?: "daily" | "maturity";
   status: string;
   product: Product | null;
 }
@@ -111,6 +112,7 @@ export default function MyProductsPage() {
               const daysCompleted = Math.max(0, Math.min(cycleDays, cycleDays - daysRemaining));
               const earnedSoFar = Number(up.totalEarned || 0);
               const productName = up.product?.name || "Produit acheté";
+              const paidAtMaturity = up.payoutMode === "maturity";
 
               return (
                 <article
@@ -127,11 +129,11 @@ export default function MyProductsPage() {
                     <div className="product-metrics">
                       <div className="product-metric">
                         <strong>{formatCurrency(up.product?.dailyEarnings || 0)}</strong>
-                        <span>Revenus quotidiens</span>
+                        <span>{paidAtMaturity ? "Gain journalier calculé" : "Revenus quotidiens"}</span>
                       </div>
                       <div className="product-metric">
                         <strong>{formatCurrency(earnedSoFar)}</strong>
-                        <span>Revenus totaux</span>
+                        <span>{paidAtMaturity ? "Gains accumulés" : "Revenus totaux"}</span>
                       </div>
                     </div>
 
@@ -155,7 +157,12 @@ export default function MyProductsPage() {
                     </div>
                   </div>
                   <footer className="product-received">
-                    Revenus reçus : {formatCurrency(earnedSoFar)}
+                    {paidAtMaturity && up.status === "active"
+                      ? "Gains accumulés, versés à l’échéance : "
+                      : paidAtMaturity
+                        ? "Gains versés : "
+                        : "Revenus reçus : "}
+                    {formatCurrency(earnedSoFar)}
                   </footer>
                 </article>
               );

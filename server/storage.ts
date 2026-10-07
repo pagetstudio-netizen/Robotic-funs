@@ -13,6 +13,19 @@ import bcrypt from "bcrypt";
 
 const DRIMPAY_STATUS_CHECK_SETTING_PREFIX = "__internal_drimpay_status_checks:";
 
+function productTermsAtPurchase(product: Product, userProduct: UserProduct): Product {
+  return {
+    ...product,
+    name: userProduct.purchaseProductName ?? product.name,
+    price: userProduct.purchasePrice ?? product.price,
+    dailyEarnings: userProduct.purchaseDailyEarnings ?? product.dailyEarnings,
+    cycleDays: userProduct.purchaseCycleDays ?? product.cycleDays,
+    totalReturn: userProduct.purchaseTotalReturn ?? product.totalReturn,
+    imageUrl: userProduct.purchaseImageUrl ?? product.imageUrl,
+    productType: userProduct.purchaseProductType ?? product.productType,
+  };
+}
+
 async function getApprovedDepositSummary(userIds: number[], startAt?: Date, endAt?: Date) {
   if (userIds.length === 0) return { amount: 0, count: 0 };
 
@@ -45,8 +58,10 @@ export interface IStorage {
   
   // Products
   getProducts(): Promise<Product[]>;
+  getAllProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(data: Partial<Product>): Promise<Product>;
+  createProducts(data: Partial<Product>[]): Promise<Product[]>;
   updateProduct(id: number, data: Partial<Product>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
   
@@ -269,6 +284,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.sortOrder);
   }
 
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products).orderBy(products.sortOrder);
+  }
+
   async getProduct(id: number): Promise<Product | undefined> {
     const [product] = await db.select().from(products).where(eq(products.id, id));
     return product || undefined;
@@ -277,6 +296,11 @@ export class DatabaseStorage implements IStorage {
   async createProduct(data: Partial<Product>): Promise<Product> {
     const [product] = await db.insert(products).values(data as any).returning();
     return product;
+  }
+
+  async createProducts(data: Partial<Product>[]): Promise<Product[]> {
+    if (data.length === 0) return [];
+    return await db.insert(products).values(data as any[]).returning();
   }
 
   async updateProduct(id: number, data: Partial<Product>): Promise<Product> {
@@ -297,7 +321,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(products, eq(userProducts.productId, products.id))
       .where(and(eq(userProducts.userId, userId), eq(userProducts.isActive, true)));
     
-    return result.map(r => ({ ...r.userProduct, product: r.product }));
+    return result.map(r => ({
+      ...r.userProduct,
+      product: productTermsAtPurchase(r.product, r.userProduct),
+    }));
   }
 
   async getAllUserProducts(userId: number): Promise<{ userProduct: UserProduct; product: Product }[]> {
@@ -308,7 +335,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(products, eq(userProducts.productId, products.id))
       .where(eq(userProducts.userId, userId));
     
-    return result.sort((a, b) => {
+    return result.map((row) => ({
+      userProduct: row.userProduct,
+      product: productTermsAtPurchase(row.product, row.userProduct),
+    })).sort((a, b) => {
       const dateA = a.userProduct.purchaseDate ? new Date(a.userProduct.purchaseDate).getTime() : 0;
       const dateB = b.userProduct.purchaseDate ? new Date(b.userProduct.purchaseDate).getTime() : 0;
       return dateB - dateA;
@@ -358,13 +388,21 @@ export class DatabaseStorage implements IStorage {
       await this.updateUser(userId, { hasActiveProduct: true });
     }
 
-    // Set lastEarningDate to now - first earnings will be credited 24h after purchase
+    // Anchor payout tracking to the purchase time for both daily legacy and maturity positions.
     const [userProduct] = await db.insert(userProducts).values({
       userId,
       productId,
       daysRemaining: product.cycleDays,
       assignedByAdmin,
       lastEarningDate: new Date(),
+      purchasePrice: product.price,
+      purchaseDailyEarnings: product.dailyEarnings,
+      purchaseCycleDays: product.cycleDays,
+      purchaseTotalReturn: product.totalReturn,
+      purchaseProductName: product.name,
+      purchaseImageUrl: product.imageUrl,
+      purchaseProductType: product.productType,
+      payoutMode: "maturity",
     }).returning();
 
     return userProduct;
@@ -484,16 +522,79 @@ export class DatabaseStorage implements IStorage {
         if (!purchaseDate) continue;
 
         const lastEarning = userProduct.lastEarningDate ? new Date(userProduct.lastEarningDate) : purchaseDate;
-
         const msSincePurchase = now.getTime() - purchaseDate.getTime();
         const daysSincePurchase = Math.floor(msSincePurchase / (24 * 60 * 60 * 1000));
-
         const msSinceLastEarning = now.getTime() - lastEarning.getTime();
         const cyclesSinceLastEarning = Math.floor(msSinceLastEarning / (24 * 60 * 60 * 1000));
+        const dailyEarnings = Number(userProduct.purchaseDailyEarnings ?? product.dailyEarnings);
+        const cycleDays = Number(userProduct.purchaseCycleDays ?? product.cycleDays);
+        const productName = userProduct.purchaseProductName ?? product.name;
+
+        if (userProduct.payoutMode === "maturity") {
+          if (cyclesSinceLastEarning < 1 || cycleDays < 1) continue;
+
+          const cyclesToAccrue = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
+          if (cyclesToAccrue < 1) continue;
+
+          const newDaysRemaining = Math.max(0, userProduct.daysRemaining - cyclesToAccrue);
+          const newLastEarningDate = new Date(lastEarning.getTime() + cyclesToAccrue * 24 * 60 * 60 * 1000);
+          const totalReturn = Number(
+            userProduct.purchaseTotalReturn ?? product.totalReturn ?? dailyEarnings * cycleDays,
+          );
+          const accruedSoFar = Number(userProduct.totalEarned || 0);
+          const newTotalEarned = Math.min(totalReturn, accruedSoFar + dailyEarnings * cyclesToAccrue);
+          const positionCondition = and(
+            eq(userProducts.id, userProduct.id),
+            eq(userProducts.isActive, true),
+            eq(userProducts.payoutMode, "maturity"),
+            userProduct.lastEarningDate
+              ? eq(userProducts.lastEarningDate, userProduct.lastEarningDate)
+              : isNull(userProducts.lastEarningDate),
+          );
+
+          if (daysSincePurchase >= cycleDays || newDaysRemaining === 0) {
+            const maturityDate = new Date(purchaseDate.getTime() + cycleDays * 24 * 60 * 60 * 1000);
+            await db.transaction(async (tx) => {
+              const [completedPosition] = await tx.update(userProducts)
+                .set({
+                  lastEarningDate: maturityDate,
+                  daysRemaining: 0,
+                  totalEarned: totalReturn.toFixed(2),
+                  isActive: false,
+                })
+                .where(positionCondition)
+                .returning({ id: userProducts.id });
+
+              if (!completedPosition) return;
+
+              await tx.update(users).set({
+                balance: sql`${users.balance} + ${totalReturn}`,
+                todayEarnings: sql`${users.todayEarnings} + ${totalReturn}`,
+                totalEarnings: sql`${users.totalEarnings} + ${totalReturn}`,
+              }).where(eq(users.id, user.id));
+
+              await tx.insert(transactions).values({
+                userId: user.id,
+                type: "earning",
+                amount: totalReturn.toFixed(2),
+                description: `Gains à l’échéance — ${productName}`,
+              });
+            });
+          } else {
+            await db.update(userProducts)
+              .set({
+                lastEarningDate: newLastEarningDate,
+                daysRemaining: newDaysRemaining,
+                totalEarned: newTotalEarned.toFixed(2),
+              })
+              .where(positionCondition);
+          }
+          continue;
+        }
 
         if (cyclesSinceLastEarning >= 1 && daysSincePurchase >= 1) {
           const cyclesToCredit = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
-          const earningsPerCycle = product.dailyEarnings;
+          const earningsPerCycle = dailyEarnings;
           const totalEarningsForProduct = earningsPerCycle * cyclesToCredit;
 
           const newLastEarningDate = new Date(lastEarning.getTime() + (cyclesToCredit * 24 * 60 * 60 * 1000));
@@ -519,7 +620,7 @@ export class DatabaseStorage implements IStorage {
               userId: user.id,
               type: "earning",
               amount: earningsPerCycle.toString(),
-              description: `Gains ${product.name}`,
+              description: `Gains ${productName}`,
             });
           }
         }

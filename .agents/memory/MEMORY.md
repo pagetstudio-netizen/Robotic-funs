@@ -18,3 +18,4 @@
 - [Responsive clip paths](responsive-clip-paths.md) — CSS `path()` in Chromium rejects percentage coordinates; use an object-bounding-box SVG clip for responsive curves.
 - [Screenshot artwork extraction](screenshot-artwork-extraction.md) — Crop distinctive artwork from original captures, isolate its silhouette, and animate surrounding layers separately.
 - [Withdrawal account editing](withdrawal-account-editing.md) — Each user has one editable primary withdrawal account; keep operators sourced from Admin-configured countries.
+- [Activity product launch clocks](activity-product-launch-clocks.md) — TG, BF, and CI share local time; BJ, CM, and NE launch one hour ahead.

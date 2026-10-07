@@ -59,7 +59,7 @@ export default function OrdersPage() {
 
       <div className="bg-orange-50 p-3 mx-4 mt-3 rounded-lg">
         <p className="text-xs text-orange-700 leading-relaxed">
-          Les revenus du produit sont credites automatiquement une fois toutes les 24 heures.
+          Les produits stables et d’activité versent leurs gains en une seule fois à la fin de la période.
         </p>
         <p className="text-xs text-orange-700 leading-relaxed mt-1">
           Vous pouvez acheter plusieurs machines pour augmenter vos revenus.
@@ -76,8 +76,8 @@ export default function OrdersPage() {
         ) : filteredProducts.length > 0 ? (
           <div className="space-y-4">
             {filteredProducts.map((up: any, index: number) => {
-              const daysCompleted = (up.product?.cycleDays || 0) - (up.daysRemaining || 0);
-              const totalEarned = daysCompleted * (up.product?.dailyEarnings || 0);
+              const totalEarned = Number(up.totalEarned || 0);
+              const paidAtMaturity = up.payoutMode === "maturity";
               const purchaseDateTime = up.purchasedAt ? new Date(up.purchasedAt) : null;
               const purchaseDate = purchaseDateTime ? purchaseDateTime.toLocaleDateString('fr-FR') : '-';
               const purchaseTime = purchaseDateTime ? purchaseDateTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-';
@@ -116,7 +116,7 @@ export default function OrdersPage() {
                           Prix : <span className="text-orange-500 font-medium">{up.product?.price?.toLocaleString() || 0} Fcfa</span>
                         </p>
                         <p className="text-gray-600">
-                          Gains/jour : <span className="text-green-500 font-medium">{up.product?.dailyEarnings?.toLocaleString() || 0} Fcfa</span>
+                          Gain/jour (calcul) : <span className="text-green-500 font-medium">{up.product?.dailyEarnings?.toLocaleString() || 0} Fcfa</span>
                         </p>
                         <p className="text-gray-600">
                           Duree : <span className="text-orange-500 font-medium">{up.product?.cycleDays || 0} Jours</span>
@@ -125,7 +125,8 @@ export default function OrdersPage() {
                           Jours restants : <span className="text-[#2196F3] font-medium">{up.daysRemaining || 0}</span>
                         </p>
                         <p className="text-gray-600">
-                          Total gagne : <span className="text-green-600 font-bold">{totalEarned.toLocaleString()} Fcfa</span>
+                          {paidAtMaturity && up.status === "active" ? "Gains accumulés à l’échéance" : "Total gagné"} :{" "}
+                          <span className="text-green-600 font-bold">{totalEarned.toLocaleString()} Fcfa</span>
                         </p>
                         <p className="text-gray-600">
                           Date : <span className="text-gray-700 font-medium">{purchaseDate}</span> a <span className="text-gray-700 font-medium">{purchaseTime}</span>

@@ -62,7 +62,7 @@ export default function ProductDetailsPage() {
         title: isFree ? "Produit réclamé !" : "Produit acheté !",
         description: isFree
           ? "Votre produit gratuit a été ajouté à votre compte."
-          : "Vous commencerez à recevoir des gains demain.",
+          : "Vos gains seront versés en une seule fois à la fin de la période.",
       });
     },
     onError: (purchaseError: Error) => {
@@ -146,11 +146,11 @@ export default function ProductDetailsPage() {
 
           <div className="product-detail-metrics" aria-label="Détails des gains">
             <div className="product-detail-metric-row">
-              <span>Gain quotidien :</span>
+              <span>{product.isFree ? "Bonus quotidien :" : "Gain journalier calculé :"}</span>
               <strong>{formatFcfa(dailyEarnings)}</strong>
             </div>
             <div className="product-detail-metric-row">
-              <span>Gain total :</span>
+              <span>{product.isFree ? "Gain total :" : "Gain total à l’échéance :"}</span>
               <strong>{formatFcfa(totalReturn)}</strong>
             </div>
             <div className="product-detail-metric-row">
@@ -160,7 +160,9 @@ export default function ProductDetailsPage() {
           </div>
 
           <p className="product-detail-note">
-            Après l’achat, vos gains sont calculés automatiquement toutes les 24 heures et ajoutés à votre solde.
+            {product.isFree
+              ? "Le bonus gratuit peut être réclamé selon les règles affichées dans l’application."
+              : "Le gain journalier sert au calcul du total. Le montant total sera versé en une seule fois à la fin de la période."}
           </p>
         </section>
       </div>

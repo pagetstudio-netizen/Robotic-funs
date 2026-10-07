@@ -23,6 +23,7 @@ interface UserProductItem {
   productName: string;
   productPrice: number;
   dailyEarnings: string;
+  payoutMode: "daily" | "maturity";
   isActive: boolean;
   purchaseDate: string;
   daysClaimed: number;
@@ -549,7 +550,9 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                           <div>
                             <p className="text-sm font-medium">{up.productName}</p>
                             <p className="text-xs text-muted-foreground">
-                              {up.productPrice.toLocaleString()} F - Jour {up.daysClaimed}/{up.totalCycle}
+                              {up.productPrice.toLocaleString()} F - {up.dailyEarnings.toLocaleString()} F/jour calculé
+                              {" · "}{up.payoutMode === "maturity" ? "versé à l’échéance" : "versé quotidiennement"}
+                              {" · "}Jour {up.daysClaimed}/{up.totalCycle}
                               {up.isActive ? " (Actif)" : " (Termine)"}
                             </p>
                           </div>

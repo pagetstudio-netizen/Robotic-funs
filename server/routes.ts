@@ -3,9 +3,10 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
-import { registerSchema, loginSchema, depositSchema, walletSchema, phoneNumberSchema, type Withdrawal } from "@shared/schema";
+import { registerSchema, loginSchema, depositSchema, walletSchema, phoneNumberSchema, type Product, type Withdrawal } from "@shared/schema";
 import { normalizeBeninPhone } from "@shared/phone";
 import { z } from "zod";
+import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
 import ConnectPgSimple from "connect-pg-simple";
 import { 
   initiatePayment, 
@@ -791,9 +792,12 @@ export async function registerRoutes(
   // Products
   app.get("/api/products", requireAuth, async (req, res) => {
     try {
-      const products = await storage.getProducts();
-      const userProductsList = await storage.getUserProducts(req.session.userId!);
       const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Non authentifié" });
+
+      const products = (await storage.getProducts())
+        .filter(product => isProductAvailableForCountry(product, user.country));
+      const userProductsList = await storage.getUserProducts(req.session.userId!);
       
       const productCounts = new Map<number, number>();
       userProductsList.forEach(up => {
@@ -828,6 +832,12 @@ export async function registerRoutes(
       if (!product) {
         return res.status(404).json({ message: "Produit non trouvé" });
       }
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Non authentifié" });
+      if (!isProductAvailableForCountry(product, user.country)) {
+        return res.status(409).json({ message: "Ce produit d’activité n’est pas encore disponible." });
+      }
       
       if (product.isFree) {
         return res.status(400).json({ message: "Utilisez /claim-free pour ce produit" });
@@ -852,6 +862,9 @@ export async function registerRoutes(
       const user = await storage.getUser(req.session.userId!);
       if (!user) {
         return res.status(401).json({ message: "Non authentifié" });
+      }
+      if (!isProductAvailableForCountry(product, user.country)) {
+        return res.status(409).json({ message: "Ce produit d’activité n’est pas encore disponible." });
       }
 
       const today = new Date();
@@ -891,6 +904,7 @@ export async function registerRoutes(
         purchasedAt: up.userProduct.purchaseDate,
         daysRemaining: up.userProduct.daysRemaining,
         totalEarned: up.userProduct.totalEarned,
+        payoutMode: up.userProduct.payoutMode,
         status: up.userProduct.isActive ? 'active' : 'completed',
         product: up.product
       }));
@@ -917,7 +931,7 @@ export async function registerRoutes(
 
       for (const { userProduct, product } of userProductsList) {
         try {
-          if (!userProduct.isActive || userProduct.daysRemaining <= 0) continue;
+          if (!userProduct.isActive || userProduct.daysRemaining <= 0 || userProduct.payoutMode === "maturity") continue;
 
           const purchaseDate = userProduct.purchaseDate ? new Date(userProduct.purchaseDate) : null;
           if (!purchaseDate) continue;
@@ -932,7 +946,7 @@ export async function registerRoutes(
 
           if (cyclesSinceLastEarning >= 1 && daysSincePurchase >= 1) {
             const cyclesToCredit = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
-            const earningsPerCycle = product.dailyEarnings;
+            const earningsPerCycle = Number(userProduct.purchaseDailyEarnings ?? product.dailyEarnings);
             const totalEarningsForProduct = earningsPerCycle * cyclesToCredit;
 
             const newLastEarningDate = new Date(lastEarning.getTime() + (cyclesToCredit * 24 * 60 * 60 * 1000));
@@ -958,7 +972,7 @@ export async function registerRoutes(
                 userId,
                 type: "earning",
                 amount: earningsPerCycle.toString(),
-                description: `Gains ${product.name}`,
+                description: `Gains ${userProduct.purchaseProductName ?? product.name}`,
               });
             }
           }
@@ -3579,7 +3593,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/products/all", requireAdmin, async (req, res) => {
     try {
-      const allProducts = await storage.getProducts();
+      const allProducts = await storage.getAllProducts();
       res.json(allProducts);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3596,6 +3610,7 @@ export async function registerRoutes(
         productName: up.product.name,
         productPrice: up.product.price,
         dailyEarnings: up.product.dailyEarnings,
+        payoutMode: up.userProduct.payoutMode,
         isActive: up.userProduct.isActive,
         purchaseDate: up.userProduct.purchaseDate,
         daysClaimed: up.product.cycleDays - up.userProduct.daysRemaining,
@@ -3609,19 +3624,26 @@ export async function registerRoutes(
   app.post("/api/admin/products", requireAdmin, async (req, res) => {
     try {
       const { name, price, dailyEarnings, cycleDays, imageUrl } = req.body;
-      if (!name || !price || !dailyEarnings || !cycleDays) {
+      const priceInt = Number(price);
+      const dailyInt = Number(dailyEarnings);
+      const cycleInt = Number(cycleDays);
+      if (typeof name !== "string" || name.trim().length < 2
+        || !Number.isSafeInteger(priceInt) || priceInt <= 0
+        || !Number.isSafeInteger(dailyInt) || dailyInt <= 0
+        || !Number.isSafeInteger(cycleInt) || cycleInt <= 0
+        || dailyInt * cycleInt > 2_147_483_647) {
         return res.status(400).json({ message: "Champs requis manquants" });
       }
-      const priceInt = parseInt(price);
-      const dailyInt = parseInt(dailyEarnings);
-      const cycleInt = parseInt(cycleDays);
       const product = await storage.createProduct({
-        name,
+        name: name.trim(),
         price: priceInt,
         dailyEarnings: dailyInt,
         cycleDays: cycleInt,
         totalReturn: dailyInt * cycleInt,
         imageUrl: imageUrl || null,
+        productType: "stable",
+        launchDate: null,
+        launchTime: null,
         isFree: false,
         isActive: true,
         sortOrder: 0,
@@ -3633,9 +3655,113 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/products/bulk-activity", requireAdmin, async (req, res) => {
+    try {
+      const { launchDate, launchTime, products: submittedProducts } = req.body ?? {};
+      if (!isValidLaunchSchedule(launchDate, launchTime)) {
+        return res.status(400).json({ message: "La date et l’heure de lancement sont obligatoires et doivent être valides." });
+      }
+      if (!Array.isArray(submittedProducts) || submittedProducts.length < 1 || submittedProducts.length > 50) {
+        return res.status(400).json({ message: "Le lot doit contenir entre 1 et 50 produits." });
+      }
+
+      const rows: Partial<Product>[] = [];
+      for (const row of submittedProducts) {
+        const name = typeof row?.name === "string" ? row.name.trim() : "";
+        const price = Number(row?.price);
+        const dailyEarnings = Number(row?.dailyEarnings);
+        const cycleDays = Number(row?.cycleDays);
+        if (name.length < 2
+          || !Number.isSafeInteger(price) || price <= 0
+          || !Number.isSafeInteger(dailyEarnings) || dailyEarnings <= 0
+          || !Number.isSafeInteger(cycleDays) || cycleDays <= 0
+          || dailyEarnings * cycleDays > 2_147_483_647) {
+          return res.status(400).json({ message: "Chaque produit doit avoir un nom, un prix, un gain journalier et une durée valides." });
+        }
+
+        rows.push({
+          name,
+          price,
+          dailyEarnings,
+          cycleDays,
+          totalReturn: dailyEarnings * cycleDays,
+          imageUrl: typeof row.imageUrl === "string" && row.imageUrl.trim() ? row.imageUrl.trim() : null,
+          productType: "activity",
+          launchDate,
+          launchTime,
+          isFree: false,
+          isActive: true,
+          sortOrder: 0,
+        });
+      }
+
+      const createdProducts = await storage.createProducts(rows);
+      await storage.logAdminAction(
+        req.session.userId!,
+        "create_activity_products",
+        null,
+        `${createdProducts.length} produit(s) d’activité créé(s), lancement local prévu le ${launchDate} à ${launchTime}`,
+      );
+      res.json(createdProducts);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.patch("/api/admin/products/:id", requireAdmin, async (req, res) => {
     try {
-      const product = await storage.updateProduct(parseInt(getRouteParam(req.params.id)), req.body);
+      const id = parseInt(getRouteParam(req.params.id));
+      const existing = await storage.getProduct(id);
+      if (!existing) return res.status(404).json({ message: "Produit non trouvé" });
+
+      const body = req.body ?? {};
+      const update: Partial<Product> = {};
+      if (body.name !== undefined) {
+        if (typeof body.name !== "string" || body.name.trim().length < 2) {
+          return res.status(400).json({ message: "Le nom du produit est invalide." });
+        }
+        update.name = body.name.trim();
+      }
+      for (const field of ["price", "dailyEarnings", "cycleDays"] as const) {
+        if (body[field] === undefined) continue;
+        const value = Number(body[field]);
+        if (!Number.isSafeInteger(value) || value <= 0) {
+          return res.status(400).json({ message: "Le prix, le gain journalier et la durée doivent être des nombres entiers positifs." });
+        }
+        update[field] = value;
+      }
+      if (body.imageUrl !== undefined) {
+        if (body.imageUrl !== null && typeof body.imageUrl !== "string") {
+          return res.status(400).json({ message: "L’image du produit est invalide." });
+        }
+        update.imageUrl = typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl.trim() : null;
+      }
+      if (body.isActive !== undefined) {
+        if (typeof body.isActive !== "boolean") return res.status(400).json({ message: "État du produit invalide." });
+        update.isActive = body.isActive;
+      }
+      if (body.launchDate !== undefined || body.launchTime !== undefined) {
+        if (existing.productType !== "activity") {
+          return res.status(400).json({ message: "Seuls les produits d’activité ont une date de lancement." });
+        }
+        const launchDate = body.launchDate ?? existing.launchDate;
+        const launchTime = body.launchTime ?? existing.launchTime;
+        if (!isValidLaunchSchedule(launchDate, launchTime)) {
+          return res.status(400).json({ message: "La date et l’heure de lancement sont invalides." });
+        }
+        update.launchDate = launchDate;
+        update.launchTime = launchTime;
+      }
+      const nextDailyEarnings = update.dailyEarnings ?? existing.dailyEarnings;
+      const nextCycleDays = update.cycleDays ?? existing.cycleDays;
+      if (nextDailyEarnings * nextCycleDays > 2_147_483_647) {
+        return res.status(400).json({ message: "Le gain total dépasse la limite autorisée." });
+      }
+      if (update.dailyEarnings !== undefined || update.cycleDays !== undefined) {
+        update.totalReturn = nextDailyEarnings * nextCycleDays;
+      }
+
+      const product = await storage.updateProduct(id, update);
       await storage.logAdminAction(req.session.userId!, "update_product", null, `Produit ${product.id} modifié`);
       res.json(product);
     } catch (error: any) {

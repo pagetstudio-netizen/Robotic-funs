@@ -3,6 +3,8 @@ import { pgTable, text, varchar, integer, boolean, timestamp, decimal, serial } 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export type ProductType = "stable" | "activity";
+
 // Countries table (admin-managed)
 export const countries = pgTable("countries", {
   id: serial("id").primaryKey(),
@@ -67,6 +69,9 @@ export const products = pgTable("products", {
   cycleDays: integer("cycle_days").notNull().default(80),
   totalReturn: integer("total_return").notNull(),
   imageUrl: text("image_url"),
+  productType: text("product_type").$type<ProductType>().notNull().default("stable"),
+  launchDate: text("launch_date"),
+  launchTime: text("launch_time"),
   isFree: boolean("is_free").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -79,6 +84,14 @@ export const userProducts = pgTable("user_products", {
   productId: integer("product_id").notNull().references(() => products.id),
   purchaseDate: timestamp("purchase_date").notNull().defaultNow(),
   lastEarningDate: timestamp("last_earning_date"),
+  purchasePrice: integer("purchase_price"),
+  purchaseDailyEarnings: integer("purchase_daily_earnings"),
+  purchaseCycleDays: integer("purchase_cycle_days"),
+  purchaseTotalReturn: integer("purchase_total_return"),
+  purchaseProductName: text("purchase_product_name"),
+  purchaseImageUrl: text("purchase_image_url"),
+  purchaseProductType: text("purchase_product_type").$type<ProductType>(),
+  payoutMode: text("payout_mode").$type<"daily" | "maturity">().notNull().default("daily"),
   daysRemaining: integer("days_remaining").notNull(),
   totalEarned: decimal("total_earned", { precision: 15, scale: 2 }).notNull().default("0"),
   isActive: boolean("is_active").notNull().default(true),

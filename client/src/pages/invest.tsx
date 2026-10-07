@@ -44,7 +44,7 @@ export default function InvestPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/products"] });
       refreshUser();
       setConfirmProduct(null);
-      toast({ title: "Produit acheté !", description: "Vous commencerez à recevoir des gains demain." });
+      toast({ title: "Produit acheté !", description: "Vos gains seront versés en une seule fois à la fin de la période." });
     },
     onError: (error: any) => {
       setConfirmProduct(null);
@@ -153,8 +153,8 @@ export default function InvestPage() {
                     {[
                       { label: "Prix unitaire",    value: `${currency} ${Number(product.price).toLocaleString("fr-FR")}` },
                       { label: "Validité",         value: `${product.cycleDays} Jours` },
-                      { label: "Gains quotidiens", value: `${currency} ${Number(product.dailyEarnings).toLocaleString("fr-FR")}` },
-                      { label: "Revenu total",     value: `${currency} ${Number(product.totalReturn).toLocaleString("fr-FR")}` },
+                      { label: "Gain/jour (calcul)", value: `${currency} ${Number(product.dailyEarnings).toLocaleString("fr-FR")}` },
+                      { label: "Gain à l’échéance", value: `${currency} ${Number(product.totalReturn).toLocaleString("fr-FR")}` },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between">
                         <span className="text-gray-400 text-[11px]">{label}</span>
@@ -200,7 +200,7 @@ export default function InvestPage() {
                   {confirmProduct.name}
                 </p>
                 <p className="text-white/70 text-sm mt-2 leading-relaxed">
-                  Après l'achat du produit, vos gains seront crédités sur votre compte toutes les 24 heures.
+                  Le gain journalier sert au calcul du total. Vos gains seront versés en une seule fois à la fin de la période.
                 </p>
               </div>
 
@@ -215,8 +215,8 @@ export default function InvestPage() {
                 <div className="flex-1 space-y-2">
                   {[
                     { label: "Prix",              value: `${currency} ${Number(confirmProduct.price).toLocaleString("fr-FR")}` },
-                    { label: "Revenu quotidien",  value: `${currency} ${daily.toLocaleString("fr-FR")}` },
-                    { label: "Revenu total",      value: `${currency} ${total.toLocaleString("fr-FR")}` },
+                    { label: "Gain/jour (calcul)", value: `${currency} ${daily.toLocaleString("fr-FR")}` },
+                    { label: "Gain à l’échéance",  value: `${currency} ${total.toLocaleString("fr-FR")}` },
                     { label: "Période de validité", value: `${duration} jours` },
                   ].map(row => (
                     <div key={row.label}>
