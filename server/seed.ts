@@ -267,7 +267,7 @@ export async function seed() {
     { key: "groupType", value: "telegram" },
     { key: "groupLabel", value: "Groupe de discussion" },
     { key: "popupButtonLabel", value: "Cliquez ici pour rejoindre le groupe Telegram" },
-    { key: "noticeText", value: "Bienvenue chez John Deere ! Découvrez nos équipements agricoles, de construction et d’entretien des espaces verts." },
+    { key: "noticeText", value: "RoboticsFund fait progresser l’automatisation industrielle et la robotique pour moderniser la production mondiale." },
     { key: "supportEnabled", value: "true" },
     { key: "support2Enabled", value: "true" },
     { key: "channelEnabled", value: "true" },

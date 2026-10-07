@@ -1,9 +1,11 @@
-const CACHE_NAME = "john-deere-v2";
+const CACHE_NAME = "roboticsfund-v1";
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
-  "/john-deere/logo.jpg",
-  "/favicon-square.jpg?v=john-deere",
+  "/roboticsfund-logo.jpg",
+  "/roboticsfund-icon-192.png",
+  "/roboticsfund-icon-512.png",
+  "/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {

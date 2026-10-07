@@ -1,8 +1,8 @@
-# John Deere - Agricultural and Construction Equipment Platform
+# RoboticsFund - Industrial Automation and Robotics Platform
 
 ## Overview
 
-John Deere was founded in 1837 in Grand Detour, Illinois, and is a global manufacturer of agricultural equipment and a major producer of construction and turf-care machinery. Its products include tractors, combines, precision seeders, hay equipment, construction machinery, and precision-agriculture tools such as the John Deere Operations Center.
+RoboticsFund est une entreprise leader mondiale en automatisation industrielle et en robotique, fondée en 1915 et forte de plus d'un siècle d'expérience dans les technologies de moteurs et de contrôle. Animée par sa mission de « promouvoir le progrès », elle contribue sans cesse à la transformation et à la modernisation de la production mondiale en l'orientant vers l'intelligence, la numérisation et l'efficacité.
 
 ## User Preferences
 

@@ -26,7 +26,7 @@ function getPurchasedProductImage(imageUrl: string | null | undefined, index: nu
       const parsed = new URL(image);
       if (parsed.protocol === "https:" || parsed.protocol === "http:") return image;
     } catch {
-      // Use a local John Deere image when the stored URL is malformed.
+      // Use a local equipment image when the stored URL is malformed.
     }
   }
 
@@ -108,7 +108,7 @@ export default function MyProductsPage() {
             </div>
           ) : allUserProducts.length === 0 ? (
             <EmptyState className="products-empty">
-              <p>Aucun produit John Deere</p>
+              <p>Aucun produit RoboticsFund</p>
               <p className="text-sm text-gray-400">Achetez des produits pour commencer à gagner</p>
             </EmptyState>
           ) : (

@@ -96,7 +96,7 @@ export default function HomeWelcomePopup() {
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <DialogPrimitive.Title className="home-welcome-title">
-            John Deere
+            RoboticsFund
           </DialogPrimitive.Title>
           <img
             className="home-welcome-illustration"
@@ -132,7 +132,7 @@ export default function HomeWelcomePopup() {
           )}
 
           <div className="home-welcome-details" aria-live="polite">
-            <p className="home-welcome-app-name">John Deere App</p>
+            <p className="home-welcome-app-name">RoboticsFund</p>
             <p>Commission : {formatPercent(settings?.level1Commission)}</p>
             <p className="home-welcome-bonus">
               Bonus d’inscription : {formatFcfa(settings?.signupBonus)}

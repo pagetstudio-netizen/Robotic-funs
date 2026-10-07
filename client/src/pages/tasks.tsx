@@ -7,15 +7,13 @@ import { getCountryByCode } from "@/lib/countries";
 import { ChevronLeft, Loader2, Trophy, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import type { Task } from "@shared/schema";
-import { JOHN_DEERE_LOGO, JOHN_DEERE_PHOTOS } from "@/lib/john-deere-assets";
+import { ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 import EmptyState from "@/components/empty-state";
 import iconBronze from "@assets/344464_1773318022355.png";
 import iconArgent from "@assets/817729_1773318022328.png";
 import iconOr from "@assets/sac-argent-gros-tas-illustration-icone-argent-comptant-icone-p_1773318022388.jpg";
 import iconPlatine from "@assets/1751761_1773318022264.png";
 import iconDiamant from "@assets/3275655_1773318022415.png";
-
-const jollibeeImg = JOHN_DEERE_PHOTOS.dealership;
 
 interface TaskWithStatus extends Task {
   isCompleted: boolean;
@@ -84,9 +82,9 @@ export default function TasksPage() {
       {/* Hero Section — tall enough so bottom text clears the stats card overlap */}
       <div className="relative overflow-hidden" style={{ height: "260px" }}>
         <img
-          src={jollibeeImg}
-          alt="John Deere"
-          className="w-full h-full object-cover object-center"
+          src={ROBOTICSFUND_LOGO}
+          alt="RoboticsFund"
+          className="w-full h-full object-contain object-center p-2"
         />
         {/* Dark gradient overlay */}
         <div
@@ -106,8 +104,8 @@ export default function TasksPage() {
           </Link>
           <div className="flex-1 flex justify-center">
             <div className="flex items-center gap-2">
-              <img src={JOHN_DEERE_LOGO} alt="John Deere" className="h-8 w-8 rounded-md object-contain" />
-              <span className="text-white text-sm font-bold">John Deere</span>
+              <img src={ROBOTICSFUND_LOGO} alt="RoboticsFund" className="h-8 w-8 rounded-md object-contain" />
+              <span className="text-white text-sm font-bold">RoboticsFund</span>
             </div>
           </div>
           <div className="w-9" />

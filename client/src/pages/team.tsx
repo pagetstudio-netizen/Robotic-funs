@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getCountryByCode } from "@/lib/countries";
 import { useLocation } from "wouter";
 import { ChevronRight, UsersRound } from "lucide-react";
-import { JOHN_DEERE_PHOTOS } from "@/lib/john-deere-assets";
+import { ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 import groupIcon from "@assets/groupe_1790677429988.png";
 import copyIcon from "@assets/copie_1790677430042.png";
 import "./team.css";
@@ -102,7 +102,7 @@ export default function TeamPage() {
         <header className="team-header">
           <img
             className="team-header-image"
-            src={JOHN_DEERE_PHOTOS.dealership}
+            src={ROBOTICSFUND_LOGO}
             alt=""
             aria-hidden="true"
           />

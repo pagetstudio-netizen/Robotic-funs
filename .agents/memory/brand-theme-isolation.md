@@ -1,10 +1,10 @@
 ---
 name: Brand theme isolation
-description: Route-scoped John Deere palette and RobotPay visual exclusion.
+description: Route-scoped RoboticsFund palette and RobotPay visual exclusion.
 ---
 
-Apply John Deere colors and imagery throughout the application except `/robotpay`. Keep RobotPay's existing appearance isolated from the new brand scope.
+Apply RoboticsFund branding throughout the application except `/robotpay`. Keep RobotPay's existing appearance isolated from the new brand scope.
 
-**Why:** The user requested a complete John Deere visual update and explicitly said not to change `/robotpay`.
+**Why:** The user requested RoboticsFund branding while the existing project instruction preserves `/robotpay` as a visually separate route.
 
 **How to apply:** Keep brand styles scoped to non-RobotPay routes. Preserve RobotPay's legacy theme and avoid generic CSS or shared visual changes that leak into that route.

@@ -494,7 +494,7 @@ export default function WithdrawalPage() {
           .withdraw-reference .instruction { font-size: 15px; }
         }
 
-        /* Light John Deere layout matching the supplied withdrawal reference. */
+        /* Light RoboticsFund layout matching the supplied withdrawal reference. */
         .withdraw-reference {
           --withdrawal-green: var(--jd-green, #367c2b);
           --withdrawal-green-dark: var(--jd-green-dark, #25591c);

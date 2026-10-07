@@ -1,24 +1,24 @@
 {
-  "name": "John Deere",
-  "short_name": "John Deere",
-  "description": "John Deere, founded in 1837, is a global manufacturer of agricultural equipment and a major producer of construction and turf-care machinery. Its offerings include tractors, combines, precision seeders, hay equipment, and the digital John Deere Operations Center.",
+  "name": "RoboticsFund",
+  "short_name": "RoboticsFund",
+  "description": "RoboticsFund, fondée en 1915, fait progresser l’automatisation industrielle et la robotique grâce aux technologies de moteurs et de contrôle.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f6eb",
-  "theme_color": "#367C2B",
+  "background_color": "#0B1733",
+  "theme_color": "#0B1733",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/john-deere/logo.jpg",
+      "src": "/roboticsfund-icon-192.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/john-deere/logo.jpg",
+      "src": "/roboticsfund-icon-512.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -100,7 +100,7 @@ export default function RegisterPage() {
         password: data.password,
         invitationCode: data.invitationCode,
       });
-      toast({ title: "Inscription réussie !", description: "Bienvenue chez John Deere !" });
+      toast({ title: "Inscription réussie !", description: "Bienvenue chez RoboticsFund !" });
       navigate("/");
     } catch (error: any) {
       toast({ title: "Erreur d'inscription", description: error.message || "Une erreur est survenue", variant: "destructive" });

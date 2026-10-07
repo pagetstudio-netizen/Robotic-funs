@@ -42,8 +42,8 @@
   margin: 0;
   overflow: visible;
   background-image:
-    linear-gradient(to bottom, rgba(18, 33, 40, 0) 43%, rgba(18, 33, 40, .45) 67%, #122128 100%),
-    url("/john-deere/hero-background.webp");
+    linear-gradient(to bottom, rgba(11, 23, 51, 0) 43%, rgba(11, 23, 51, .45) 67%, #0b1733 100%);
+  background-color: #0b1733;
   background-position: center top;
   background-repeat: no-repeat;
   background-size: 100% auto;
@@ -82,11 +82,11 @@
 
 .auth-redesign .auth-art {
   position: absolute;
-  top: 50%;
-  right: 6%;
+  top: 8px;
+  right: 4%;
   z-index: 1;
   display: grid;
-  width: min(45vw, 315px);
+  width: min(32vw, 210px);
   aspect-ratio: 1;
   place-items: center;
   overflow: visible;

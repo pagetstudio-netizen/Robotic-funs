@@ -55,7 +55,7 @@ async function handleTelegramCommand(text: string, chatId: string) {
   const command = text.trim().split(/\s+/)[0].toLowerCase().split("@")[0];
   if (command === "/help" || command === "/start") {
     return [
-      "🤖 <b>Commandes John Deere</b>",
+      "🤖 <b>Commandes RoboticsFund</b>",
       "/stats — statistiques de la plateforme",
       "/solde — soldes et montants en attente",
       "/pending — dépôts et retraits en attente",

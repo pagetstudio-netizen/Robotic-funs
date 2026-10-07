@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 
 import serviceIcon from "@assets/20260311_214852_1773265973964.png";
-import { getJohnDeereProductImage, JOHN_DEERE_LOGO } from "@/lib/john-deere-assets";
+import { getJohnDeereProductImage, ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 import EmptyState from "@/components/empty-state";
 
 interface ProductWithOwnership extends Product {
@@ -70,8 +70,8 @@ export default function InvestPage() {
         style={{ background: "linear-gradient(135deg, #367C2B 0%, #25591C 100%)" }}
       >
           <div className="flex items-center gap-2">
-            <img src={JOHN_DEERE_LOGO} alt="John Deere" className="h-8 w-8 rounded-md object-contain" />
-            <span className="text-white text-sm font-bold">John Deere</span>
+            <img src={ROBOTICSFUND_LOGO} alt="RoboticsFund" className="h-8 w-8 rounded-md object-contain" />
+            <span className="text-white text-sm font-bold">RoboticsFund</span>
           </div>
         <button
           onClick={() => navigate("/service")}

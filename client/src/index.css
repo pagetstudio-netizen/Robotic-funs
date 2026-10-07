@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - John Deere theme */
+/* Light application theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -175,79 +175,79 @@
   color: white !important;
 }
 
-/* John Deere brand scope for every route except /robotpay. */
+/* RoboticsFund brand scope for every route except /robotpay. */
 .john-deere-theme {
-  --jd-green: #367c2b;
-  --jd-green-dark: #25591c;
-  --jd-yellow: #ffde00;
-  --jd-yellow-soft: #fff6bf;
+  --jd-green: #124d9c;
+  --jd-green-dark: #0b1733;
+  --jd-yellow: #f6b51f;
+  --jd-yellow-soft: #fff1c9;
   --ton-green: var(--jd-green);
   --ton-green-dark: var(--jd-green-dark);
-  --ton-green-deep: #194616;
-  --ton-green-soft: #edf4e6;
+  --ton-green-deep: #071126;
+  --ton-green-soft: #eaf0fb;
   --ton-gradient: linear-gradient(112deg, var(--jd-green) 0%, var(--jd-green-dark) 100%);
 
-  --background: 48 32% 97%;
-  --foreground: 112 28% 13%;
-  --border: 89 19% 82%;
+  --background: 220 40% 97%;
+  --foreground: 220 40% 12%;
+  --border: 218 22% 83%;
   --card: 0 0% 100%;
-  --card-foreground: 112 28% 13%;
-  --card-border: 89 19% 87%;
+  --card-foreground: 220 40% 12%;
+  --card-border: 218 22% 88%;
   --popover: 0 0% 100%;
-  --popover-foreground: 112 28% 13%;
-  --popover-border: 89 19% 87%;
-  --primary: 111 48% 33%;
+  --popover-foreground: 220 40% 12%;
+  --popover-border: 218 22% 88%;
+  --primary: 216 79% 34%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 52 100% 91%;
-  --secondary-foreground: 112 32% 16%;
-  --muted: 52 30% 93%;
-  --muted-foreground: 105 10% 39%;
-  --accent: 52 100% 50%;
-  --accent-foreground: 112 35% 14%;
-  --input: 89 20% 81%;
-  --ring: 111 48% 33%;
-  --chart-1: 111 48% 33%;
-  --chart-2: 52 100% 50%;
-  --chart-3: 97 40% 46%;
-  --chart-4: 43 65% 45%;
-  --chart-5: 126 34% 24%;
+  --secondary: 43 100% 92%;
+  --secondary-foreground: 220 40% 16%;
+  --muted: 220 28% 94%;
+  --muted-foreground: 220 12% 40%;
+  --accent: 42 92% 54%;
+  --accent-foreground: 220 40% 14%;
+  --input: 218 22% 82%;
+  --ring: 216 79% 34%;
+  --chart-1: 216 79% 34%;
+  --chart-2: 42 92% 54%;
+  --chart-3: 204 72% 46%;
+  --chart-4: 36 72% 48%;
+  --chart-5: 222 48% 24%;
 }
 
 .john-deere-theme .auth-reference {
-  background: #142a12;
-  color: #367c2b;
+  background: #0b1733;
+  color: #124d9c;
 }
 
 .john-deere-theme .auth-reference .auth-screen,
 .john-deere-theme .auth-reference .auth-panel {
-  background: #193618;
+  background: #102348;
 }
 
 .john-deere-theme .auth-reference .auth-field {
-  box-shadow: 0 1px 2px rgba(37, 89, 28, .18);
+  box-shadow: 0 1px 2px rgba(11, 23, 51, .18);
 }
 
 .john-deere-theme .auth-reference .auth-field input {
-  color: #25591c;
+  color: #0b1733;
 }
 
 .john-deere-theme .auth-reference .auth-field input::placeholder {
-  color: #367c2b;
+  color: #124d9c;
 }
 
 .john-deere-theme .auth-reference .auth-prefix,
 .john-deere-theme .auth-reference .auth-field-icon {
-  color: #367c2b;
+  color: #124d9c;
 }
 
 .john-deere-theme .auth-reference .auth-submit {
-  background: #ffde00;
-  color: #25591c;
-  box-shadow: 0 1px 2px rgba(37, 89, 28, .24);
+  background: #f6b51f;
+  color: #0b1733;
+  box-shadow: 0 1px 2px rgba(11, 23, 51, .24);
 }
 
 .john-deere-theme .auth-reference .auth-submit:active {
-  background: #fff6bf;
+  background: #fff1c9;
 }
 
 .john-deere-theme [class~="text-[#3174d1]"],
@@ -298,7 +298,7 @@
 
 .john-deere-theme [class~="bg-[#FFDE00]"] {
   background-color: var(--jd-yellow) !important;
-  color: #1c3416 !important;
+  color: #0b1733 !important;
 }
 
 .dark {

@@ -14,13 +14,13 @@ export function AuthPageShell({ children, mode }: AuthPageShellProps) {
           <div className="auth-hero-copy">
             <h1>
               <span>Bienvenue chez</span>
-              <strong>John Deere</strong>
+              <strong>RoboticsFund</strong>
             </h1>
           </div>
           <div className="auth-art">
             <img
-              src="/john-deere/tractor.png"
-              alt="Tracteur John Deere"
+              src="/roboticsfund-logo.jpg"
+              alt="Logo RoboticsFund"
             />
           </div>
         </header>

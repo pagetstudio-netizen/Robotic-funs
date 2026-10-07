@@ -19,25 +19,20 @@ export default function AboutPage() {
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5" style={{ color: "#d4d4d4", fontSize: 13.5, lineHeight: "1.75" }}>
 
         <p>
-          John Deere est un fabricant mondial d’équipements agricoles et un producteur majeur de machines de construction et d’entretien des espaces verts.
+          RoboticsFund est une entreprise leader mondiale en automatisation industrielle et en robotique, fondée en 1915 et forte de plus d'un siècle d'expérience dans les technologies de moteurs et de contrôle.
         </p>
 
-        <h2 className="text-base font-semibold text-white">Origines et histoire</h2>
+        <h2 className="text-base font-semibold text-white">Origines et mission</h2>
         <p>
-          L’entreprise a été fondée en 1837 à Grand Detour, dans l’Illinois, par le forgeron et innovateur John Deere (1804–1886). Il y a mis au point une charrue en acier autonettoyante, conçue pour labourer les sols collants des grandes plaines américaines. Le siège social de l’entreprise se trouve à Moline, dans l’Illinois, aux États-Unis.
+          Forte de plus d'un siècle d'expérience, RoboticsFund est animée par la mission de « promouvoir le progrès ».
         </p>
 
         <h2 className="text-base font-semibold text-white">Domaines d’activité</h2>
         <p>
-          En agriculture et pour les espaces verts, John Deere propose notamment des tracteurs des séries 6M et 6R, des moissonneuses-batteuses, des semoirs de précision et des équipements de fenaison.
+          L’entreprise contribue à la transformation et à la modernisation de la production mondiale grâce à l’automatisation industrielle et à la robotique.
         </p>
         <p>
-          Dans la construction et les travaux routiers, la gamme comprend des pelles et des chargeuses, ainsi que des solutions pour les chantiers routiers via des filiales spécialisées comme le groupe Wirtgen.
-        </p>
-
-        <h2 className="text-base font-semibold text-white">Agriculture de précision</h2>
-        <p>
-          Le John Deere Operations Center est une plateforme numérique gratuite qui permet de connecter et de gérer à distance les données agronomiques et les performances des machines.
+          Ses technologies de moteurs et de contrôle favorisent une production plus intelligente, numérisée et efficace.
         </p>
 
       </div>

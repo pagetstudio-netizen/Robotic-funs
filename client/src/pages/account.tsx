@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ADMIN_PATH } from "@/lib/admin-path";
-import { JOHN_DEERE_LOGO } from "@/lib/john-deere-assets";
+import { ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 import GiftCodeModal from "@/components/gift-code-modal";
 import "./account.css";
 
@@ -128,7 +128,7 @@ export default function AccountPage() {
         <header className="account-header">
           <div className="account-profile">
             <div className="account-brand-mark">
-              <img src={JOHN_DEERE_LOGO} alt="John Deere" />
+              <img src={ROBOTICSFUND_LOGO} alt="RoboticsFund" />
             </div>
             <div className="account-profile-copy">
               <h1>{user.fullName || "Mon compte"}</h1>

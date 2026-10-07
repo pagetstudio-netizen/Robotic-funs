@@ -1,6 +1,6 @@
 import { JOHN_DEERE_PRODUCT_IMAGE_PATHS } from "@shared/product-catalog";
 
-export const JOHN_DEERE_LOGO = "/john-deere/logo.jpg";
+export const ROBOTICSFUND_LOGO = "/roboticsfund-logo.jpg";
 
 export const JOHN_DEERE_PHOTOS = {
   homeHero: "/john-deere/home-hero.jpeg",

@@ -14,7 +14,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { JOHN_DEERE_PHOTOS, JOHN_DEERE_PRODUCT_IMAGES } from "@/lib/john-deere-assets";
+import { JOHN_DEERE_PRODUCT_IMAGES } from "@/lib/john-deere-assets";
 import depositIcon from "@assets/6_1790677909266.png";
 import withdrawalIcon from "@assets/withdraw-icon-DFsum39V_(1)_1790692014343.png";
 import checkinIcon from "@assets/téléchargement_(13)_1790692014386.png";
@@ -110,14 +110,14 @@ export default function HomeDashboard() {
             aspect-ratio: 1.98 / 1;
             overflow: hidden;
             border-radius: 8px;
-            background: #e9eee5;
+            background: #0b1733;
           }
           .john-deere-home .home-hero img {
             display: block;
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            object-position: center 52%;
+            object-fit: contain;
+            object-position: center;
           }
           .john-deere-home .home-actions {
             display: grid;
@@ -502,8 +502,8 @@ export default function HomeDashboard() {
         `}</style>
 
         <div className="home-screen">
-          <section className="home-hero" aria-label="Concession John Deere">
-            <img src={JOHN_DEERE_PHOTOS.homeHero} alt="Concession et équipements John Deere" />
+          <section className="home-hero" aria-label="RoboticsFund">
+            <img src="/roboticsfund-logo.jpg" alt="RoboticsFund, automatisation industrielle et robotique" />
           </section>
 
           <section className="home-actions" aria-label="Actions rapides">
@@ -526,7 +526,7 @@ export default function HomeDashboard() {
             ))}
           </section>
 
-          <section className="product-list" aria-label="Produits John Deere disponibles">
+          <section className="product-list" aria-label="Produits disponibles">
             {productsLoading ? (
               <div className="product-loading">Chargement des produits…</div>
             ) : visibleProducts.length > 0 ? (

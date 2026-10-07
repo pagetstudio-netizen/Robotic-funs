@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, HelpCircle, Users } from "lucide-react";
 import { getCountryByCode } from "@/lib/countries";
 
-import { JOHN_DEERE_PHOTOS } from "@/lib/john-deere-assets";
+import { ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 
 export default function RewardsPage() {
   const { user } = useAuth();
@@ -56,14 +56,14 @@ export default function RewardsPage() {
     <div className="flex flex-col min-h-full bg-gray-100">
       <div className="flex-1 overflow-y-auto pb-24">
 
-        <div className="relative px-4 pt-4 pb-6" style={{ background: "linear-gradient(180deg, #fff6bf 0%, #f7f6eb 100%)" }}>
+        <div className="relative px-4 pt-4 pb-6" style={{ background: "linear-gradient(180deg, #fff1c9 0%, #eef2fa 100%)" }}>
           <button onClick={() => navigate("/account")} className="mb-3" data-testid="button-back">
             <ArrowLeft className="w-6 h-6 text-gray-700" />
           </button>
           <h1 className="text-xl font-bold text-gray-900 mb-4">Recevoir</h1>
 
-          <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: "#367C2B" }}>
-            <img src={JOHN_DEERE_PHOTOS.tractorExpo} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
+          <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: "#0b1733" }}>
+            <img src={ROBOTICSFUND_LOGO} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
             <div className="relative z-10 flex items-center justify-between px-5 py-5">
               <div>
                 <p className="text-white/80 text-sm">{currency}</p>
