@@ -169,10 +169,7 @@ function AppNavigationShell() {
     Boolean(user) && !publicPaths.includes(location) && !servicePaths.includes(location);
 
   return (
-    <div
-      className="min-h-screen"
-      style={showNavigation ? { paddingBottom: "calc(68px + env(safe-area-inset-bottom, 0px))" } : undefined}
-    >
+    <div className="min-h-screen">
       <Router />
       {showNavigation && <BottomNav />}
     </div>
