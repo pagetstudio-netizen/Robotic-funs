@@ -177,6 +177,21 @@
   pointer-events: none;
 }
 
+.team-rate-background-robot {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: 2px;
+  height: 150%;
+  max-width: 58%;
+  transform: translateY(-50%);
+  object-fit: contain;
+  opacity: 0.2;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  user-select: none;
+}
+
 .team-rate-banner-shape::before {
   position: absolute;
   z-index: 1;

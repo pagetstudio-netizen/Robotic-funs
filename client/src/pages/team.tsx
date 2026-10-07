@@ -141,7 +141,9 @@ export default function TeamPage() {
           aria-label={`Voir les détails de l’équipe au niveau ${activeLevel}`}
           data-testid="button-team-rate-details"
         >
-          <span className="team-rate-banner-shape" aria-hidden="true" />
+          <span className="team-rate-banner-shape" aria-hidden="true">
+            <img className="team-rate-background-robot" src={shareRobot} alt="" />
+          </span>
           <img className="team-rate-robot" src={shareRobot} alt="" aria-hidden="true" />
           <span className="team-rate-copy">
             <strong>{rateLabel}</strong>

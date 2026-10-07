@@ -29,6 +29,13 @@
   display: none;
 }
 
+.invite-reference-clip-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .invite-reference-header {
   position: relative;
   height: 280px;
@@ -164,7 +171,8 @@
   min-height: 175px;
   margin-bottom: -2px;
   overflow: hidden;
-  border-radius: 27px;
+  border-radius: 0;
+  clip-path: url(#invite-tier-clip);
   isolation: isolate;
 }
 
