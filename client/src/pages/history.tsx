@@ -33,13 +33,13 @@ interface Transaction {
   description?: string;
 }
 
-type ActiveTab = "free" | "deposits" | "withdrawals";
+type ActiveTab = "rewards" | "deposits" | "withdrawals";
 
 const formatDateTime = (dateString: string) => {
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return "Date indisponible";
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
 
 const getStatusInfo = (status: string, kind: "earning" | "deposit" | "withdrawal") => {
@@ -76,17 +76,36 @@ const maskAccountNumber = (value?: string | null) => {
   return `${trimmed?.startsWith("+") ? "+" : ""}${prefix}${"*".repeat(hiddenDigits)}${suffix}`;
 };
 
-const EARNING_TYPES = new Set([
-  "free_claim",
-  "earning",
-  "task_reward",
+const REWARD_TYPES = new Set([
   "signup_bonus",
-  "bonus",
-  "commission",
-  "deposit_commission",
   "gift_code",
-  "staking_release",
+  "checkin",
+  "check_in",
+  "daily_checkin",
 ]);
+
+const isRewardTransaction = (transaction: Transaction) => {
+  const type = transaction.type.toLowerCase();
+  const description = transaction.description?.toLowerCase() || "";
+  if (REWARD_TYPES.has(type)) return true;
+  if (type !== "bonus" && type !== "daily_bonus") return false;
+  return /inscription|quotidien|check.?in|pointage|connexion/.test(description);
+};
+
+const getRewardTitle = (transaction: Transaction) => {
+  const description = transaction.description?.trim() || "";
+  const normalized = description.toLowerCase();
+  if (/inscription/.test(normalized) || transaction.type === "signup_bonus") {
+    return "Bonus d'inscription";
+  }
+  if (/cadeau/.test(normalized) || transaction.type === "gift_code") {
+    return "Code cadeau";
+  }
+  if (/quotidien|check.?in|pointage|connexion/.test(normalized) || REWARD_TYPES.has(transaction.type.toLowerCase())) {
+    return "Récompenses de connexion";
+  }
+  return description || "Récompense";
+};
 
 function HistoryCard({
   code,
@@ -141,9 +160,54 @@ function HistoryCard({
   );
 }
 
+function RewardHistoryRow({
+  title,
+  createdAt,
+  amount,
+  currentBalance,
+  currency,
+  orderNumber,
+  testId,
+}: {
+  title: string;
+  createdAt: string;
+  amount: string | number;
+  currentBalance: string | number;
+  currency: string;
+  orderNumber: string;
+  testId: string;
+}) {
+  const formatMoney = (value: string | number) => {
+    const number = Number(value || 0);
+    return (Number.isFinite(number) ? number : 0).toLocaleString("fr-FR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  return (
+    <article
+      className="reward-row"
+      data-testid={testId}
+      data-order-number={orderNumber}
+      aria-label={`${title}, ${formatDateTime(createdAt)}, montant ${formatMoney(amount)} ${currency}, numéro de commande ${orderNumber}`}
+      title={`Numéro de commande ${orderNumber}`}
+    >
+      <div className="reward-row-heading">
+        <strong className="reward-row-title">{title}</strong>
+        <time className="reward-row-date">{formatDateTime(createdAt)}</time>
+      </div>
+      <div className="reward-row-values">
+        <strong>+ {formatMoney(amount)}</strong>
+        <span>Solde actuel {formatMoney(currentBalance)} {currency}</span>
+      </div>
+    </article>
+  );
+}
+
 export default function HistoryPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<ActiveTab>("free");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("rewards");
   const { data: apiCountries = [] } = useQuery<ApiCountry[]>({
     queryKey: ["/api/countries"],
   });
@@ -180,13 +244,13 @@ export default function HistoryPage() {
     isError: transactionsError,
   } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
-    enabled: Boolean(user) && activeTab === "free",
+    enabled: Boolean(user) && activeTab === "rewards",
   });
 
   if (!user) return null;
 
-  const freeEarnings = transactions
-    .filter((transaction) => EARNING_TYPES.has(transaction.type))
+  const rewards = transactions
+    .filter(isRewardTransaction)
     .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
   const sortedDeposits = [...deposits].sort(
     (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
@@ -196,13 +260,13 @@ export default function HistoryPage() {
   );
 
   const isLoading =
-    activeTab === "free"
+    activeTab === "rewards"
       ? transactionsLoading
       : activeTab === "deposits"
         ? depositsLoading
         : withdrawalsLoading;
   const isError =
-    activeTab === "free"
+      activeTab === "rewards"
       ? transactionsError
       : activeTab === "deposits"
         ? depositsError
@@ -214,9 +278,9 @@ export default function HistoryPage() {
         .history-page {
           width: 100%;
           min-height: 100dvh;
-          overflow-x: hidden;
-          background: #f4f7f3;
-          color: #1b241c;
+          overflow-x: clip;
+          background: #fff;
+          color: #171717;
           font-family: Arial, sans-serif;
         }
         .history-page *,
@@ -226,18 +290,21 @@ export default function HistoryPage() {
         }
         .history-screen {
           width: 100%;
-          max-width: 500px;
+          max-width: 512px;
           min-height: 100dvh;
           margin: 0 auto;
-          background: #f4f7f3;
+          background: #fff;
         }
         .history-header {
-          position: relative;
+          position: sticky;
+          top: 0;
+          z-index: 50;
           display: flex;
-          height: 68px;
+          height: 52px;
           align-items: center;
-          padding: 8px 18px 0;
-          background: #fff;
+          padding: 0 18px;
+          background: #24232f;
+          color: #fff;
         }
         .history-back {
           display: grid;
@@ -247,7 +314,7 @@ export default function HistoryPage() {
           border: 0;
           padding: 0;
           background: transparent;
-          color: #263329;
+          color: #fff;
           cursor: pointer;
         }
         .history-back svg {
@@ -257,75 +324,146 @@ export default function HistoryPage() {
         }
         .history-title {
           position: absolute;
-          right: 55px;
-          left: 55px;
+          right: 48px;
+          left: 48px;
           margin: 0;
-          color: #1d2a20;
-          font-size: 19px;
-          font-weight: 700;
+          color: #fff;
+          font-size: 22px;
+          font-weight: 400;
           line-height: 1;
           text-align: center;
         }
-        .history-tabs {
-          display: grid;
-          grid-template-columns: 1.25fr 1fr 1fr;
-          gap: 7px;
+        .history-balance-card {
+          display: flex;
+          height: clamp(180px, 41.2vw, 211px);
+          flex-direction: column;
+          margin: 32px 4% 38px;
+          padding: 30px 20px 25px;
+          border-radius: 20px;
+          background: #24232f;
+          color: #fff;
+        }
+        .history-balance-label {
+          color: #d6d4dc;
+          font-size: 16px;
+          font-weight: 400;
+          line-height: 1.25;
+        }
+        .history-balance-value {
+          display: flex;
+          flex: 1;
           align-items: center;
-          min-height: 58px;
-          margin: 10px 14px 0;
-          padding: 5px;
-          border: 1px solid #e4eae2;
-          border-radius: 13px;
+          justify-content: center;
+          margin: 0;
+          color: #fff;
+          font-size: clamp(32px, 7vw, 38px);
+          font-weight: 700;
+          line-height: 1;
+        }
+        .history-tabs {
+          position: sticky;
+          top: 52px;
+          z-index: 40;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+          align-items: center;
+          min-height: 62px;
+          margin: 0;
+          padding: 9px 4%;
+          border-bottom: 1px solid #eeeeef;
           background: #fff;
         }
         .history-tab {
           display: flex;
           min-width: 0;
-          height: 42px;
+          min-height: 42px;
           align-items: center;
           justify-content: center;
           border: 0;
-          border-radius: 9px;
-          padding: 0 6px;
-          background: transparent;
-          color: #556156;
-          font-size: 14px;
+          border-radius: 10px;
+          padding: 5px 6px;
+          background: #f3f3f5;
+          color: #5f5f64;
+          font-size: clamp(11px, 2.8vw, 14px);
           font-weight: 600;
-          line-height: 1;
-          white-space: nowrap;
+          line-height: 1.15;
+          text-align: center;
+          white-space: normal;
           cursor: pointer;
-          transition: background-color .16s ease, color .16s ease;
+          transition: background-color .16s ease, color .16s ease, transform .12s ease;
         }
         .history-tab.active {
-          background: #367c2b;
+          background: #24232f;
           color: #fff;
           font-weight: 700;
         }
+        .history-tab:active { transform: scale(.98); }
         .history-tab:focus-visible,
         .history-back:focus-visible {
-          outline: 3px solid #a8d5a0;
+          outline: 3px solid #c1c0c9;
           outline-offset: 2px;
         }
         .history-content {
-          min-height: calc(100dvh - 136px);
-          padding: 14px 14px 40px;
+          min-height: calc(100dvh - 390px);
+          padding: 0 4% 40px;
         }
         .history-list {
           display: grid;
+          gap: 0;
+        }
+        .reward-row {
+          padding: 21px 0 18px;
+          border-bottom: 1px solid #ededed;
+          color: #111;
+        }
+        .reward-row-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
           gap: 12px;
+        }
+        .reward-row-title {
+          max-width: 60%;
+          color: #686868;
+          font-size: clamp(18px, 4.2vw, 22px);
+          font-weight: 700;
+          line-height: 1.55;
+        }
+        .reward-row-date {
+          flex: 0 0 auto;
+          padding-top: 4px;
+          color: #a1a1a1;
+          font-size: clamp(12px, 3.1vw, 16px);
+          line-height: 1.35;
+          white-space: nowrap;
+        }
+        .reward-row-values {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-top: 13px;
+          color: #111;
+          font-size: clamp(16px, 3.9vw, 20px);
+          line-height: 1.35;
+        }
+        .reward-row-values strong,
+        .reward-row-values span {
+          font-weight: 700;
         }
         .history-card {
           width: 100%;
-          overflow: hidden;
-          border: 1px solid #e5ebe3;
-          border-radius: 12px;
+          border: 0;
+          border-bottom: 1px solid #ededed;
+          border-radius: 0;
           display: flex;
-          min-height: 198px;
+          min-height: 100px;
           flex-direction: column;
           justify-content: space-between;
-          padding: 15px 16px;
+          padding: 18px 0;
           background: #fff;
-          box-shadow: 0 2px 9px rgba(34, 56, 36, .055);
+          box-shadow: none;
         }
         .history-row {
           display: flex;
@@ -333,8 +471,8 @@ export default function HistoryPage() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          color: #747a74;
-          font-size: 13px;
+          color: #777;
+          font-size: 14px;
           line-height: 1.35;
         }
         .history-row > span {
@@ -344,44 +482,41 @@ export default function HistoryPage() {
         .history-row strong {
           min-width: 0;
           max-width: 65%;
-          color: #202a21;
-          font-size: 13px;
+          color: #171717;
+          font-size: 14px;
           font-weight: 600;
           text-align: right;
           overflow-wrap: anywhere;
         }
-        .history-row-meta {
-          color: #858585;
-          font-size: 12px;
-        }
+        .history-row-meta { color: #999; font-size: 13px; }
         .history-row-meta strong {
-          color: #858585;
-          font-size: 12px;
+          color: #999;
+          font-size: 13px;
           font-weight: 500;
           white-space: nowrap;
         }
         .history-row-main {
-          color: #252a25;
-          font-size: 14px;
+          color: #171717;
+          font-size: 15px;
         }
         .history-row-main > span {
-          color: #252a25;
+          color: #171717;
           font-weight: 500;
           overflow-wrap: anywhere;
         }
         .history-row .history-amount {
-          color: #5c9a71;
-          font-size: 15px;
+          color: #171717;
+          font-size: 16px;
           font-weight: 700;
           white-space: nowrap;
         }
         .history-row-reference,
         .history-row-fees {
-          color: #777d77;
+          color: #777;
           font-size: 13px;
         }
         .history-row .history-value {
-          color: #5c9a71;
+          color: #555;
           font-size: 13px;
           font-weight: 700;
         }
@@ -417,16 +552,21 @@ export default function HistoryPage() {
         }
         @media (max-width: 370px) {
           .history-title { font-size: 17px; }
-          .history-tabs { margin-right: 10px; margin-left: 10px; gap: 4px; }
-          .history-tab { font-size: 12px; }
-          .history-content { padding-right: 10px; padding-left: 10px; }
-          .history-card { min-height: 190px; padding-right: 11px; padding-left: 11px; }
+          .history-tabs { gap: 5px; padding-right: 3%; padding-left: 3%; }
+          .history-tab { font-size: 11px; }
+          .history-content { padding-right: 3%; padding-left: 3%; }
+          .history-balance-card { margin-right: 3%; margin-left: 3%; }
+          .history-card { padding-right: 0; padding-left: 0; }
           .history-row { gap: 8px; font-size: 12px; }
           .history-row strong { font-size: 11px; }
           .history-row-meta,
           .history-row-meta strong { font-size: 10px; }
           .history-row .history-amount { font-size: 13px; }
           .history-row .history-value { font-size: 11px; }
+          .reward-row-heading { gap: 6px; }
+          .reward-row-title { max-width: 56%; font-size: 16px; }
+          .reward-row-date { font-size: 10px; }
+          .reward-row-values { font-size: 13px; }
         }
       `}</style>
 
@@ -437,36 +577,43 @@ export default function HistoryPage() {
               <ChevronLeft aria-hidden="true" />
             </button>
           </Link>
-          <h1 className="history-title">Historique</h1>
+          <h1 className="history-title">Historique du solde</h1>
         </header>
+
+        <section className="history-balance-card" aria-label="Solde actuel">
+          <span className="history-balance-label">Solde actuel</span>
+          <strong className="history-balance-value">
+            {formatAmount(user.balance || "0")} {currency}
+          </strong>
+        </section>
 
         <nav className="history-tabs" aria-label="Type d'enregistrement">
           <button
             type="button"
-            className={`history-tab ${activeTab === "free" ? "active" : ""}`}
-            onClick={() => setActiveTab("free")}
-            aria-pressed={activeTab === "free"}
-            data-testid="tab-free-earnings"
+            className={`history-tab ${activeTab === "rewards" ? "active" : ""}`}
+            onClick={() => setActiveTab("rewards")}
+            aria-pressed={activeTab === "rewards"}
+            data-testid="tab-rewards"
           >
-            Free Earnings
+            Récompenses
           </button>
           <button
             type="button"
             className={`history-tab ${activeTab === "deposits" ? "active" : ""}`}
             onClick={() => setActiveTab("deposits")}
             aria-pressed={activeTab === "deposits"}
-            data-testid="tab-deposits"
+            data-testid="tab-deposit-orders"
           >
-            Dépôt
+            Ordres de dépôt
           </button>
           <button
             type="button"
             className={`history-tab ${activeTab === "withdrawals" ? "active" : ""}`}
             onClick={() => setActiveTab("withdrawals")}
             aria-pressed={activeTab === "withdrawals"}
-            data-testid="tab-withdrawals"
+            data-testid="tab-withdrawal-orders"
           >
-            Retrait
+            Ordres de retrait
           </button>
         </nav>
 
@@ -477,21 +624,19 @@ export default function HistoryPage() {
             </div>
           ) : isError ? (
             <p className="history-load-error">Impossible de charger cet historique. Réessayez plus tard.</p>
-          ) : activeTab === "free" ? (
-            freeEarnings.length > 0 ? (
+          ) : activeTab === "rewards" ? (
+            rewards.length > 0 ? (
               <div className="history-list">
-                {freeEarnings.map((transaction) => (
-                  <HistoryCard
+                {rewards.map((transaction) => (
+                  <RewardHistoryRow
                     key={transaction.id}
                     testId={`free-earning-item-${transaction.id}`}
-                    code={getTransactionOrderNumber("earning", transaction.id)}
+                    orderNumber={getTransactionOrderNumber("earning", transaction.id)}
                     createdAt={transaction.createdAt}
-                    amount={`+${formatAmount(transaction.amount)}`}
-                    status="approved"
+                    title={getRewardTitle(transaction)}
+                    amount={transaction.amount}
+                    currentBalance={user.balance || "0"}
                     currency={currency}
-                    kind="earning"
-                    fallbackDetail="Gains"
-                    referenceLabel="Numéro de commande"
                   />
                 ))}
               </div>
