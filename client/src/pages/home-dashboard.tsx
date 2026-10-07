@@ -5,7 +5,7 @@ import type { Product } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Dialog,
@@ -14,29 +14,29 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { JOHN_DEERE_PRODUCT_IMAGES } from "@/lib/john-deere-assets";
-import depositIcon from "@assets/6_1790677909266.png";
-import withdrawalIcon from "@assets/withdraw-icon-DFsum39V_(1)_1790692014343.png";
-import checkinIcon from "@assets/téléchargement_(13)_1790692014386.png";
-import serviceIcon from "@assets/2-2_1790677909350.png";
 import EmptyState from "@/components/empty-state";
+import depositIcon from "@assets/Rechange_1791379514799.png";
+import withdrawalIcon from "@assets/Withdraw-1_1791379514849.png";
+import serviceIcon from "@assets/Service-2_1791379514881.png";
+import downloadIcon from "@assets/Download_1791379514913.png";
 
-type HomeProduct = Product & {
-  canClaimFree?: boolean;
+type HomeProduct = Product & { canClaimFree?: boolean };
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
-
 type HomeQuickAction = {
   label: string;
-  path: string;
   image: string;
-  whiteIcon?: boolean;
+  path?: string;
+  download?: boolean;
 };
 
 const quickActions: HomeQuickAction[] = [
   { label: "Recharger", image: depositIcon, path: "/deposit" },
-  { label: "Retirer", image: withdrawalIcon, whiteIcon: true, path: "/withdrawal" },
+  { label: "Retrait", image: withdrawalIcon, path: "/withdrawal" },
   { label: "Service", image: serviceIcon, path: "/service" },
-  { label: "S’identifier", image: checkinIcon, whiteIcon: true, path: "/checkin" },
+  { label: "Télécharger", image: downloadIcon, download: true },
 ];
 
 const formatFcfa = (amount: number) =>
@@ -48,7 +48,12 @@ export default function HomeDashboard() {
   const [, navigate] = useLocation();
   const [confirmProduct, setConfirmProduct] = useState<HomeProduct | null>(null);
 
-  const { data: products = [], isLoading: productsLoading } = useQuery<HomeProduct[]>({
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    isError: productsError,
+    refetch: refetchProducts,
+  } = useQuery<HomeProduct[]>({
     queryKey: ["/api/products"],
     enabled: Boolean(user),
   });
@@ -67,7 +72,7 @@ export default function HomeDashboard() {
       setConfirmProduct(null);
       toast({
         title: "Produit acheté !",
-        description: "Vous commencerez à recevoir des gains demain.",
+        description: "Vous commencerez à recevoir des gains dès demain.",
       });
     },
     onError: (error: Error) => {
@@ -82,577 +87,578 @@ export default function HomeDashboard() {
 
   const visibleProducts = products.filter((product) => product.isActive);
 
+  const handleQuickAction = async (action: HomeQuickAction) => {
+    if (action.download) {
+      const installPrompt = (window as Window & {
+        _installPrompt?: BeforeInstallPromptEvent | null;
+      })._installPrompt;
+      if (!installPrompt) {
+        toast({
+          title: "Téléchargement indisponible",
+          description: "Ouvrez ce site dans un navigateur compatible pour l’installer.",
+        });
+        return;
+      }
+      try {
+        await installPrompt.prompt();
+        await installPrompt.userChoice;
+      } catch {
+        toast({
+          title: "Installation non disponible",
+          description: "Vous pourrez réessayer depuis le menu de votre navigateur.",
+        });
+      } finally {
+        (window as Window & { _installPrompt?: BeforeInstallPromptEvent | null })._installPrompt = null;
+      }
+      return;
+    }
+    if (action.path) navigate(action.path);
+  };
+
   if (!user) return null;
 
   return (
-      <main className="john-deere-home">
-        <style>{`
-          .john-deere-home {
-            min-height: 100vh;
-            padding: 18px 0 100px;
-            background: #f2f2f2;
-            color: #202124;
-            font-family: Inter, Arial, sans-serif;
+    <main className="rf-home">
+      <style>{`
+        .rf-home {
+          min-height: 100dvh;
+          padding: 29px 0 calc(70px + env(safe-area-inset-bottom, 0px));
+          background: #111111;
+          color: #f7f7f8;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .rf-home, .rf-home * { box-sizing: border-box; }
+        .rf-home-shell {
+          width: 100%;
+          max-width: 512px;
+          margin: 0 auto;
+          padding: 0 16px;
+        }
+        .rf-hero {
+          position: relative;
+          display: block;
+          width: 100%;
+          aspect-ratio: 796 / 338;
+          overflow: hidden;
+          border-radius: 10px;
+          background: #080808;
+        }
+        .rf-hero-image {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .rf-hero-copy {
+          position: absolute;
+          inset: 0 auto 0 0;
+          display: flex;
+          width: 68%;
+          flex-direction: column;
+          justify-content: center;
+          padding: 10px 0 10px 9%;
+          background: linear-gradient(90deg, #050505 0%, #050505 78%, rgba(5,5,5,0) 100%);
+          color: #fff;
+          font-size: clamp(17px, 4.2vw, 22px);
+          font-weight: 750;
+          line-height: 1.38;
+          text-transform: uppercase;
+        }
+        .rf-actions {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          align-items: start;
+          margin-top: 20px;
+        }
+        .rf-action {
+          display: flex;
+          min-width: 0;
+          min-height: 80px;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          border: 0;
+          padding: 0 2px;
+          background: transparent;
+          color: #f4f4f5;
+          cursor: pointer;
+          font: inherit;
+        }
+        .rf-action:active { transform: scale(.97); }
+        .rf-action:focus-visible, .rf-product-buy:focus-visible, .rf-retry:focus-visible {
+          outline: 2px solid #f3c244;
+          outline-offset: 3px;
+          border-radius: 8px;
+        }
+        .rf-action-icon {
+          display: block;
+          width: 56px;
+          height: 56px;
+          flex: 0 0 auto;
+          object-fit: contain;
+        }
+        .rf-action-label {
+          max-width: 100%;
+          overflow: hidden;
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1.1;
+          text-align: center;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .rf-checkin {
+          position: relative;
+          display: block;
+          width: 100%;
+          aspect-ratio: 796 / 179;
+          margin-top: 24px;
+          overflow: hidden;
+          border-radius: 12px;
+          border: 0;
+          padding: 0;
+          background: #08090c;
+          cursor: pointer;
+        }
+        .rf-checkin img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .rf-checkin::before {
+          position: absolute;
+          z-index: 1;
+          inset: 0 43% 0 0;
+          background: linear-gradient(90deg, rgba(5,5,8,.98), rgba(5,5,8,.98) 78%, rgba(5,5,8,0));
+          content: "";
+          pointer-events: none;
+        }
+        .rf-checkin-label {
+          position: absolute;
+          top: 50%;
+          left: 4%;
+          transform: translateY(-50%);
+          background: linear-gradient(95deg, #ffe500 7%, #ffbd42 43%, #f35e9b 94%);
+          background-clip: text;
+          color: transparent;
+          font-size: clamp(23px, 7.3vw, 39px);
+          font-weight: 750;
+          letter-spacing: -.045em;
+          line-height: 1;
+          z-index: 2;
+          -webkit-background-clip: text;
+        }
+        .rf-product-list {
+          display: grid;
+          gap: 16px;
+          margin-top: 25px;
+        }
+        .rf-product {
+          min-width: 0;
+          min-height: 154px;
+          border-radius: 13px;
+          padding: 16px 16px 14px;
+          background: #23242f;
+        }
+        .rf-product-top {
+          display: grid;
+          min-width: 0;
+          grid-template-columns: minmax(96px, 31%) minmax(0, 1fr);
+          align-items: center;
+          gap: 12px;
+        }
+        .rf-product-image {
+          display: grid;
+          width: 100%;
+          aspect-ratio: 132 / 87;
+          overflow: hidden;
+          place-items: center;
+          border-radius: 12px;
+          background: #15161e;
+        }
+        .rf-product-image img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .rf-product-image-fallback {
+          color: #6b6d78;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: .12em;
+        }
+        .rf-product-heading {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .rf-vip {
+          min-width: 56px;
+          border-radius: 30px;
+          padding: 4px 11px 5px;
+          background: #eac35c;
+          color: #29231a;
+          font-size: 12px;
+          line-height: 1;
+          text-align: center;
+        }
+        .rf-product-name {
+          max-width: 100%;
+          margin: 0;
+          overflow: hidden;
+          color: #f5f5f7;
+          font-size: 16px;
+          font-weight: 700;
+          line-height: 1.15;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .rf-product-stats {
+          display: grid;
+          grid-template-columns: .8fr 1.12fr 1fr 64px;
+          align-items: end;
+          gap: 4px;
+          margin-top: 17px;
+        }
+        .rf-stat { min-width: 0; }
+        .rf-stat-value {
+          display: block;
+          overflow: hidden;
+          color: #e5e5e8;
+          font-size: 13px;
+          line-height: 1.2;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .rf-stat-label {
+          display: block;
+          margin-top: 3px;
+          overflow: hidden;
+          color: #8c8d98;
+          font-size: 12px;
+          line-height: 1.2;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .rf-product-buy {
+          display: flex;
+          min-height: 34px;
+          align-items: center;
+          justify-content: center;
+          border: 0;
+          border-radius: 23px;
+          padding: 0 6px;
+          background: #feee48;
+          color: #2a2818;
+          cursor: pointer;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          transition: transform .15s ease, background-color .15s ease;
+        }
+        .rf-product-buy:hover { background: #ffdf22; }
+        .rf-product-buy:active { transform: scale(.96); }
+        .rf-product-buy:disabled { cursor: wait; opacity: .7; }
+        @media (max-width: 390px) {
+          .rf-home-shell { padding-right: 14px; padding-left: 14px; }
+          .rf-action-icon { width: 54px; height: 54px; }
+          .rf-action-label { font-size: 12px; letter-spacing: -.025em; }
+          .rf-product { padding: 14px 12px 13px; }
+          .rf-product-top { grid-template-columns: minmax(88px, 31%) minmax(0,1fr); gap: 10px; }
+          .rf-product-stats { grid-template-columns: .8fr 1.1fr 1fr 58px; gap: 3px; margin-top: 16px; }
+          .rf-stat-value, .rf-stat-label { font-size: 11px; }
+          .rf-product-buy { min-height: 32px; padding: 0 4px; font-size: 11px; }
+          .rf-product-name { font-size: 15px; }
+          .rf-vip { min-width: 52px; font-size: 11px; }
+        }
+        .rf-loading-card {
+          display: grid;
+          min-height: 180px;
+          gap: 12px;
+          border-radius: 13px;
+          padding: 18px;
+          background: #23242f;
+        }
+        .rf-skeleton {
+          border-radius: 7px;
+          background: linear-gradient(100deg, #30313d 25%, #3a3b47 40%, #30313d 60%);
+          background-size: 200% 100%;
+          animation: rf-shimmer 1.4s ease-in-out infinite;
+        }
+        .rf-skeleton-line { width: 46%; height: 18px; }
+        .rf-skeleton-wide { width: 100%; height: 46px; }
+        @keyframes rf-shimmer { to { background-position-x: -200%; } }
+        .rf-status {
+          display: grid;
+          min-height: 140px;
+          place-items: center;
+          gap: 12px;
+          border-radius: 13px;
+          padding: 20px;
+          background: #23242f;
+          color: #aaaab3;
+          font-size: 14px;
+          text-align: center;
+        }
+        .rf-retry {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          border: 1px solid #454653;
+          border-radius: 20px;
+          padding: 8px 13px;
+          background: transparent;
+          color: #f3c244;
+          cursor: pointer;
+          font: inherit;
+        }
+        .rf-purchase-modal {
+          width: min(390px, calc(100vw - 36px));
+          overflow: hidden;
+          border: 1px solid #3a3b47;
+          border-radius: 15px;
+          padding: 0;
+          background: #23242f;
+          color: #f4f4f5;
+          box-shadow: 0 20px 60px rgba(0,0,0,.5);
+          outline: none;
+        }
+        .rf-purchase-title {
+          margin: 0;
+          padding: 21px 20px 17px;
+          border-bottom: 1px solid #3b3c48;
+          font-size: 20px;
+          font-weight: 700;
+          text-align: center;
+        }
+        .rf-purchase-description {
+          margin: 0;
+          padding: 21px 23px 12px;
+          color: #c6c6ce;
+          font-size: 15px;
+          line-height: 1.5;
+        }
+        .rf-purchase-details {
+          display: grid;
+          gap: 9px;
+          padding: 0 23px 22px;
+          color: #e5e5e8;
+          font-size: 14px;
+        }
+        .rf-purchase-detail { display: flex; gap: 9px; }
+        .rf-purchase-bullet { color: #f3c244; }
+        .rf-purchase-actions {
+          display: grid;
+          min-height: 58px;
+          grid-template-columns: 1fr 1fr;
+          border-top: 1px solid #3b3c48;
+        }
+        .rf-purchase-action {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 0;
+          background: transparent;
+          color: #b9bac3;
+          cursor: pointer;
+          font: inherit;
+          font-size: 15px;
+          font-weight: 600;
+        }
+        .rf-purchase-action + .rf-purchase-action {
+          border-left: 1px solid #3b3c48;
+          color: #f3c244;
+        }
+        .rf-purchase-action:focus-visible {
+          outline: 2px solid #f3c244;
+          outline-offset: -4px;
+        }
+        .rf-purchase-action:disabled { cursor: wait; opacity: .65; }
+        @media (prefers-reduced-motion: reduce) {
+          .rf-home *, .rf-home *::before, .rf-home *::after {
+            animation-duration: .01ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: .01ms !important;
           }
-          .john-deere-home,
-          .john-deere-home * {
-            box-sizing: border-box;
-          }
-          .john-deere-home .home-screen {
-            width: 100%;
-            max-width: 512px;
-            margin: 0 auto;
-            padding: 0 20px;
-          }
-          .john-deere-home .home-hero {
-            display: block;
-            width: 100%;
-            aspect-ratio: 1.98 / 1;
-            overflow: hidden;
-            border-radius: 8px;
-            background: #0b1733;
-          }
-          .john-deere-home .home-hero img {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-          }
-          .john-deere-home .home-actions {
-            display: grid;
-            width: 100%;
-            height: 116px;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            align-items: center;
-            margin-top: 12px;
-            border-radius: 14px;
-            background: #086b2d;
-            box-shadow: 0 2px 3px rgba(0, 0, 0, .12);
-          }
-          .john-deere-home .home-action {
-            display: flex;
-            min-width: 0;
-            height: 100%;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 11px;
-            border: 0;
-            padding: 0 3px;
-            background: transparent;
-            color: #fff;
-            cursor: pointer;
-            font: inherit;
-            -webkit-tap-highlight-color: transparent;
-          }
-          .john-deere-home .home-action:active {
-            background: rgba(255, 255, 255, .1);
-          }
-          .john-deere-home .home-action:focus-visible,
-          .john-deere-home .product-buy:focus-visible {
-            outline: 3px solid #ffde00;
-            outline-offset: -4px;
-          }
-          .john-deere-home .home-action-icon {
-            width: 40px;
-            height: 38px;
-            flex: 0 0 auto;
-            object-fit: contain;
-            filter: grayscale(1) sepia(1) saturate(2.4) hue-rotate(55deg) brightness(.96) contrast(1.1);
-          }
-          .john-deere-home .home-action-icon.home-action-icon-white {
-            filter: brightness(0) invert(1);
-          }
-          .john-deere-home .home-action-label {
-            max-width: 100%;
-            overflow: hidden;
-            font-size: 13px;
-            font-weight: 400;
-            line-height: 1.1;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          .john-deere-home .product-buy {
-            display: flex;
-            width: 100%;
-            min-width: 0;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            border: 0;
-            border-radius: 6px;
-            background: #086b2d;
-            color: white;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: 500;
-            line-height: 1;
-            transition: background-color .15s ease, transform .12s ease;
-            -webkit-tap-highlight-color: transparent;
-          }
-          .john-deere-home .product-buy:hover {
-            background: #075a27;
-          }
-          .john-deere-home .product-buy:active {
-            transform: scale(.99);
-            background: #064c21;
-          }
-          .john-deere-home .product-buy:disabled {
-            cursor: wait;
-            opacity: .75;
-          }
-          .home-purchase-modal {
-            width: min(390px, calc(100vw - 40px));
-            max-height: calc(100dvh - 32px);
-            overflow-y: auto;
-            border: 0;
-            border-radius: 7px;
-            padding: 0;
-            background: #fff;
-            color: #202124;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, .22);
-            outline: none;
-          }
-          .home-purchase-modal-title {
-            margin: 0;
-            padding: 17px 18px 15px;
-            border-bottom: 1px solid #e4e4e4;
-            color: #222;
-            font-size: 25px;
-            font-weight: 400;
-            line-height: 1.25;
-            text-align: center;
-            overflow-wrap: anywhere;
-          }
-          .home-purchase-modal-question {
-            margin: 0;
-            padding: 27px 30px 16px;
-            color: #4c8758;
-            font-size: 17px;
-            line-height: 1.55;
-            text-align: left;
-          }
-          .home-purchase-modal-details {
-            display: grid;
-            gap: 8px;
-            padding: 0 30px 25px;
-            color: #4c8758;
-            font-size: 17px;
-            line-height: 1.35;
-          }
-          .home-purchase-modal-detail {
-            display: flex;
-            align-items: baseline;
-            gap: 7px;
-            overflow-wrap: anywhere;
-          }
-          .home-purchase-modal-bullet {
-            flex: 0 0 auto;
-            color: #368b55;
-            font-size: 21px;
-            line-height: 1;
-          }
-          .home-purchase-modal-actions {
-            display: grid;
-            min-height: 80px;
-            grid-template-columns: 1fr 1fr;
-            border-top: 1px solid #e4e4e4;
-          }
-          .home-purchase-modal-action {
-            display: flex;
-            min-width: 0;
-            align-items: center;
-            justify-content: center;
-            border: 0;
-            background: #fff;
-            color: #171717;
-            cursor: pointer;
-            font: inherit;
-            font-size: 23px;
-            font-weight: 400;
-          }
-          .home-purchase-modal-action + .home-purchase-modal-action {
-            border-left: 1px solid #e4e4e4;
-            color: #3789c7;
-          }
-          .home-purchase-modal-action:focus-visible {
-            outline: 3px solid #367c2b;
-            outline-offset: -4px;
-          }
-          .home-purchase-modal-action:disabled {
-            cursor: wait;
-            opacity: .65;
-          }
-          @media (max-width: 390px) {
-            .home-purchase-modal-title { font-size: 22px; }
-            .home-purchase-modal-question,
-            .home-purchase-modal-details {
-              padding-right: 22px;
-              padding-left: 22px;
-              font-size: 16px;
-            }
-            .home-purchase-modal-actions { min-height: 68px; }
-            .home-purchase-modal-action { font-size: 20px; }
-          }
-          .john-deere-home .product-empty,
-          .john-deere-home .product-loading {
-            display: grid;
-            min-height: 140px;
-            place-items: center;
-            border-radius: 18px;
-            padding: 18px;
-            background: #fff;
-            color: #28633a;
-            font-size: 14px;
-            text-align: center;
-          }
-          @media (max-width: 390px) {
-            .john-deere-home .home-screen {
-              padding-right: 14px;
-              padding-left: 14px;
-            }
-            .john-deere-home .home-actions {
-              height: 108px;
-            }
-            .john-deere-home .home-action-label {
-              font-size: 12px;
-            }
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .john-deere-home .product-buy,
-            .john-deere-home .home-action {
-              transition: none;
-            }
-          }
-          .john-deere-home .product-list {
-            display: grid;
-            gap: 14px;
-            margin-top: 14px;
-          }
-          .john-deere-home .product-list-card {
-            display: grid;
-            min-width: 0;
-            gap: 12px;
-            border: 1px solid #e4e9df;
-            border-radius: 16px;
-            padding: 12px;
-            background: #fff;
-            box-shadow: 0 5px 15px rgba(26, 55, 29, .09);
-          }
-          .john-deere-home .product-list-main {
-            display: grid;
-            min-width: 0;
-            min-height: 138px;
-            grid-template-columns: minmax(105px, 37%) minmax(0, 1fr);
-            gap: 12px;
-          }
-          .john-deere-home .product-list-photo {
-            min-width: 0;
-            min-height: 138px;
-            overflow: hidden;
-            border-radius: 11px;
-            background: #f3f5ee;
-          }
-          .john-deere-home .product-list-image {
-            display: block;
-            width: 100%;
-            height: 100%;
-            min-height: 138px;
-            object-fit: cover;
-            object-position: center;
-          }
-          .john-deere-home .product-list-info {
-            display: flex;
-            min-width: 0;
-            flex-direction: column;
-            justify-content: center;
-            gap: 12px;
-          }
-          .john-deere-home .product-list-heading {
-            display: flex;
-            min-width: 0;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 6px;
-          }
-          .john-deere-home .product-list-name {
-            display: -webkit-box;
-            min-width: 0;
-            overflow: hidden;
-            color: #202124;
-            font-size: 16px;
-            font-weight: 750;
-            line-height: 1.2;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-          }
-          .john-deere-home .product-list-cycle {
-            flex: 0 0 auto;
-            border-radius: 0 10px 0 10px;
-            padding: 6px 8px;
-            background: #367c2b;
-            color: #fff;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1;
-            white-space: nowrap;
-          }
-          .john-deere-home .product-list-metrics {
-            display: grid;
-            min-width: 0;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 7px;
-          }
-          .john-deere-home .product-list-metric {
-            display: flex;
-            min-width: 0;
-            flex-direction: column;
-            justify-content: center;
-            gap: 4px;
-            border-radius: 9px;
-            padding: 8px 7px;
-            background: #f4f5f1;
-          }
-          .john-deere-home .product-list-metric strong {
-            color: #28633a;
-            font-size: clamp(11px, 3.3vw, 16px);
-            font-weight: 800;
-            line-height: 1.1;
-            overflow-wrap: anywhere;
-          }
-          .john-deere-home .product-list-metric span {
-            color: #555c55;
-            font-size: 10px;
-            line-height: 1.15;
-          }
-          .john-deere-home .product-list-footer {
-            display: grid;
-            min-width: 0;
-            grid-template-columns: minmax(0, .85fr) minmax(135px, 1.15fr);
-            align-items: center;
-            gap: 10px;
-            border-top: 1px solid #edf0e9;
-            padding-top: 11px;
-          }
-          .john-deere-home .product-list-price {
-            display: flex;
-            min-width: 0;
-            flex-direction: column;
-            gap: 2px;
-          }
-          .john-deere-home .product-list-price span {
-            color: #666c66;
-            font-size: 11px;
-            line-height: 1.1;
-          }
-          .john-deere-home .product-list-price strong {
-            color: #176c37;
-            font-size: clamp(15px, 4.1vw, 21px);
-            font-weight: 800;
-            line-height: 1.15;
-            overflow-wrap: anywhere;
-          }
-          .john-deere-home .product-list .product-buy {
-            min-height: 46px;
-            border-radius: 999px;
-            padding: 0 11px;
-            background: #086b2d;
-            font-size: 13px;
-            font-weight: 700;
-          }
-          .john-deere-home .product-list .product-buy:hover {
-            background: #075a27;
-          }
-          .john-deere-home .product-list .product-buy:active {
-            background: #064c21;
-          }
-          @media (max-width: 390px) {
-            .john-deere-home .product-list-main {
-              min-height: 124px;
-              grid-template-columns: minmax(96px, 36%) minmax(0, 1fr);
-              gap: 9px;
-            }
-            .john-deere-home .product-list-photo,
-            .john-deere-home .product-list-image {
-              min-height: 124px;
-            }
-            .john-deere-home .product-list-info {
-              gap: 9px;
-            }
-            .john-deere-home .product-list-metrics {
-              gap: 5px;
-            }
-            .john-deere-home .product-list-metric {
-              padding: 7px 5px;
-            }
-            .john-deere-home .product-list-metric span {
-              font-size: 9px;
-            }
-            .john-deere-home .product-list-footer {
-              grid-template-columns: minmax(0, .78fr) minmax(130px, 1.22fr);
-              gap: 7px;
-            }
-            .john-deere-home .product-list .product-buy {
-              padding: 0 8px;
-              font-size: 12px;
-            }
-          }
-        `}</style>
+        }
+      `}</style>
 
-        <div className="home-screen">
-          <section className="home-hero" aria-label="RoboticsFund">
-            <img src="/roboticsfund-logo.jpg" alt="RoboticsFund, automatisation industrielle et robotique" />
-          </section>
+      <div className="rf-home-shell">
+        <section className="rf-hero" aria-label="Des cadeaux de luxe vous attendent">
+          <img className="rf-hero-image" src="/roboticsfund-home-hero.png" alt="" />
+          <div className="rf-hero-copy" aria-hidden="true">
+            <span>Des cadeaux de luxe</span>
+            <span>n’attendent que</span>
+            <span>vous !</span>
+          </div>
+        </section>
 
-          <section className="home-actions" aria-label="Actions rapides">
-            {quickActions.map(({ label, image, whiteIcon, path }) => (
-              <button
-                key={label}
-                type="button"
-                className="home-action"
-                onClick={() => navigate(path)}
-                aria-label={label}
-              >
-                <img
-                  className={`home-action-icon${whiteIcon ? " home-action-icon-white" : ""}`}
-                  src={image}
-                  alt=""
-                  aria-hidden="true"
-                />
-                <span className="home-action-label">{label}</span>
+        <section className="rf-actions" aria-label="Actions rapides">
+          {quickActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className="rf-action"
+              onClick={() => void handleQuickAction(action)}
+              aria-label={action.label}
+            >
+              <img className="rf-action-icon" src={action.image} alt="" aria-hidden="true" />
+              <span className="rf-action-label">{action.label}</span>
+            </button>
+          ))}
+        </section>
+
+        <button
+          type="button"
+          className="rf-checkin"
+          onClick={() => navigate("/checkin")}
+          aria-label="Ouvrir le pointage quotidien"
+        >
+          <img src="/roboticsfund-checkin-banner.png" alt="" />
+          <span className="rf-checkin-label">Pointage</span>
+        </button>
+
+        <section className="rf-product-list" aria-label="Offres disponibles">
+          {productsLoading ? (
+            <>
+              <div className="rf-loading-card" role="status" aria-label="Chargement des offres">
+                <div className="rf-skeleton rf-skeleton-line" />
+                <div className="rf-skeleton rf-skeleton-wide" />
+              </div>
+              <div className="rf-loading-card" aria-hidden="true">
+                <div className="rf-skeleton rf-skeleton-line" />
+                <div className="rf-skeleton rf-skeleton-wide" />
+              </div>
+            </>
+          ) : productsError ? (
+            <div className="rf-status" role="alert">
+              <span>Impossible de charger les offres pour le moment.</span>
+              <button type="button" className="rf-retry" onClick={() => void refetchProducts()}>
+                <RefreshCw size={15} aria-hidden="true" />
+                Réessayer
               </button>
-            ))}
-          </section>
-
-          <section className="product-list" aria-label="Produits disponibles">
-            {productsLoading ? (
-              <div className="product-loading">Chargement des produits…</div>
-            ) : visibleProducts.length > 0 ? (
-              visibleProducts.map((product, index) => {
-                const price = Number(product.price) || 0;
-                const dailyEarnings = Number(product.dailyEarnings) || 0;
-                const cycleDays = Number(product.cycleDays) || 0;
-                const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
-                const image =
-                  product.imageUrl ||
-                  JOHN_DEERE_PRODUCT_IMAGES[index % JOHN_DEERE_PRODUCT_IMAGES.length];
-
-                return (
-                  <article className="product-list-card" key={product.id}>
-                    <div className="product-list-main">
-                      <div className="product-list-photo">
+            </div>
+          ) : visibleProducts.length ? (
+            visibleProducts.map((product, index) => {
+              const price = Number(product.price) || 0;
+              const dailyEarnings = Number(product.dailyEarnings) || 0;
+              const cycleDays = Number(product.cycleDays) || 0;
+              const imageUrl = product.imageUrl;
+              return (
+                <article className="rf-product" key={product.id}>
+                  <div className="rf-product-top">
+                    <div className="rf-product-image">
+                      {imageUrl ? (
                         <img
-                          className="product-list-image"
-                          src={image}
+                          src={imageUrl}
                           alt={product.name}
                           loading={index > 1 ? "lazy" : "eager"}
                         />
-                      </div>
-                      <div className="product-list-info">
-                        <div className="product-list-heading">
-                          <h2 className="product-list-name" title={product.name}>{product.name}</h2>
-                          <span className="product-list-cycle">{cycleDays} jours</span>
-                        </div>
-                        <div className="product-list-metrics">
-                          <div className="product-list-metric">
-                            <strong>{formatFcfa(dailyEarnings)}</strong>
-                            <span>Gains quotidiens</span>
-                          </div>
-                          <div className="product-list-metric">
-                            <strong>{formatFcfa(totalReturn)}</strong>
-                            <span>Gains totaux</span>
-                          </div>
-                        </div>
-                      </div>
+                      ) : (
+                        <span className="rf-product-image-fallback" aria-hidden="true">RF</span>
+                      )}
                     </div>
-                    <div className="product-list-footer">
-                      <p className="product-list-price">
-                        <span>Prix</span>
-                        <strong>{product.isFree ? "Gratuit" : formatFcfa(price)}</strong>
-                      </p>
-                      <button
-                        type="button"
-                        className="product-buy"
-                        onClick={() => product.isFree
-                          ? navigate(`/products/${product.id}`)
-                          : setConfirmProduct(product)}
-                        aria-label={`${product.isFree ? "Découvrir" : "Acheter"} ${product.name}`}
-                      >
-                        {product.isFree ? "Découvrir" : "Acheter maintenant"}
-                      </button>
+                    <div className="rf-product-heading">
+                      {!product.isFree && <span className="rf-vip">VIP</span>}
+                      <h2 className="rf-product-name" title={product.name}>{product.name}</h2>
                     </div>
-                  </article>
-                );
-              })
-            ) : (
-               <EmptyState className="product-empty">Aucun produit disponible pour le moment.</EmptyState>
-            )}
-          </section>
-        </div>
+                  </div>
+                  <div className="rf-product-stats">
+                    <div className="rf-stat">
+                      <span className="rf-stat-value">{cycleDays} jours</span>
+                      <span className="rf-stat-label">Durée</span>
+                    </div>
+                    <div className="rf-stat">
+                      <span className="rf-stat-value">{product.isFree ? "Gratuit" : formatFcfa(price)}</span>
+                      <span className="rf-stat-label">Prix du produit</span>
+                    </div>
+                    <div className="rf-stat">
+                      <span className="rf-stat-value">{formatFcfa(dailyEarnings)}</span>
+                      <span className="rf-stat-label">Gain quotidien</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="rf-product-buy"
+                      onClick={() => product.isFree
+                        ? navigate(`/products/${product.id}`)
+                        : setConfirmProduct(product)}
+                      aria-label={`${product.isFree ? "Découvrir" : "Acheter"} ${product.name}`}
+                    >
+                      {product.isFree ? "Découvrir" : "Investir"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          ) : (
+            <EmptyState className="rf-status">Aucune offre disponible pour le moment.</EmptyState>
+          )}
+        </section>
+      </div>
 
-        <Dialog
-          open={Boolean(confirmProduct)}
-          onOpenChange={(open) => {
-            if (!open && !purchaseMutation.isPending) setConfirmProduct(null);
-          }}
-        >
-          {confirmProduct && (() => {
-            const dailyEarnings = Number(confirmProduct.dailyEarnings) || 0;
-            const cycleDays = Number(confirmProduct.cycleDays) || 0;
-            const totalReturn = Number(confirmProduct.totalReturn) || dailyEarnings * cycleDays;
-            return (
-              <DialogPortal>
-                <DialogOverlay className="bg-black/60" />
-                <DialogPrimitive.Content
-                  className="home-purchase-modal fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
-                  aria-describedby="home-purchase-description"
-                >
-                  <DialogTitle className="home-purchase-modal-title">
-                    {confirmProduct.name}
-                  </DialogTitle>
-                  <DialogDescription
-                    id="home-purchase-description"
-                    className="home-purchase-modal-question"
+      <Dialog
+        open={Boolean(confirmProduct)}
+        onOpenChange={(open) => {
+          if (!open && !purchaseMutation.isPending) setConfirmProduct(null);
+        }}
+      >
+        {confirmProduct && (() => {
+          const dailyEarnings = Number(confirmProduct.dailyEarnings) || 0;
+          const cycleDays = Number(confirmProduct.cycleDays) || 0;
+          const totalReturn = Number(confirmProduct.totalReturn) || dailyEarnings * cycleDays;
+          return (
+            <DialogPortal>
+              <DialogOverlay className="bg-black/70" />
+              <DialogPrimitive.Content
+                className="rf-purchase-modal fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
+                aria-describedby="rf-purchase-description"
+              >
+                <DialogTitle className="rf-purchase-title">{confirmProduct.name}</DialogTitle>
+                <DialogDescription id="rf-purchase-description" className="rf-purchase-description">
+                  Confirmez-vous l’achat de ce produit ?
+                </DialogDescription>
+                <div className="rf-purchase-details">
+                  <div className="rf-purchase-detail">
+                    <span className="rf-purchase-bullet" aria-hidden="true">•</span>
+                    <span>Prix : {formatFcfa(Number(confirmProduct.price) || 0)}</span>
+                  </div>
+                  <div className="rf-purchase-detail">
+                    <span className="rf-purchase-bullet" aria-hidden="true">•</span>
+                    <span>Gains totaux : {formatFcfa(totalReturn)}</span>
+                  </div>
+                </div>
+                <div className="rf-purchase-actions">
+                  <button
+                    type="button"
+                    className="rf-purchase-action"
+                    onClick={() => setConfirmProduct(null)}
+                    disabled={purchaseMutation.isPending}
                   >
-                    Are you sure you want to purchase this product?
-                  </DialogDescription>
-                  <div className="home-purchase-modal-details">
-                    <div className="home-purchase-modal-detail">
-                      <span className="home-purchase-modal-bullet" aria-hidden="true">•</span>
-                      <span>Price: {formatFcfa(Number(confirmProduct.price) || 0)}</span>
-                    </div>
-                    <div className="home-purchase-modal-detail">
-                      <span className="home-purchase-modal-bullet" aria-hidden="true">•</span>
-                      <span>Total profit: {formatFcfa(totalReturn)}</span>
-                    </div>
-                  </div>
-                  <div className="home-purchase-modal-actions">
-                    <button
-                      type="button"
-                      className="home-purchase-modal-action"
-                      onClick={() => setConfirmProduct(null)}
-                      disabled={purchaseMutation.isPending}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="home-purchase-modal-action"
-                      onClick={() => purchaseMutation.mutate(confirmProduct)}
-                      disabled={purchaseMutation.isPending}
-                    >
-                      {purchaseMutation.isPending
-                        ? <Loader2 aria-label="Processing purchase" className="h-5 w-5 animate-spin" />
-                        : "Confirm"}
-                    </button>
-                  </div>
-                </DialogPrimitive.Content>
-              </DialogPortal>
-            );
-          })()}
-        </Dialog>
-      </main>
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className="rf-purchase-action"
+                    onClick={() => purchaseMutation.mutate(confirmProduct)}
+                    disabled={purchaseMutation.isPending}
+                  >
+                    {purchaseMutation.isPending
+                      ? <Loader2 aria-label="Achat en cours" className="h-5 w-5 animate-spin" />
+                      : "Confirmer"}
+                  </button>
+                </div>
+              </DialogPrimitive.Content>
+            </DialogPortal>
+          );
+        })()}
+      </Dialog>
+    </main>
   );
 }
