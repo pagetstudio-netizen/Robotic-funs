@@ -286,10 +286,10 @@ export default function HomeDashboard() {
         .rf-checkin:disabled { cursor: wait; }
         .rf-product-category-buttons {
           display: grid;
-          width: 100vw;
+          width: 100%;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
           gap: 12px;
-          margin: 14px 0 0 calc(50% - 50vw);
+          margin: 14px 0 0;
         }
         .rf-product-category-button {
           display: flex;
