@@ -162,7 +162,6 @@ function AppNavigationShell() {
     "/change-password",
     "/wallet",
     "/history",
-    "/service",
     "/about",
   ];
   const showNavigation =

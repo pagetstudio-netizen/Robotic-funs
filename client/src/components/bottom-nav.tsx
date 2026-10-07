@@ -26,6 +26,7 @@ export default function BottomNav() {
         {navItems.map(({ path, label, icon, testId }) => {
           const isActive = (location === "/team-details" && path === "/") ||
             location === path ||
+            (location === "/service" && path === "/account") ||
             (path === "/my-products" && location === "/invest") ||
             (path !== "/" && location.startsWith(`${path}/`));
           const iconFilter = isActive
