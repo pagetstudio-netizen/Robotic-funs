@@ -30,3 +30,4 @@
 - [Referral commission eligibility](referral-commission-policy.md) — Pay referral commissions only on the referred user's first paid stable-product purchase.
 - [Product payout policy](product-payout-policy.md) — Product earnings are credited once at maturity; preserve and subtract any amounts already paid on legacy positions.
 - [Balance separation](balance-separation.md) — Keep non-withdrawable deposits and bonuses separate from withdrawable earnings and commissions.
+- [Authentication viewport](authentication-viewport.md) — Keep login and registration fixed without page scrolling; use the supplied phone, lock, and account field icons.

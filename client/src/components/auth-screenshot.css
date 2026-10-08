@@ -8,7 +8,7 @@
   --auth-orange: #f47b21;
   min-height: 100dvh;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: var(--auth-page);
   color: var(--auth-copy);
   font-family: Inter, "Segoe UI", Arial, sans-serif;
@@ -20,7 +20,7 @@
   isolation: isolate;
   width: min(100%, 512px);
   max-width: 512px;
-  height: auto;
+  height: 100dvh;
   min-height: 100dvh;
   margin-inline: auto;
   overflow: visible;
@@ -225,6 +225,13 @@
   height: 4.2cqw;
   color: #91a2ba;
   stroke-width: 2.5;
+}
+
+.auth-screenshot .auth-field-icon {
+  display: block;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  opacity: 0.86;
 }
 
 .auth-screenshot .auth-country-button {

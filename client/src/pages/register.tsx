@@ -9,7 +9,10 @@ import { useAuth } from "@/lib/auth";
 import { FALLBACK_COUNTRIES, type ApiCountry } from "@/lib/countries";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { CountrySelector } from "@/components/country-selector";
-import { ChevronRight, Eye, EyeOff, Loader2, LockKeyhole, Phone, ShieldCheck } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import phoneFieldIcon from "@assets/login01_1791498369080.png";
+import passwordFieldIcon from "@assets/login02_1791498369057.png";
+import accountFieldIcon from "@assets/tab_mine_1791498369023.png";
 import { normalizeBeninPhone } from "@shared/phone";
 
 const registerSchema = z.object({
@@ -119,7 +122,7 @@ export default function RegisterPage() {
         <input type="hidden" {...form.register("country")} />
         <div className="auth-fields">
           <div className="auth-field auth-phone-field">
-            <Phone className="auth-phone-icon" aria-hidden="true" />
+            <img className="auth-phone-icon auth-field-icon" src={phoneFieldIcon} alt="" aria-hidden="true" />
             <button
               type="button"
               className="auth-country-button"
@@ -157,7 +160,7 @@ export default function RegisterPage() {
           </div>
           {form.formState.errors.phone && <p className="auth-error">{form.formState.errors.phone.message}</p>}
           <div className="auth-field auth-password-field">
-            <LockKeyhole className="auth-leading-icon" aria-hidden="true" />
+            <img className="auth-leading-icon auth-field-icon" src={passwordFieldIcon} alt="" aria-hidden="true" />
             <input
               {...form.register("password")}
               type={passwordVisible ? "text" : "password"}
@@ -180,7 +183,7 @@ export default function RegisterPage() {
           {form.formState.errors.password && <p className="auth-error">{form.formState.errors.password.message}</p>}
 
           <div className="auth-field auth-password-field">
-            <LockKeyhole className="auth-leading-icon" aria-hidden="true" />
+            <img className="auth-leading-icon auth-field-icon" src={passwordFieldIcon} alt="" aria-hidden="true" />
             <input
               {...form.register("confirmPassword")}
               type={confirmPasswordVisible ? "text" : "password"}
@@ -203,7 +206,7 @@ export default function RegisterPage() {
           {form.formState.errors.confirmPassword && <p className="auth-error">{form.formState.errors.confirmPassword.message}</p>}
 
           <label className="auth-field auth-invitation-field">
-            <ShieldCheck className="auth-leading-icon" aria-hidden="true" />
+            <img className="auth-leading-icon auth-field-icon" src={accountFieldIcon} alt="" aria-hidden="true" />
             <input
               {...form.register("invitationCode")}
               placeholder="Code d’invitation"
