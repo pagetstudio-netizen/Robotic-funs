@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { FALLBACK_COUNTRIES, type ApiCountry } from "@/lib/countries";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { CountrySelector } from "@/components/country-selector";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Loader2, LockKeyhole, Phone, ShieldCheck } from "lucide-react";
 import { normalizeBeninPhone } from "@shared/phone";
 
 const visualCodeCharacters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -43,6 +43,8 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [visualCode, setVisualCode] = useState(createVisualCode);
   const [enteredVisualCode, setEnteredVisualCode] = useState("");
 
@@ -134,6 +136,7 @@ export default function RegisterPage() {
         <input type="hidden" {...form.register("country")} />
         <div className="auth-fields">
           <div className="auth-field auth-phone-field">
+            <Phone className="auth-phone-icon" aria-hidden="true" />
             <button
               type="button"
               className="auth-country-button"
@@ -145,6 +148,7 @@ export default function RegisterPage() {
             >
               <span className="auth-country-value">
                 <span className="auth-country-code">+{displayedPrefix}</span>
+                <ChevronRight aria-hidden="true" />
               </span>
             </button>
             <span className="auth-field-divider" aria-hidden="true" />
@@ -169,31 +173,50 @@ export default function RegisterPage() {
             />
           </div>
           {form.formState.errors.phone && <p className="auth-error">{form.formState.errors.phone.message}</p>}
-          <label className="auth-field auth-field-stacked">
-            <span className="auth-field-caption">Mot de passe</span>
+          <div className="auth-field auth-password-field">
+            <LockKeyhole className="auth-leading-icon" aria-hidden="true" />
             <input
               {...form.register("password")}
-              type="password"
+              type={passwordVisible ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="Mot de passe"
+              placeholder="Mot de passe (8 à 15 caractères)"
               aria-label="Mot de passe"
               aria-invalid={Boolean(form.formState.errors.password)}
               data-testid="input-password"
             />
-          </label>
+            <button
+              type="button"
+              className="auth-visibility-button"
+              onClick={() => setPasswordVisible((visible) => !visible)}
+              aria-label={passwordVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              aria-pressed={passwordVisible}
+            >
+              {passwordVisible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            </button>
+          </div>
           {form.formState.errors.password && <p className="auth-error">{form.formState.errors.password.message}</p>}
 
-          <label className="auth-field auth-field-stacked">
-            <span className="auth-field-caption">Confirmer le mot de passe</span>
+          <div className="auth-field auth-password-field">
+            <LockKeyhole className="auth-leading-icon" aria-hidden="true" />
             <input
               {...form.register("confirmPassword")}
-              type="password"
+              type={confirmPasswordVisible ? "text" : "password"}
               autoComplete="new-password"
+              placeholder="Confirmer le mot de passe"
               aria-label="Confirmer le mot de passe"
               aria-invalid={Boolean(form.formState.errors.confirmPassword)}
               data-testid="input-confirm-password"
             />
-          </label>
+            <button
+              type="button"
+              className="auth-visibility-button"
+              onClick={() => setConfirmPasswordVisible((visible) => !visible)}
+              aria-label={confirmPasswordVisible ? "Masquer la confirmation" : "Afficher la confirmation"}
+              aria-pressed={confirmPasswordVisible}
+            >
+              {confirmPasswordVisible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            </button>
+          </div>
           {form.formState.errors.confirmPassword && <p className="auth-error">{form.formState.errors.confirmPassword.message}</p>}
 
           <div className="auth-field auth-verification-field">
@@ -227,8 +250,8 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          <label className="auth-field auth-field-stacked">
-            <span className="auth-field-caption">Code d’invitation</span>
+          <label className="auth-field auth-invitation-field">
+            <ShieldCheck className="auth-leading-icon" aria-hidden="true" />
             <input
               {...form.register("invitationCode")}
               placeholder="Code d’invitation"

@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { FALLBACK_COUNTRIES, type ApiCountry } from "@/lib/countries";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { CountrySelector } from "@/components/country-selector";
-import { Loader2 } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Loader2, LockKeyhole, Phone } from "lucide-react";
 
 const loginSchema = z.object({
   phone: z.string().min(8, "Numéro de téléphone invalide"),
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -88,6 +89,7 @@ export default function LoginPage() {
         <input type="hidden" {...form.register("country")} />
         <div className="auth-fields">
           <div className="auth-field auth-phone-field">
+            <Phone className="auth-phone-icon" aria-hidden="true" />
             <button
               type="button"
               className="auth-country-button"
@@ -99,6 +101,7 @@ export default function LoginPage() {
             >
               <span className="auth-country-value">
                 <span className="auth-country-code">+{displayedPrefix}</span>
+                <ChevronRight aria-hidden="true" />
               </span>
             </button>
             <span className="auth-field-divider" aria-hidden="true" />
@@ -115,23 +118,44 @@ export default function LoginPage() {
           </div>
           {form.formState.errors.phone && <p className="auth-error">{form.formState.errors.phone.message}</p>}
 
-          <label className="auth-field auth-password-field auth-icon-right">
+          <div className="auth-field auth-password-field">
+            <LockKeyhole className="auth-leading-icon" aria-hidden="true" />
             <input
               {...form.register("password")}
-              type="password"
+              type={passwordVisible ? "text" : "password"}
               autoComplete="current-password"
               placeholder="Mot de passe"
               aria-label="Mot de passe"
               aria-invalid={Boolean(form.formState.errors.password)}
               data-testid="input-password"
             />
-          </label>
+            <button
+              type="button"
+              className="auth-visibility-button"
+              onClick={() => setPasswordVisible((visible) => !visible)}
+              aria-label={passwordVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              aria-pressed={passwordVisible}
+            >
+              {passwordVisible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            </button>
+          </div>
           {form.formState.errors.password && <p className="auth-error">{form.formState.errors.password.message}</p>}
           <label className="auth-remember">
-            <input type="checkbox" defaultChecked aria-label="Se souvenir du mot de passe" />
+            <input type="checkbox" aria-label="Se souvenir du mot de passe" />
             <span>Se souvenir du mot de passe</span>
           </label>
         </div>
+
+        <button
+          type="button"
+          className="auth-forgot-button"
+          onClick={() => toast({
+            title: "Mot de passe oublié ?",
+            description: "Contactez le service client pour demander une réinitialisation.",
+          })}
+        >
+          Mot de passe oublié ?
+        </button>
 
         <button type="submit" disabled={isLoading} className="auth-submit" data-testid="button-login">
           {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Se connecter"}
