@@ -659,11 +659,11 @@ export default function HomeDashboard() {
           type="button"
           className="rf-checkin"
           onClick={() => navigate("/checkin")}
-          aria-label="Ouvrir le jeu de pointage"
+          aria-label="Ouvrir Wheel of Fortune"
           data-testid="button-home-claim-daily-bonus"
         >
           <img src="/roboticsfund-checkin-banner.png" alt="" />
-          <span className="rf-checkin-label">Pointage</span>
+          <span className="rf-checkin-label">Wheel of Fortune</span>
         </button>
 
         <svg className="rf-product-category-clip-defs" aria-hidden="true" focusable="false">

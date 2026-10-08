@@ -3,11 +3,11 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/account-page/AccountReference.tsx": () => import("../components/mockups/account-page/AccountReference.tsx"),
   "./components/mockups/account-page/AccountScreenshot.tsx": () => import("../components/mockups/account-page/AccountScreenshot.tsx"),
+  "./components/mockups/auth-reference/Login.tsx": () => import("../components/mockups/auth-reference/Login.tsx"),
+  "./components/mockups/auth-reference/Register.tsx": () => import("../components/mockups/auth-reference/Register.tsx"),
   "./components/mockups/auth-redesign/CountryPicker.tsx": () => import("../components/mockups/auth-redesign/CountryPicker.tsx"),
   "./components/mockups/auth-redesign/Current.tsx": () => import("../components/mockups/auth-redesign/Current.tsx"),
   "./components/mockups/auth-redesign/PalRobot.tsx": () => import("../components/mockups/auth-redesign/PalRobot.tsx"),
-  "./components/mockups/auth-reference/Login.tsx": () => import("../components/mockups/auth-reference/Login.tsx"),
-  "./components/mockups/auth-reference/Register.tsx": () => import("../components/mockups/auth-reference/Register.tsx"),
   "./components/mockups/checkin-game/Current.tsx": () => import("../components/mockups/checkin-game/Current.tsx"),
   "./components/mockups/checkin-game/CurrentVisual.tsx": () => import("../components/mockups/checkin-game/CurrentVisual.tsx"),
   "./components/mockups/checkin-game/FortuneWheelDesign.tsx": () => import("../components/mockups/checkin-game/FortuneWheelDesign.tsx"),
