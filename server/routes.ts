@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import { randomInt } from "node:crypto";
 import session from "express-session";
 import { storage } from "./storage";
 import { registerSchema, loginSchema, depositSchema, walletSchema, phoneNumberSchema, type Product, type Withdrawal } from "@shared/schema";
@@ -9,6 +10,7 @@ import {
   verifyPassword,
 } from "./password-utils";
 import { normalizeBeninPhone } from "@shared/phone";
+import { FORTUNE_WHEEL_PRIZES } from "@shared/fortune-wheel";
 import { z } from "zod";
 import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
 import { hasPurchasedActivityLaunch } from "../shared/product-purchase-limit";
@@ -2821,42 +2823,35 @@ export async function registerRoutes(
     }
   });
 
-  // Daily bonus claim (50 FCFA every 24h)
+  // Daily fortune wheel claim; the server selects and credits the prize.
   app.post("/api/claim-daily-bonus", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.session.userId!);
-      if (!user) {
-        return res.status(404).json({ message: "Utilisateur non trouve" });
-      }
-
       const now = new Date();
-      const lastClaim = user.lastDailyBonusClaim ? new Date(user.lastDailyBonusClaim) : null;
-      
-      if (lastClaim) {
-        const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceClaim < 24) {
-          const hoursRemaining = Math.ceil(24 - hoursSinceClaim);
-          return res.status(400).json({ 
-            message: `Vous pouvez reclamer dans ${hoursRemaining}h`,
-            canClaim: false,
-            nextClaimIn: hoursRemaining
-          });
-        }
+      const prizeIndex = randomInt(FORTUNE_WHEEL_PRIZES.length);
+      const amount = FORTUNE_WHEEL_PRIZES[prizeIndex];
+      const claim = await storage.claimDailyFortunePrize(
+        req.session.userId!,
+        amount,
+        now,
+      );
+
+      if (!claim.userFound) {
+        return res.status(404).json({ message: "Utilisateur non trouvé." });
+      }
+      if (!claim.claimed) {
+        return res.status(400).json({
+          message: "La connexion d'aujourd'hui est terminée",
+          canClaim: false,
+          hoursRemaining: claim.hoursRemaining,
+        });
       }
 
-      // Add 50 FCFA to balance
-      await storage.adjustBalance(user.id, "deposit", 50);
-      await storage.updateUser(user.id, { lastDailyBonusClaim: now });
-
-      // Create transaction record
-      await storage.createTransaction({
-        userId: user.id,
-        type: "bonus",
-        amount: "50",
-        description: "Bonus quotidien"
+      return res.json({
+        success: true,
+        amount,
+        prizeIndex,
+        message: `Vous avez gagné ${amount} FCFA !`,
       });
-
-      res.json({ success: true, message: "Bonus de 50 FCFA ajoute!" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -2885,7 +2880,9 @@ export async function registerRoutes(
 
       const allTransactions = await storage.getUserTransactions(req.session.userId!);
       const bonusTransactions = allTransactions.filter(
-        (t: any) => t.type === "bonus" && t.description === "Bonus quotidien"
+        (t: any) =>
+          (t.type === "bonus" && t.description === "Bonus quotidien") ||
+          (t.type === "wheel_prize" && t.description === "Roue de la fortune")
       );
       const totalBonusClaimed = bonusTransactions.reduce(
         (sum: number, t: any) => sum + parseFloat(t.amount || "0"), 0

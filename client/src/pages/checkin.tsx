@@ -1,13 +1,14 @@
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
-import { Link } from "wouter";
 import { getCountryByCode } from "@/lib/countries";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import "./checkin.css";
-
-const DAILY_BONUS_AMOUNT = 50;
+import {
+  FORTUNE_WHEEL_PRIZES,
+  getFortuneWheelRotationDegrees,
+} from "@shared/fortune-wheel";
+import CheckinGameVisual from "./checkin-game-visual";
 
 interface DailyBonusStatus {
   canClaim: boolean;
@@ -18,8 +19,12 @@ interface DailyBonusStatus {
 
 interface ClaimResponse {
   success: boolean;
+  amount: number;
+  prizeIndex: number;
   message?: string;
 }
+
+const SPIN_DURATION_MS = 5_450;
 
 function formatAmount(value: number) {
   return new Intl.NumberFormat("fr-FR", {
@@ -27,41 +32,73 @@ function formatAmount(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-function formatStat(value: number | undefined) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? formatAmount(value)
-    : "—";
-}
-
 export default function CheckinPage() {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
+  const [wheelRotationDegrees, setWheelRotationDegrees] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [resultAmount, setResultAmount] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const spinTimer = useRef<number | null>(null);
+
   const statusQuery = useQuery<DailyBonusStatus>({
     queryKey: ["/api/daily-bonus-status"],
+    enabled: Boolean(user),
   });
+
+  useEffect(() => () => {
+    if (spinTimer.current !== null) window.clearTimeout(spinTimer.current);
+  }, []);
 
   const claimMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/claim-daily-bonus", {});
       return response.json() as Promise<ClaimResponse>;
     },
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["/api/daily-bonus-status"],
-      });
-      await refreshUser();
-      toast({
-        title: "Check-in effectué",
-        description: result.message || "Votre bonus quotidien a été ajouté.",
-      });
+    onMutate: () => {
+      setErrorMessage(null);
+      setResultAmount(null);
+    },
+    onSuccess: (result) => {
+      if (
+        !Number.isInteger(result.prizeIndex) ||
+        FORTUNE_WHEEL_PRIZES[result.prizeIndex] !== result.amount
+      ) {
+        setErrorMessage("Le résultat du tirage n'a pas pu être vérifié.");
+        void refreshUser();
+        void queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] });
+        return;
+      }
+
+      if (spinTimer.current !== null) window.clearTimeout(spinTimer.current);
+      setWheelRotationDegrees((current) =>
+        current + getFortuneWheelRotationDegrees(result.prizeIndex),
+      );
+      setIsSpinning(true);
+
+      spinTimer.current = window.setTimeout(() => {
+        setIsSpinning(false);
+        setResultAmount(result.amount);
+        toast({
+          title: "Pointage réussi !",
+          description: result.message || `Vous avez gagné ${formatAmount(result.amount)} FCFA.`,
+          duration: 2500,
+        });
+        void Promise.allSettled([
+          queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
+          refreshUser(),
+        ]);
+      }, SPIN_DURATION_MS);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Échec du check-in",
-        description: error.message || "Impossible de réclamer le bonus.",
-        variant: "destructive",
-      });
-      void statusQuery.refetch();
+      const status = (error as Error & { status?: number }).status;
+      setErrorMessage(
+        status === 400
+          ? "La connexion d'aujourd'hui est terminée"
+          : error.message || "Impossible de lancer la roue. Réessayez.",
+      );
+      if (status === 400) void statusQuery.refetch();
     },
   });
 
@@ -69,84 +106,30 @@ export default function CheckinPage() {
 
   const currency = getCountryByCode(user.country)?.currency || "FCFA";
   const currencyLabel = /^(XOF|XAF|FCFA)$/i.test(currency) ? "FCFA" : currency;
-  const totalClaimed = statusQuery.data?.totalBonusClaimed;
-  const daysPointed = statusQuery.data?.daysPointed;
-  const hoursRemaining = Math.max(0, Number(statusQuery.data?.hoursRemaining || 0));
-  const canClaim = statusQuery.data?.canClaim === true;
-  const isUnavailable = !canClaim && hoursRemaining > 0;
-  const isButtonDisabled =
-    statusQuery.isLoading || statusQuery.isError || !canClaim || claimMutation.isPending;
+  const alreadyClaimed = statusQuery.data?.canClaim === false;
+  const hasClaimedToday =
+    alreadyClaimed ||
+    resultAmount !== null ||
+    errorMessage === "La connexion d'aujourd'hui est terminée";
+  const visibleError =
+    errorMessage ||
+    (statusQuery.isError
+      ? "Statut indisponible. Le serveur vérifiera votre tour avant le tirage."
+      : null);
 
   return (
-    <main className="checkin-reference">
-      <div className="checkin-layout">
-        <section className="checkin-hero" aria-label="Centre de check-in">
-          <img
-            className="checkin-hero-art"
-            src="/john-deere/checkin-reference-hero.jpg"
-            alt=""
-            aria-hidden="true"
-          />
-          <h1 className="checkin-screen-reader-only">Centre de check-in</h1>
-          <Link
-            href="/"
-            className="checkin-back"
-            aria-label="Retour à l’accueil"
-            data-testid="button-back"
-          >
-            <ChevronLeft aria-hidden="true" />
-          </Link>
-        </section>
-
-        <section className="checkin-intro" aria-label="Revenus cumulés">
-          <p className="checkin-total">
-            {formatStat(totalClaimed)}
-            <span>{currencyLabel}</span>
-          </p>
-          <h2 className="checkin-intro-title">Revenus cumulés</h2>
-        </section>
-
-        <section className="checkin-stats" aria-label="Détail des revenus">
-          <div className="checkin-stat">
-            <p className="checkin-stat-value">
-              {formatAmount(DAILY_BONUS_AMOUNT)}
-              <span>{currencyLabel}</span>
-            </p>
-            <p className="checkin-stat-label">Bonus par check-in</p>
-          </div>
-          <div className="checkin-stat">
-            <p className="checkin-stat-value checkin-stat-secondary">
-              {formatStat(daysPointed)}
-            </p>
-            <p className="checkin-stat-label">Check-ins effectués</p>
-          </div>
-        </section>
-
-        <button
-          className="checkin-claim"
-          type="button"
-          onClick={() => claimMutation.mutate()}
-          disabled={isButtonDisabled}
-          aria-busy={claimMutation.isPending}
-          data-testid="button-claim-daily-bonus"
-        >
-          {claimMutation.isPending ? "Traitement…" : "Check-in"}
-        </button>
-
-        {isUnavailable && (
-          <p className="checkin-next-claim" role="status" aria-live="polite">
-            Prochain check-in dans {hoursRemaining} h
-          </p>
-        )}
-        {statusQuery.isError && (
-          <div className="checkin-query-error" role="alert">
-            <p>Impossible de charger le statut du check-in.</p>
-            <button type="button" onClick={() => void statusQuery.refetch()}>
-              Réessayer
-            </button>
-          </div>
-        )}
-      </div>
-    </main>
+    <CheckinGameVisual
+      labels={[...FORTUNE_WHEEL_PRIZES]}
+      wheelRotationDegrees={wheelRotationDegrees}
+      isSpinning={isSpinning}
+      isClaiming={claimMutation.isPending || statusQuery.isLoading}
+      hasClaimedToday={hasClaimedToday}
+      resultAmount={resultAmount}
+      errorMessage={visibleError}
+      onPlay={() => {
+        if (claimMutation.isPending || isSpinning || hasClaimedToday) return;
+        claimMutation.mutate();
+      }}
+    />
   );
 }

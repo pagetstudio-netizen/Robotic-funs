@@ -54,8 +54,6 @@ export default function HomeDashboard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [confirmProduct, setConfirmProduct] = useState<HomeProduct | null>(null);
-  const [dailyBonusNoticeOpen, setDailyBonusNoticeOpen] = useState(false);
-  const [dailyBonusNoticeMessage, setDailyBonusNoticeMessage] = useState("");
   const [selectedProductType, setSelectedProductType] = useState<"stable" | "activity">("stable");
 
   const {
@@ -91,40 +89,6 @@ export default function HomeDashboard() {
       toast({
         title: "Achat impossible",
         description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const dailyBonusMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/claim-daily-bonus", {});
-      return response.json() as Promise<{ success: boolean; message?: string }>;
-    },
-    onSuccess: async () => {
-      setDailyBonusNoticeMessage("Pointage réussi ! Votre bonus de 50 FCFA a été ajouté.");
-      setDailyBonusNoticeOpen(true);
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
-        refreshUser(),
-      ]);
-    },
-    onError: async (error: Error) => {
-      const status = (error as Error & { status?: number }).status;
-      if (status === 400) {
-        setDailyBonusNoticeMessage("La connexion d'aujourd'hui est terminée");
-        setDailyBonusNoticeOpen(true);
-        await Promise.allSettled([
-          queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
-          refreshUser(),
-        ]);
-        return;
-      }
-
-      toast({
-        title: "Pointage impossible",
-        description: error.message || "Impossible de réclamer le bonus quotidien.",
         variant: "destructive",
       });
     },
@@ -694,16 +658,12 @@ export default function HomeDashboard() {
         <button
           type="button"
           className="rf-checkin"
-          onClick={() => dailyBonusMutation.mutate()}
-          disabled={dailyBonusMutation.isPending}
-          aria-busy={dailyBonusMutation.isPending}
-          aria-label="Réclamer le bonus de pointage"
+          onClick={() => navigate("/checkin")}
+          aria-label="Ouvrir le jeu de pointage"
           data-testid="button-home-claim-daily-bonus"
         >
           <img src="/roboticsfund-checkin-banner.png" alt="" />
-          <span className="rf-checkin-label">
-            {dailyBonusMutation.isPending ? "Traitement…" : "Pointage"}
-          </span>
+          <span className="rf-checkin-label">Pointage</span>
         </button>
 
         <svg className="rf-product-category-clip-defs" aria-hidden="true" focusable="false">
@@ -856,39 +816,6 @@ export default function HomeDashboard() {
           )}
         </section>
       </div>
-
-      <Dialog
-        open={dailyBonusNoticeOpen}
-        onOpenChange={setDailyBonusNoticeOpen}
-      >
-        {dailyBonusNoticeOpen && (
-          <DialogPortal>
-            <DialogOverlay className="bg-black/75" />
-            <DialogPrimitive.Content
-              className="rf-daily-bonus-notice fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
-              aria-describedby="rf-daily-bonus-notice-message"
-              onEscapeKeyDown={(event) => event.preventDefault()}
-              onPointerDownOutside={(event) => event.preventDefault()}
-            >
-              <DialogTitle className="sr-only">Pointage terminé</DialogTitle>
-              <DialogDescription
-                id="rf-daily-bonus-notice-message"
-                className="rf-daily-bonus-notice-message"
-              >
-                {dailyBonusNoticeMessage}
-              </DialogDescription>
-              <button
-                type="button"
-                className="rf-daily-bonus-notice-action"
-                onClick={() => setDailyBonusNoticeOpen(false)}
-                data-testid="button-dismiss-daily-bonus-notice"
-              >
-                D'ACCORD
-              </button>
-            </DialogPrimitive.Content>
-          </DialogPortal>
-        )}
-      </Dialog>
 
       <Dialog
         open={Boolean(confirmProduct)}

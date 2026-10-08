@@ -65,6 +65,11 @@ export interface IStorage {
   createUser(data: Partial<User>): Promise<User>;
   updateUser(id: number, data: Partial<User>): Promise<User>;
   adjustBalance(userId: number, wallet: "deposit" | "withdrawal", amount: number, executor?: any): Promise<boolean>;
+  claimDailyFortunePrize(
+    userId: number,
+    amount: number,
+    now: Date,
+  ): Promise<{ userFound: boolean; claimed: boolean; hoursRemaining: number }>;
   setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User>;
   getAllUsers(filter?: string, limit?: number, offset?: number): Promise<{ users: User[], total: number }>;
   
@@ -292,6 +297,57 @@ export class DatabaseStorage implements IStorage {
       balance: sql`${users.balance} + ${delta}`,
     }).where(conditions).returning({ id: users.id });
     return Boolean(updated);
+  }
+
+  async claimDailyFortunePrize(
+    userId: number,
+    amount: number,
+    now: Date,
+  ): Promise<{ userFound: boolean; claimed: boolean; hoursRemaining: number }> {
+    if (!Number.isFinite(amount) || amount <= 0 || Math.round(amount) !== amount) {
+      throw new Error("Montant du gain invalide.");
+    }
+
+    return db.transaction(async (tx) => {
+      const [lockedUser] = await tx
+        .select({ lastDailyBonusClaim: users.lastDailyBonusClaim })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for("update");
+
+      if (!lockedUser) {
+        return { userFound: false, claimed: false, hoursRemaining: 0 };
+      }
+
+      const lastClaim = lockedUser.lastDailyBonusClaim
+        ? new Date(lockedUser.lastDailyBonusClaim)
+        : null;
+      if (lastClaim) {
+        const remainingMs = 24 * 60 * 60 * 1000 - (now.getTime() - lastClaim.getTime());
+        if (remainingMs > 0) {
+          return {
+            userFound: true,
+            claimed: false,
+            hoursRemaining: Math.ceil(remainingMs / (60 * 60 * 1000)),
+          };
+        }
+      }
+
+      const updated = await this.adjustBalance(userId, "withdrawal", amount, tx);
+      if (!updated) throw new Error("Impossible de créditer le gain.");
+
+      await tx.update(users)
+        .set({ lastDailyBonusClaim: now })
+        .where(eq(users.id, userId));
+      await tx.insert(transactions).values({
+        userId,
+        type: "wheel_prize",
+        amount: amount.toString(),
+        description: "Roue de la fortune",
+      });
+
+      return { userFound: true, claimed: true, hoursRemaining: 0 };
+    });
   }
 
   async setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User> {

@@ -82,6 +82,7 @@ const REWARD_TYPES = new Set([
   "checkin",
   "check_in",
   "daily_checkin",
+  "wheel_prize",
 ]);
 
 const isRewardTransaction = (transaction: Transaction) => {
@@ -100,6 +101,9 @@ const getRewardTitle = (transaction: Transaction) => {
   }
   if (/cadeau/.test(normalized) || transaction.type === "gift_code") {
     return "Code cadeau";
+  }
+  if (/roue de la fortune/.test(normalized) || transaction.type === "wheel_prize") {
+    return "Gain de la roue de la fortune";
   }
   if (/quotidien|check.?in|pointage|connexion/.test(normalized) || REWARD_TYPES.has(transaction.type.toLowerCase())) {
     return "Récompenses de connexion";
