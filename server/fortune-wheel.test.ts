@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   FORTUNE_WHEEL_DRAW_PRIZES,
+  FORTUNE_WHEEL_LOSS_CHANCE_PERCENT,
   FORTUNE_WHEEL_PRIZES,
+  getFortuneWheelLossRotationDegrees,
   getFortuneWheelRotationDegrees,
+  selectFortuneWheelOutcome,
   selectFortuneWheelPrizeIndex,
 } from "../shared/fortune-wheel";
 import { getStablePurchaseSpinAwards } from "./fortune-wheel-policy";
@@ -48,6 +51,35 @@ test("500 FCFA is a rare 5 percent wheel prize", () => {
 test("wheel prize selection rejects values outside the random draw range", () => {
   assert.throws(() => selectFortuneWheelPrizeIndex(-1), RangeError);
   assert.throws(() => selectFortuneWheelPrizeIndex(100), RangeError);
+});
+
+test("one in five wheel turns loses without selecting a prize amount", () => {
+  assert.equal(FORTUNE_WHEEL_LOSS_CHANCE_PERCENT, 20);
+  const outcomes = Array.from({ length: 100 }, (_, lossRoll) =>
+    selectFortuneWheelOutcome(lossRoll, 99, lossRoll % FORTUNE_WHEEL_PRIZES.length),
+  );
+  const losses = outcomes.filter((outcome) => !outcome.won);
+  const wins = outcomes.filter((outcome) => outcome.won);
+
+  assert.equal(losses.length, 20);
+  assert.equal(wins.length, 80);
+  assert.ok(losses.every((outcome) => !outcome.won && outcome.lossBoundaryIndex >= 0));
+});
+
+test("wheel loss animation stops on a divider between prize segments", () => {
+  const segmentDegrees = 360 / FORTUNE_WHEEL_PRIZES.length;
+
+  for (let boundaryIndex = 0; boundaryIndex < FORTUNE_WHEEL_PRIZES.length; boundaryIndex += 1) {
+    const rotation = getFortuneWheelLossRotationDegrees(boundaryIndex);
+    const normalized = rotation % 360;
+    const expected = (360 - (boundaryIndex * segmentDegrees)) % 360;
+    assert.equal(normalized, expected);
+  }
+
+  assert.throws(
+    () => getFortuneWheelLossRotationDegrees(FORTUNE_WHEEL_PRIZES.length),
+    RangeError,
+  );
 });
 
 test("the selected wheel segment aligns with the fixed pointer after full rotations", () => {

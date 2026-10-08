@@ -72,7 +72,7 @@ export interface IStorage {
   ): Promise<{ userFound: boolean; availableSpins: number }>;
   spinFortuneWheel(
     userId: number,
-    amount: number,
+    amount: number | null,
   ): Promise<{ userFound: boolean; claimed: boolean; availableSpins: number }>;
   grantFortuneWheelSpins(userId: number, count: number): Promise<number | undefined>;
   setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User>;
@@ -318,9 +318,12 @@ export class DatabaseStorage implements IStorage {
 
   async spinFortuneWheel(
     userId: number,
-    amount: number,
+    amount: number | null,
   ): Promise<{ userFound: boolean; claimed: boolean; availableSpins: number }> {
-    if (!FORTUNE_WHEEL_DRAW_PRIZES.includes(amount as (typeof FORTUNE_WHEEL_DRAW_PRIZES)[number])) {
+    if (
+      amount !== null &&
+      !FORTUNE_WHEEL_DRAW_PRIZES.includes(amount as (typeof FORTUNE_WHEEL_DRAW_PRIZES)[number])
+    ) {
       throw new Error("Montant du gain invalide.");
     }
 
@@ -348,15 +351,17 @@ export class DatabaseStorage implements IStorage {
         return { userFound: true, claimed: false, availableSpins: 0 };
       }
 
-      const updated = await this.adjustBalance(userId, "deposit", amount, tx);
-      if (!updated) throw new Error("Impossible de créditer le gain.");
+      if (amount !== null) {
+        const updated = await this.adjustBalance(userId, "deposit", amount, tx);
+        if (!updated) throw new Error("Impossible de créditer le gain.");
 
-      await tx.insert(transactions).values({
-        userId,
-        type: "wheel_prize",
-        amount: amount.toString(),
-        description: "Roue de la fortune",
-      });
+        await tx.insert(transactions).values({
+          userId,
+          type: "wheel_prize",
+          amount: amount.toString(),
+          description: "Roue de la fortune",
+        });
+      }
 
       return {
         userFound: true,

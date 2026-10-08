@@ -12,7 +12,7 @@ import {
 import { normalizeBeninPhone } from "@shared/phone";
 import {
   FORTUNE_WHEEL_PRIZES,
-  selectFortuneWheelPrizeIndex,
+  selectFortuneWheelOutcome,
 } from "@shared/fortune-wheel";
 import { z } from "zod";
 import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
@@ -2841,8 +2841,12 @@ export async function registerRoutes(
   // The server consumes a free spin, selects the prize, and credits the deposit wallet atomically.
   app.post("/api/fortune-wheel/spin", requireAuth, async (req, res) => {
     try {
-      const prizeIndex = selectFortuneWheelPrizeIndex(randomInt(100));
-      const amount = FORTUNE_WHEEL_PRIZES[prizeIndex];
+      const outcome = selectFortuneWheelOutcome(
+        randomInt(100),
+        randomInt(100),
+        randomInt(FORTUNE_WHEEL_PRIZES.length),
+      );
+      const amount = outcome.won ? FORTUNE_WHEEL_PRIZES[outcome.prizeIndex] : null;
       const spin = await storage.spinFortuneWheel(req.session.userId!, amount);
 
       if (!spin.userFound) {
@@ -2856,10 +2860,24 @@ export async function registerRoutes(
         });
       }
 
+      if (!outcome.won) {
+        return res.json({
+          success: true,
+          won: false,
+          amount: null,
+          prizeIndex: null,
+          lossBoundaryIndex: outcome.lossBoundaryIndex,
+          availableSpins: spin.availableSpins,
+          message: "Désolé, vous n'avez rien gagné cette fois-ci.",
+        });
+      }
+
       return res.json({
         success: true,
+        won: true,
         amount,
         prizeIndex,
+        lossBoundaryIndex: null,
         availableSpins: spin.availableSpins,
         message: `Vous avez gagné ${amount} FCFA !`,
       });
