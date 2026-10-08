@@ -688,15 +688,23 @@
   height: 32px;
   flex: 0 0 32px;
   place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
-  color: #d4dbe7;
+  color: #c3cbd8;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.auth-screenshot .auth-picker-row.is-selected .auth-picker-option-icon {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
 }
 
 .auth-screenshot .auth-picker-option-icon svg {
-  width: 17px;
-  height: 17px;
-  stroke-width: 1.8;
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
 }
 
 .auth-screenshot .auth-picker-flag svg,
