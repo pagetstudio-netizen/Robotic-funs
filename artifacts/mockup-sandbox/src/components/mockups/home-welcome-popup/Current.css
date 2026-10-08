@@ -92,15 +92,14 @@
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .22);
+  background: #fff;
 }
 
 .home-welcome-telegram-icon img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 78%;
+  height: 78%;
   object-fit: contain;
-  mix-blend-mode: screen;
 }
 
 .home-welcome-details {

@@ -35,7 +35,7 @@ export function Current() {
             <a className="home-welcome-telegram" href="#group">
               <span className="home-welcome-telegram-label">Cliquez ici pour rejoindre le groupe Telegram</span>
               <span className="home-welcome-telegram-icon">
-                <img src="/__mockup/images/old-telegram.png" alt="" />
+                <img src="/__mockup/images/telegram-mark.png" alt="" />
               </span>
             </a>
             <div className="home-welcome-details">

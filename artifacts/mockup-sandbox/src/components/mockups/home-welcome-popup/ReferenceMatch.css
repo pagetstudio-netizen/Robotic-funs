@@ -71,7 +71,7 @@
 
 .reference-welcome-body {
   position: absolute;
-  top: 134px;
+  top: 160px;
   right: 20px;
   bottom: 100px;
   left: 20px;
@@ -104,7 +104,7 @@
 .reference-welcome-app-name {
   color: #ffd21e;
   font-size: clamp(18px, 5vw, 23px);
-  margin-bottom: 8px !important;
+  margin-bottom: 4px !important;
   font-weight: 800 !important;
   line-height: 1.08 !important;
 }
@@ -148,15 +148,14 @@
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: #17191f;
+  background: #fff;
 }
 
 .reference-welcome-telegram-icon img {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
 }
 
 .reference-welcome-close {
@@ -183,12 +182,16 @@
 @media (max-height: 700px) {
   .reference-welcome-card { top: 45px; bottom: 50px; }
   .reference-welcome-illustration { width: min(180px, 46vw); height: auto; }
-  .reference-welcome-body { top: 117px; right: 15px; bottom: 88px; left: 15px; }
+  .reference-welcome-body { top: 143px; right: 15px; bottom: 88px; left: 15px; }
   .reference-welcome-details { gap: 6px; padding-right: 12px; padding-left: 12px; font-size: clamp(13px, 3.35vw, 15px); }
   .reference-welcome-telegram { right: 14px; bottom: 50px; left: 14px; min-height: 50px; }
   .reference-welcome-telegram-icon { width: 32px; height: 32px; }
   .reference-welcome-close { width: 30px; height: 30px; }
   .reference-welcome-close svg { width: 18px; height: 18px; }
+}
+
+@media (max-height: 540px) {
+  .reference-welcome-body { top: 117px; }
 }
 
 @media (max-width: 350px) {
