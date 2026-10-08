@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
-import telegramIcon from "@assets/groupService-1_1790964412411.png";
-import welcomeIllustration from "@assets/1238dd33-a759-49c6-a408-97180f73076e_1790971465728.png";
+import telegramIcon from "@assets/telegram_(2)_1791499687678.png";
+import welcomeRobot from "@assets/file_000000004d8081f4bc975fdd26cf35e2_1791499669048.png";
 import "./home-welcome-popup.css";
 
 interface HomePopupSettings {
@@ -82,10 +82,7 @@ export default function HomeWelcomePopup() {
   const groupUrl = safeTelegramUrl(settings?.groupLink);
   const groupEnabled = settings?.groupEnabled !== "false";
   const canJoinGroup = Boolean(groupUrl && groupEnabled);
-  const joinLabel = settings?.popupButtonLabel?.trim() || "Rejoindre le groupe Telegram";
-  const withdrawalHours = settings?.withdrawalStartHour && settings?.withdrawalEndHour
-    ? `retraits de ${settings.withdrawalStartHour} h à ${settings.withdrawalEndHour} h`
-    : "retraits aux heures autorisées";
+  const joinLabel = settings?.popupButtonLabel?.trim() || "Groupe officiel";
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -95,60 +92,76 @@ export default function HomeWelcomePopup() {
           className="home-welcome-dialog"
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
-          <DialogPrimitive.Title className="home-welcome-title">
-            RoboticsFund
-          </DialogPrimitive.Title>
-          <img
-            className="home-welcome-illustration"
-            src={welcomeIllustration}
-            alt="Personnages de Zootopia réunis autour de 2025"
-          />
-          <DialogPrimitive.Description className="sr-only">
-            Informations de la plateforme et lien du groupe Telegram.
-          </DialogPrimitive.Description>
+          <div className="home-welcome-stage" aria-busy={isLoading}>
+            <section className="home-welcome-card">
+              <img
+                className="home-welcome-illustration"
+                src={welcomeRobot}
+                alt="Robot jaune de RoboticsFund"
+              />
 
-          {canJoinGroup ? (
-            <a
-              className="home-welcome-telegram"
-              href={groupUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={joinLabel}
-            >
-              <span className="home-welcome-telegram-label">{joinLabel}</span>
-              <span className="home-welcome-telegram-icon">
-                <img src={telegramIcon} alt="" aria-hidden="true" />
-              </span>
-            </a>
-          ) : (
-            <button className="home-welcome-telegram is-unavailable" type="button" disabled>
-              <span className="home-welcome-telegram-label">
-                {isLoading ? "Chargement du groupe Telegram…" : "Lien Telegram indisponible"}
-              </span>
-              <span className="home-welcome-telegram-icon">
-                <img src={telegramIcon} alt="" aria-hidden="true" />
-              </span>
-            </button>
-          )}
+              <div className="home-welcome-body">
+                <DialogPrimitive.Title className="home-welcome-title">
+                  Dernières nouvelles
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="sr-only">
+                  Informations de la plateforme et lien du groupe Telegram.
+                </DialogPrimitive.Description>
 
-          <div className="home-welcome-details" aria-live="polite">
-            <p className="home-welcome-app-name">RoboticsFund</p>
-            <p>Commission : {formatPercent(settings?.level1Commission)}</p>
-            <p className="home-welcome-bonus">
-              Bonus d’inscription : {formatFcfa(settings?.signupBonus)}
-            </p>
-            <p>Gains journaliers, {withdrawalHours}</p>
-            <p className="home-welcome-minimums">
-              <span>Dépôt minimum : {formatFcfa(settings?.minDeposit)}</span>
-              <span>Retrait minimum : {formatFcfa(settings?.minWithdrawal)}</span>
-            </p>
+                <div className="home-welcome-details" aria-live="polite">
+                  <p className="home-welcome-app-name">
+                    Bienvenue chez <strong>RoboticsFund&nbsp;!</strong>
+                  </p>
+                  <p>
+                    <span>Bonus d’inscription&nbsp;:</span>{" "}
+                    <strong>{formatFcfa(settings?.signupBonus)}</strong>
+                  </p>
+                  <p>
+                    <span>Dépôt minimum&nbsp;:</span>{" "}
+                    <strong>{formatFcfa(settings?.minDeposit)}</strong>
+                  </p>
+                  <p>
+                    <span>Retrait minimum&nbsp;:</span>{" "}
+                    <strong>{formatFcfa(settings?.minWithdrawal)}</strong>
+                  </p>
+                  <p>
+                    <span>Commission d’équipe&nbsp;:</span>{" "}
+                    <strong>{formatPercent(settings?.level1Commission)}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {canJoinGroup ? (
+                <a
+                  className="home-welcome-telegram"
+                  href={groupUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={joinLabel}
+                >
+                  <span className="home-welcome-telegram-icon" aria-hidden="true">
+                    <img src={telegramIcon} alt="" />
+                  </span>
+                  <span className="home-welcome-telegram-label">{joinLabel}</span>
+                </a>
+              ) : (
+                <button className="home-welcome-telegram is-unavailable" type="button" disabled>
+                  <span className="home-welcome-telegram-icon" aria-hidden="true">
+                    <img src={telegramIcon} alt="" />
+                  </span>
+                  <span className="home-welcome-telegram-label">
+                    {isLoading ? "Chargement du groupe Telegram…" : "Lien Telegram indisponible"}
+                  </span>
+                </button>
+              )}
+            </section>
+
+            <DialogPrimitive.Close asChild>
+              <button className="home-welcome-close" type="button" aria-label="Fermer">
+                <X aria-hidden="true" />
+              </button>
+            </DialogPrimitive.Close>
           </div>
-
-          <DialogPrimitive.Close asChild>
-            <button className="home-welcome-confirm" type="button">
-              {isLoading ? <Loader2 className="home-welcome-spinner" aria-label="Chargement" /> : "Confirmer"}
-            </button>
-          </DialogPrimitive.Close>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

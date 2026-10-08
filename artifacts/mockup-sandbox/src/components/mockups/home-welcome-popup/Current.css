@@ -1,0 +1,202 @@
+.home-welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, .48);
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.home-welcome-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 101;
+  display: flex;
+  width: min(410px, calc(100vw - 28px));
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 16px;
+  padding: 22px 0 0;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 16px 46px rgba(0, 0, 0, .28);
+  color: #171717;
+  font-family: Inter, Arial, sans-serif;
+  text-align: center;
+}
+
+.home-welcome-title {
+  margin: 0 18px 22px;
+  color: #202124;
+  font-size: clamp(21px, 5vw, 26px);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.home-welcome-illustration {
+  display: block;
+  width: calc(100% - 32px);
+  height: clamp(112px, 27vh, 230px);
+  flex: none;
+  margin: -10px auto 13px;
+  object-fit: contain;
+}
+
+.home-welcome-telegram {
+  display: flex;
+  width: calc(100% - 56px);
+  min-height: clamp(68px, 10vh, 92px);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 11px 8px 16px;
+  background: #0789c9;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, .28);
+  color: #fff;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-welcome-telegram:active {
+  filter: brightness(.95);
+}
+
+.home-welcome-telegram.is-unavailable {
+  cursor: not-allowed;
+  opacity: .68;
+}
+
+.home-welcome-telegram-label {
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: clamp(13px, 3.8vw, 20px);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.home-welcome-telegram-icon {
+  display: grid;
+  width: clamp(46px, 13vw, 66px);
+  height: clamp(46px, 13vw, 66px);
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .22);
+}
+
+.home-welcome-telegram-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: screen;
+}
+
+.home-welcome-details {
+  display: grid;
+  gap: clamp(13px, 2.15vh, 20px);
+  padding: 22px 18px 23px;
+  color: #181818;
+  font-size: clamp(14px, 4vw, 19px);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.home-welcome-details p {
+  margin: 0;
+}
+
+.home-welcome-app-name {
+  font-size: clamp(15px, 4.2vw, 20px);
+  font-weight: 700;
+}
+
+.home-welcome-bonus {
+  color: #e32323;
+}
+
+.home-welcome-minimums {
+  display: grid;
+  gap: 3px;
+}
+
+.home-welcome-confirm {
+  display: grid;
+  width: 100%;
+  min-height: 60px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 0 0 16px 16px;
+  background: #f47a1b;
+  color: #fff;
+  font: 400 20px Inter, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-welcome-confirm:active {
+  background: #df6912;
+}
+
+.home-welcome-spinner {
+  width: 21px;
+  height: 21px;
+  animation: home-welcome-spin 1s linear infinite;
+}
+
+@keyframes home-welcome-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-height: 700px) {
+  .home-welcome-dialog {
+    max-height: calc(100dvh - 20px);
+    padding-top: 14px;
+  }
+
+  .home-welcome-title {
+    margin-bottom: 13px;
+  }
+
+  .home-welcome-telegram {
+    min-height: 64px;
+  }
+
+  .home-welcome-telegram-icon {
+    width: 46px;
+    height: 46px;
+  }
+
+  .home-welcome-details {
+    gap: 10px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .home-welcome-confirm {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 350px) {
+  .home-welcome-telegram {
+    width: calc(100% - 36px);
+  }
+
+  .home-welcome-details {
+    padding-right: 12px;
+    padding-left: 12px;
+    font-size: 13px;
+  }
+}
