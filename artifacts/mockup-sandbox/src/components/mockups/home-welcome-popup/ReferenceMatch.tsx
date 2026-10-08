@@ -24,33 +24,37 @@ export function ReferenceMatch() {
 
       {open && (
         <>
-          <div className="home-welcome-overlay" />
-          <section className="home-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="welcome-popup-title">
-            <div className="home-welcome-stage">
-              <div className="home-welcome-card">
-                <img
-                  className="home-welcome-illustration"
-                  src="/__mockup/images/welcome-robot.png"
-                  alt="Robot jaune de RoboticsFund"
-                />
-                <div className="home-welcome-body">
-                  <h1 id="welcome-popup-title" className="home-welcome-title">Dernières nouvelles</h1>
-                  <div className="home-welcome-details">
-                    <p className="home-welcome-app-name">Bienvenue chez <strong>RoboticsFund&nbsp;!</strong></p>
-                    <p><span>Bonus d’inscription&nbsp;:</span> <strong>500 FCFA</strong></p>
-                    <p><span>Dépôt minimum&nbsp;:</span> <strong>3 000 FCFA</strong></p>
-                    <p><span>Retrait minimum&nbsp;:</span> <strong>1 500 FCFA</strong></p>
-                    <p><span>Commission d’équipe&nbsp;:</span> <strong>25%</strong></p>
-                  </div>
+          <div className="reference-welcome-overlay" />
+          <section
+            className="reference-welcome-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reference-welcome-title"
+          >
+            <div className="reference-welcome-stage">
+              <div className="reference-welcome-card" aria-hidden="true" />
+              <img
+                className="reference-welcome-illustration"
+                src="/__mockup/images/welcome-robot.png"
+                alt="Robot jaune de RoboticsFund"
+              />
+              <div className="reference-welcome-body">
+                <h1 id="reference-welcome-title" className="reference-welcome-title">Dernières nouvelles</h1>
+                <div className="reference-welcome-details">
+                  <p className="reference-welcome-app-name">Bienvenue chez <strong>RoboticsFund&nbsp;!</strong></p>
+                  <p><span>Bonus d’inscription&nbsp;:</span> <strong>500 FCFA</strong></p>
+                  <p><span>Dépôt minimum&nbsp;:</span> <strong>3 000 FCFA</strong></p>
+                  <p><span>Retrait minimum&nbsp;:</span> <strong>1 500 FCFA</strong></p>
+                  <p><span>Commission d’équipe&nbsp;:</span> <strong>25%</strong></p>
                 </div>
-                <a className="home-welcome-telegram" href="#official-group" aria-label="Groupe officiel">
-                  <span className="home-welcome-telegram-icon" aria-hidden="true">
-                    <img src="/__mockup/images/telegram-mark.png" alt="" />
-                  </span>
-                  <span className="home-welcome-telegram-label">Groupe officiel</span>
-                </a>
               </div>
-              <button className="home-welcome-close" type="button" aria-label="Fermer" onClick={() => setOpen(false)}>
+              <a className="reference-welcome-telegram" href="#official-group" aria-label="Groupe officiel">
+                <span className="reference-welcome-telegram-icon" aria-hidden="true">
+                  <img src="/__mockup/images/telegram-mark.png" alt="" />
+                </span>
+                <span className="reference-welcome-telegram-label">Groupe officiel</span>
+              </a>
+              <button className="reference-welcome-close" type="button" aria-label="Fermer" onClick={() => setOpen(false)}>
                 <X aria-hidden="true" />
               </button>
             </div>

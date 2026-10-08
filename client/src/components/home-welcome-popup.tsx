@@ -145,13 +145,17 @@ export default function HomeWelcomePopup() {
                 <span className="home-welcome-telegram-label">{joinLabel}</span>
               </a>
             ) : (
-              <button className="home-welcome-telegram is-unavailable" type="button" disabled>
+              <button
+                className="home-welcome-telegram is-unavailable"
+                type="button"
+                disabled
+                aria-label="Groupe officiel, lien non configuré"
+                title="Le lien du groupe Telegram n’est pas configuré"
+              >
                 <span className="home-welcome-telegram-icon" aria-hidden="true">
                   <img src={telegramIcon} alt="" />
                 </span>
-                <span className="home-welcome-telegram-label">
-                  {isLoading ? "Chargement du groupe Telegram…" : "Lien Telegram indisponible"}
-                </span>
+                <span className="home-welcome-telegram-label">Groupe officiel</span>
               </button>
             )}
 
