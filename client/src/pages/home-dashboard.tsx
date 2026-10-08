@@ -766,6 +766,11 @@ export default function HomeDashboard() {
               const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
               const displayedDailyGain = dailyEarnings
                 || (!product.isFree && cycleDays > 0 ? totalReturn / cycleDays : 0);
+              const isActivityProduct = product.productType === "activity";
+              const displayedGain = isActivityProduct ? totalReturn : displayedDailyGain;
+              const gainLabel = isActivityProduct
+                ? "Gains à l’échéance"
+                : product.isFree ? "Bonus quotidien" : "Gains journaliers";
               const displayName = getRobotProductDisplayName(product.id, product.name);
               const imageUrl = getRobotProductImage(product.imageUrl, product.id, product.name);
               const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
@@ -818,8 +823,8 @@ export default function HomeDashboard() {
                       <span className="rf-stat-label">Prix du produit</span>
                     </div>
                     <div className="rf-stat">
-                      <span className="rf-stat-value">{formatFcfa(displayedDailyGain)}</span>
-                      <span className="rf-stat-label">{product.isFree ? "Bonus quotidien" : "Gains journaliers"}</span>
+                      <span className="rf-stat-value">{formatFcfa(displayedGain)}</span>
+                      <span className="rf-stat-label">{gainLabel}</span>
                     </div>
                     <button
                       type="button"
