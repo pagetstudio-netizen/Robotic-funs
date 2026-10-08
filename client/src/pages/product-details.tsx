@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
+import { getRobotProductImage } from "@/lib/john-deere-assets";
 import { isProductStockFull } from "@shared/product-purchase-limit";
 import "./product-details.css";
 
@@ -123,7 +123,7 @@ export default function ProductDetailsPage() {
   const dailyEarnings = Number(product.dailyEarnings) || 0;
   const cycleDays = Number(product.cycleDays) || 0;
   const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
-  const image = product.imageUrl || getJohnDeereProductImage(null, product.id);
+  const image = getRobotProductImage(product.imageUrl, product.id, product.name);
   const cannotClaimFree = Boolean(product.isFree && !product.canClaimFree);
   const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
   const launchAlreadyPurchased = product.productType === "activity" && product.canPurchaseThisLaunch === false;
@@ -139,7 +139,7 @@ export default function ProductDetailsPage() {
             alt={product.name}
             onError={(event) => {
               event.currentTarget.onerror = null;
-              event.currentTarget.src = getJohnDeereProductImage(null, product.id);
+              event.currentTarget.src = getRobotProductImage(null, product.id, product.name);
             }}
           />
           <button

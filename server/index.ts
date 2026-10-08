@@ -166,8 +166,8 @@ app.use((req, res, next) => {
             if (claimed) {
               const user = await storage.getUser(deposit.userId);
               if (user) {
+                await storage.adjustBalance(user.id, "deposit", deposit.amount);
                 await storage.updateUser(user.id, {
-                  balance: (parseFloat(user.balance) + deposit.amount).toFixed(2),
                   hasDeposited: true,
                 });
                 await storage.createTransaction({

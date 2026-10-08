@@ -25,7 +25,10 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   referralCode: text("referral_code").notNull().unique(),
   referredBy: text("referred_by"),
-  balance: decimal("balance", { precision: 15, scale: 2 }).notNull().default("200"),
+  // Aggregate compatibility field; depositBalance and withdrawalBalance are the authoritative wallets.
+  balance: decimal("balance", { precision: 15, scale: 2 }).notNull().default("0"),
+  depositBalance: decimal("deposit_balance", { precision: 15, scale: 2 }).notNull().default("0"),
+  withdrawalBalance: decimal("withdrawal_balance", { precision: 15, scale: 2 }).notNull().default("0"),
   todayEarnings: decimal("today_earnings", { precision: 15, scale: 2 }).notNull().default("0"),
   totalEarnings: decimal("total_earnings", { precision: 15, scale: 2 }).notNull().default("0"),
   isAdmin: boolean("is_admin").notNull().default(false),
@@ -99,6 +102,7 @@ export const userProducts = pgTable("user_products", {
   daysRemaining: integer("days_remaining").notNull(),
   totalEarned: decimal("total_earned", { precision: 15, scale: 2 }).notNull().default("0"),
   isActive: boolean("is_active").notNull().default(true),
+  isRevoked: boolean("is_revoked").notNull().default(false),
   assignedByAdmin: boolean("assigned_by_admin").notNull().default(false),
 });
 
@@ -342,6 +346,8 @@ export const referralCommissionsRelations = relations(referralCommissions, ({ on
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   balance: true,
+  depositBalance: true,
+  withdrawalBalance: true,
   todayEarnings: true,
   totalEarnings: true,
   isAdmin: true,

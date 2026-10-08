@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
+import { getRobotProductImage } from "@/lib/john-deere-assets";
 import { useToast } from "@/hooks/use-toast";
 import { isProductStockFull } from "@shared/product-purchase-limit";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -55,6 +55,7 @@ export default function HomeDashboard() {
   const [, navigate] = useLocation();
   const [confirmProduct, setConfirmProduct] = useState<HomeProduct | null>(null);
   const [dailyBonusNoticeOpen, setDailyBonusNoticeOpen] = useState(false);
+  const [dailyBonusNoticeMessage, setDailyBonusNoticeMessage] = useState("");
   const [selectedProductType, setSelectedProductType] = useState<"stable" | "activity">("stable");
 
   const {
@@ -101,21 +102,23 @@ export default function HomeDashboard() {
       return response.json() as Promise<{ success: boolean; message?: string }>;
     },
     onSuccess: async () => {
+      setDailyBonusNoticeMessage("Pointage réussi ! Votre bonus de 50 FCFA a été ajouté.");
+      setDailyBonusNoticeOpen(true);
       await Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
         refreshUser(),
       ]);
-      setDailyBonusNoticeOpen(true);
     },
     onError: async (error: Error) => {
       const status = (error as Error & { status?: number }).status;
       if (status === 400) {
+        setDailyBonusNoticeMessage("La connexion d'aujourd'hui est terminée");
+        setDailyBonusNoticeOpen(true);
         await Promise.allSettled([
           queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
           refreshUser(),
         ]);
-        setDailyBonusNoticeOpen(true);
         return;
       }
 
@@ -762,11 +765,7 @@ export default function HomeDashboard() {
               const cycleDays = Number(product.cycleDays) || 0;
               const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
               const displayedGain = product.isFree ? dailyEarnings : totalReturn;
-              const imageUrl = product.imageUrl || (
-                product.productType === "activity"
-                  ? getJohnDeereProductImage(null, product.id)
-                  : null
-              );
+              const imageUrl = getRobotProductImage(product.imageUrl, product.id, product.name);
               const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
               const launchAlreadyPurchased = product.productType === "activity"
                 && product.canPurchaseThisLaunch === false;
@@ -779,15 +778,17 @@ export default function HomeDashboard() {
                           src={imageUrl}
                           alt={product.name}
                           loading={index > 1 ? "lazy" : "eager"}
-                          onError={(event) => {
-                            if (product.productType === "activity") {
-                              event.currentTarget.onerror = null;
-                              event.currentTarget.src = getJohnDeereProductImage(null, product.id);
-                            }
-                          }}
+                           onError={(event) => {
+                             event.currentTarget.onerror = null;
+                             event.currentTarget.src = getRobotProductImage(null, product.id, product.name);
+                           }}
                         />
                       ) : (
-                        <span className="rf-product-image-fallback" aria-hidden="true">RF</span>
+                        <img
+                          src={getRobotProductImage(null, product.id, product.name)}
+                          alt={product.name}
+                          loading={index > 1 ? "lazy" : "eager"}
+                        />
                       )}
                     </div>
                     <div className="rf-product-heading">
@@ -865,7 +866,7 @@ export default function HomeDashboard() {
                 id="rf-daily-bonus-notice-message"
                 className="rf-daily-bonus-notice-message"
               >
-                La connexion d'aujourd'hui est terminée
+                {dailyBonusNoticeMessage}
               </DialogDescription>
               <button
                 type="button"

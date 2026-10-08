@@ -2,8 +2,12 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
-import bcrypt from "bcrypt";
 import { registerSchema, loginSchema, depositSchema, walletSchema, phoneNumberSchema, type Product, type Withdrawal } from "@shared/schema";
+import {
+  changeUserPassword,
+  resetUserPassword,
+  verifyPassword,
+} from "./password-utils";
 import { normalizeBeninPhone } from "@shared/phone";
 import { z } from "zod";
 import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
@@ -92,12 +96,15 @@ import {
   DrimPayApiError,
 } from "./drimpay";
 import {
+  buildManualDepositNotification,
   formatTelegramValue,
+  isTelegramConfigured,
   sendTelegramInpayError,
   sendTelegramMessage,
   sendTelegramSecurityAlert,
 } from "./telegram";
 import { requestWithdrawal } from "./withdrawal-request";
+import { validateManualDepositProof } from "./manual-deposit-validation";
 import express from "express";
 
 // --- Brute-force protection (in-memory) ---
@@ -169,8 +176,7 @@ async function reconcilePpayProsPayout(
   if (terminalStatus === "rejected") {
     const user = await storage.getUser(withdrawal.userId);
     if (user) {
-      const refundedBalance = parseFloat(user.balance) + withdrawal.amount;
-      await storage.updateUser(user.id, { balance: refundedBalance.toFixed(2) });
+      await storage.adjustBalance(user.id, "withdrawal", withdrawal.amount);
     }
   }
   return updated;
@@ -285,9 +291,7 @@ async function refundRejectedWithdrawal(
 ) {
   const user = await storage.getUser(withdrawal.userId);
   if (!user) return;
-  await storage.updateUser(user.id, {
-    balance: (parseFloat(user.balance) + withdrawal.amount).toFixed(2),
-  });
+  await storage.adjustBalance(user.id, "withdrawal", withdrawal.amount);
   await storage.createTransaction({
     userId: user.id,
     type: "withdrawal_refund",
@@ -304,10 +308,8 @@ async function creditApprovedDeposit(deposit: {
   const user = await storage.getUser(deposit.userId);
   if (!user) return;
 
-  await storage.updateUser(user.id, {
-    balance: (parseFloat(user.balance) + deposit.amount).toFixed(2),
-    hasDeposited: true,
-  });
+  await storage.adjustBalance(user.id, "deposit", deposit.amount);
+  await storage.updateUser(user.id, { hasDeposited: true });
   await storage.createTransaction({
     userId: user.id,
     type: "deposit",
@@ -711,7 +713,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Identifiants incorrects" });
       }
 
-      const validPassword = await bcrypt.compare(data.password, user.password);
+      const validPassword = await verifyPassword(data.password, user.password);
       if (!validPassword) {
         recordFailedAttempt(req);
         return res.status(400).json({ message: "Identifiants incorrects" });
@@ -761,14 +763,10 @@ export async function registerRoutes(
 
   app.post("/api/change-password", requireAuth, async (req, res) => {
     try {
-      const { currentPassword, newPassword } = req.body;
+      const { currentPassword, newPassword } = req.body ?? {};
       
-      if (!currentPassword || !newPassword) {
+      if (typeof currentPassword !== "string" || !currentPassword) {
         return res.status(400).json({ message: "Veuillez remplir tous les champs" });
-      }
-
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "Le nouveau mot de passe doit contenir au moins 6 caracteres" });
       }
 
       const user = await storage.getUser(req.session.userId!);
@@ -776,13 +774,18 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Utilisateur non trouve" });
       }
 
-      const validPassword = await bcrypt.compare(currentPassword, user.password);
-      if (!validPassword) {
+      const result = await changeUserPassword(
+        currentPassword,
+        newPassword,
+        user.password,
+        (password) => storage.updateUser(user.id, { password }),
+      );
+      if (result === "invalid_new_password") {
+        return res.status(400).json({ message: "Le nouveau mot de passe doit contenir entre 6 et 128 caractères." });
+      }
+      if (result === "incorrect_current_password") {
         return res.status(400).json({ message: "Mot de passe actuel incorrect" });
       }
-
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(user.id, { password: hashedPassword });
 
       res.json({ success: true, message: "Mot de passe modifie avec succes" });
     } catch (error: any) {
@@ -892,11 +895,8 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Déjà réclamé aujourd'hui" });
       }
 
-      const newBalance = parseFloat(user.balance) + product.dailyEarnings;
-      await storage.updateUser(user.id, { 
-        balance: newBalance.toFixed(2),
-        lastFreeProductClaim: new Date(),
-      });
+      await storage.adjustBalance(user.id, "deposit", product.dailyEarnings);
+      await storage.updateUser(user.id, { lastFreeProductClaim: new Date() });
 
       await storage.createTransaction({
         userId: user.id,
@@ -916,7 +916,9 @@ export async function registerRoutes(
     try {
       const userProductsList = await storage.getAllUserProducts(req.session.userId!);
       
-      const formattedProducts = userProductsList.map(up => ({
+      const formattedProducts = userProductsList
+        .filter(up => !up.userProduct.isRevoked)
+        .map(up => ({
         id: up.userProduct.id,
         productId: up.userProduct.productId,
         purchasedAt: up.userProduct.purchaseDate,
@@ -930,7 +932,7 @@ export async function registerRoutes(
         status: up.userProduct.isActive ? 'active' : 'completed',
         productType: up.product.productType,
         product: up.product
-      }));
+        }));
       
       res.json(formattedProducts);
     } catch (error: any) {
@@ -1228,7 +1230,7 @@ export async function registerRoutes(
   app.post("/api/deposits", requireAuth, async (req, res) => {
     try {
       const { amount, accountName, accountNumber, paymentMethod, country, paymentChannelId, useSoleaspay, useWestpay, usePpaypros, useInpay, inpayPhone, otpCode,
-        paymentNumberId, channelName, screenshot, paymentMessage, reference } = req.body;
+        paymentNumberId, channelName, screenshot, paymentMessage, reference, paymentSource } = req.body;
       const user = await storage.getUser(req.session.userId!);
       
       if (!user) {
@@ -1262,6 +1264,17 @@ export async function registerRoutes(
        if (!parsedDeposit.success) {
          return res.status(400).json({ message: parsedDeposit.error.errors[0]?.message || "Données invalides" });
        }
+        if (reference !== undefined && reference !== null && typeof reference !== "string") {
+          return res.status(400).json({ message: "Référence de paiement invalide" });
+        }
+        if (paymentMessage !== undefined && paymentMessage !== null && typeof paymentMessage !== "string") {
+          return res.status(400).json({ message: "Message de paiement invalide" });
+        }
+        const normalizedReference = typeof reference === "string" ? reference.trim() : "";
+        const normalizedPaymentMessage = typeof paymentMessage === "string" ? paymentMessage.trim() : "";
+        if (normalizedReference.length > 120 || normalizedPaymentMessage.length > 2000) {
+          return res.status(400).json({ message: "La référence est limitée à 120 caractères et le message à 2 000 caractères." });
+        }
        if (screenshot !== undefined && screenshot !== null) {
          if (
            typeof screenshot !== "string" ||
@@ -1274,6 +1287,8 @@ export async function registerRoutes(
        const normalizedDeposit = parsedDeposit.data;
        const hasManualPaymentNumber = paymentNumberId !== undefined && paymentNumberId !== null;
        let selectedPaymentNumber: Awaited<ReturnType<typeof storage.getPaymentNumber>> | undefined;
+        let manualPaymentCurrency = "XOF";
+        let manualPaymentCountryLabel = normalizedDeposit.country;
        if (hasManualPaymentNumber) {
          const parsedPaymentNumberId = Number(paymentNumberId);
          if (!Number.isInteger(parsedPaymentNumberId) || parsedPaymentNumberId <= 0) {
@@ -1287,9 +1302,27 @@ export async function registerRoutes(
          ) {
            return res.status(400).json({ message: "Ce numéro de paiement n'est plus disponible pour ce pays" });
          }
-         if (!screenshot) {
-           return res.status(400).json({ message: "La capture d'écran du paiement est requise" });
+          const proofValidation = validateManualDepositProof(
+            paymentSource,
+            normalizedReference,
+            normalizedPaymentMessage,
+            screenshot,
+          );
+          if (!proofValidation.valid) {
+            return res.status(400).json({ message: proofValidation.message });
          }
+          if (!isTelegramConfigured()) {
+            return res.status(503).json({
+              message: "Les notifications Telegram de l’administration ne sont pas configurées. Aucun dépôt n’a été créé.",
+            });
+          }
+          const configuredCountry = (await storage.getCountries()).find(
+            (item) => item.code.toUpperCase() === normalizedDeposit.country.toUpperCase(),
+          );
+          manualPaymentCurrency = configuredCountry?.currency || "XOF";
+          manualPaymentCountryLabel = configuredCountry
+            ? `${configuredCountry.name} (${configuredCountry.code})`
+            : normalizedDeposit.country;
        }
 
       const soleaspayEnabled = settings.soleaspayEnabled !== "false";
@@ -1549,12 +1582,45 @@ export async function registerRoutes(
            ? `${selectedPaymentNumber.operatorName} - ${selectedPaymentNumber.paymentLink ? "Lien de paiement" : selectedPaymentNumber.phone}`
            : channelName || null,
         screenshot: screenshot || null,
-        paymentMessage: paymentMessage || null,
-        reference: reference || null,
+         paymentMessage: normalizedPaymentMessage || null,
+         reference: normalizedReference || null,
          status: "pending",
       });
 
-      res.json({ deposit, soleaspay: false });
+       let telegramNotificationSent: boolean | undefined;
+       if (selectedPaymentNumber) {
+         const paymentDestination = selectedPaymentNumber.paymentLink || selectedPaymentNumber.phone || "";
+         try {
+           await sendTelegramMessage(buildManualDepositNotification({
+             depositId: deposit.id,
+             userId: user.id,
+             userName: user.fullName,
+             userPhone: user.phone,
+             payerPhone: normalizedDeposit.accountNumber,
+             amount: normalizedDeposit.amount,
+             currency: manualPaymentCurrency,
+             country: manualPaymentCountryLabel,
+             operator: selectedPaymentNumber.operatorName,
+             paymentType: selectedPaymentNumber.paymentLink ? "lien" : "numéro",
+             paymentDestination,
+             recipientName: selectedPaymentNumber.ownerName,
+             paymentNumberId: selectedPaymentNumber.id,
+             reference: normalizedReference || null,
+             paymentMessage: normalizedPaymentMessage || null,
+             createdAt: deposit.createdAt,
+           }));
+           telegramNotificationSent = true;
+         } catch (notificationError: any) {
+           telegramNotificationSent = false;
+           console.error("[telegram] manual deposit notification failed:", notificationError.message);
+         }
+       }
+
+       res.json({
+         deposit,
+         soleaspay: false,
+         ...(selectedPaymentNumber ? { telegramNotificationSent } : {}),
+       });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -1592,9 +1658,8 @@ export async function registerRoutes(
             if (newStatus === "approved") {
               const user = await storage.getUser(deposit.userId);
               if (user) {
-                const newBalance = parseFloat(user.balance) + deposit.amount;
+                await storage.adjustBalance(user.id, "deposit", deposit.amount);
                 await storage.updateUser(deposit.userId, {
-                  balance: newBalance.toFixed(2),
                   hasDeposited: true,
                 });
 
@@ -1994,10 +2059,8 @@ export async function registerRoutes(
           if (claimedDeposit) {
             const user = await storage.getUser(deposit.userId);
             if (user) {
-              await storage.updateUser(user.id, {
-                balance: (parseFloat(user.balance) + deposit.amount).toFixed(2),
-                hasDeposited: true,
-              });
+              await storage.adjustBalance(user.id, "deposit", deposit.amount);
+              await storage.updateUser(user.id, { hasDeposited: true });
               await storage.createTransaction({
                 userId: user.id,
                 type: "deposit",
@@ -2778,11 +2841,8 @@ export async function registerRoutes(
       }
 
       // Add 50 FCFA to balance
-      const newBalance = parseFloat(user.balance) + 50;
-      await storage.updateUser(user.id, { 
-        balance: newBalance.toString(),
-        lastDailyBonusClaim: now
-      });
+      await storage.adjustBalance(user.id, "deposit", 50);
+      await storage.updateUser(user.id, { lastDailyBonusClaim: now });
 
       // Create transaction record
       await storage.createTransaction({
@@ -2984,9 +3044,8 @@ export async function registerRoutes(
 
       const user = await storage.getUser(deposit.userId);
       if (user) {
-        const newBalance = parseFloat(user.balance) + deposit.amount;
+        await storage.adjustBalance(user.id, "deposit", deposit.amount);
         await storage.updateUser(user.id, {
-          balance: newBalance.toFixed(2),
           hasDeposited: true,
         });
 
@@ -3104,8 +3163,7 @@ export async function registerRoutes(
       // Refund the user
       const user = await storage.getUser(withdrawal.userId);
       if (user) {
-        const newBalance = parseFloat(user.balance) + withdrawal.amount;
-        await storage.updateUser(user.id, { balance: newBalance.toFixed(2) });
+        await storage.adjustBalance(user.id, "withdrawal", withdrawal.amount);
       }
 
       await storage.logAdminAction(req.session.userId!, "reject_withdrawal", withdrawal.userId, `Retrait ${withdrawal.id} rejeté et remboursé`);
@@ -3414,6 +3472,78 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/users/:id/withdrawal-wallet", requireAdmin, async (req, res) => {
+    try {
+      const userId = Number(getRouteParam(req.params.id));
+      if (!Number.isSafeInteger(userId) || userId <= 0) {
+        return res.status(400).json({ message: "Utilisateur invalide" });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
+
+      const wallets = await storage.getWallets(userId);
+      const primaryWallet = wallets.find((wallet) => wallet.isDefault) ?? wallets[0] ?? null;
+      return res.json(primaryWallet);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Impossible de charger le compte de retrait" });
+    }
+  });
+
+  app.put("/api/admin/users/:id/withdrawal-wallet", requireAdmin, async (req, res) => {
+    try {
+      const userId = Number(getRouteParam(req.params.id));
+      if (!Number.isSafeInteger(userId) || userId <= 0) {
+        return res.status(400).json({ message: "Utilisateur invalide" });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
+
+      const parsedWallet = walletSchema.safeParse(req.body);
+      if (!parsedWallet.success) {
+        return res.status(400).json({
+          message: parsedWallet.error.errors[0]?.message || "Données du compte invalides",
+        });
+      }
+
+      const data = parsedWallet.data;
+      const profileCountry = user.country.trim().toUpperCase();
+      if (data.country.trim().toUpperCase() !== profileCountry) {
+        return res.status(400).json({ message: "Le pays du portefeuille doit correspondre au pays du compte utilisateur." });
+      }
+
+      const country = (await storage.getCountries()).find(
+        (configuredCountry) => configuredCountry.code.trim().toUpperCase() === profileCountry,
+      );
+      if (!country) {
+        return res.status(400).json({ message: "Le pays de cet utilisateur n'est pas configuré par l'administration." });
+      }
+
+      let configuredOperators: unknown = [];
+      try {
+        configuredOperators = JSON.parse(country.operators);
+      } catch {
+        configuredOperators = [];
+      }
+      if (
+        !Array.isArray(configuredOperators) ||
+        !configuredOperators.includes(data.paymentMethod)
+      ) {
+        return res.status(400).json({ message: "Le moyen de paiement n'est pas configuré pour ce pays." });
+      }
+
+      const wallet = await storage.createWallet({ userId, ...data });
+      await storage.logAdminAction(
+        req.session.userId!,
+        "update_withdrawal_wallet",
+        userId,
+        "Compte de retrait mis à jour par l'administration",
+      );
+      return res.json(wallet);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message || "Impossible de mettre à jour le compte de retrait" });
+    }
+  });
+
   app.get("/api/admin/users/:id/team", requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(getRouteParam(req.params.id));
@@ -3432,14 +3562,37 @@ export async function registerRoutes(
       const adminUser = await storage.getUser(req.session.userId!);
 
       switch (action) {
-        case "balance":
-          await storage.updateUser(userId, { balance: value.toFixed(2) });
-          await storage.logAdminAction(req.session.userId!, "update_balance", userId, `Solde modifié: ${value}F`);
+        case "balances": {
+          const depositBalance = Number(value?.depositBalance);
+          const withdrawalBalance = Number(value?.withdrawalBalance);
+          if (
+            !Number.isFinite(depositBalance) || depositBalance < 0 ||
+            !Number.isFinite(withdrawalBalance) || withdrawalBalance < 0
+          ) {
+            return res.status(400).json({ message: "Saisissez deux soldes valides, positifs ou nuls." });
+          }
+          await storage.setBalances(userId, depositBalance, withdrawalBalance);
+          await storage.logAdminAction(
+            req.session.userId!,
+            "update_balances",
+            userId,
+            `Soldes modifiés — dépôt: ${depositBalance}F, retrait: ${withdrawalBalance}F`,
+          );
           break;
-        case "password":
-          await storage.updateUser(userId, { password: value });
+        }
+        case "password": {
+          const targetUser = await storage.getUser(userId);
+          if (!targetUser) return res.status(404).json({ message: "Utilisateur introuvable" });
+          const saved = await resetUserPassword(
+            value,
+            (password) => storage.updateUser(userId, { password }),
+          );
+          if (!saved) {
+            return res.status(400).json({ message: "Le mot de passe doit contenir entre 6 et 128 caractères." });
+          }
           await storage.logAdminAction(req.session.userId!, "reset_password", userId, `Mot de passe réinitialisé`);
           break;
+        }
         case "toggle-ban":
           const user1 = await storage.getUser(userId);
           await storage.updateUser(userId, { isBanned: !user1?.isBanned });
@@ -3555,6 +3708,7 @@ export async function registerRoutes(
         dailyEarnings: up.product.dailyEarnings,
         payoutMode: up.userProduct.payoutMode,
         isActive: up.userProduct.isActive,
+        isRevoked: up.userProduct.isRevoked,
         purchaseDate: up.userProduct.purchaseDate,
         daysClaimed: up.product.cycleDays - up.userProduct.daysRemaining,
         totalCycle: up.product.cycleDays,
@@ -4162,8 +4316,8 @@ export async function registerRoutes(
       });
       const user = await storage.getUser(deposit.userId);
       if (user) {
-        const newBalance = parseFloat(user.balance) + deposit.amount;
-        await storage.updateUser(user.id, { balance: newBalance.toFixed(2), hasDeposited: true });
+        await storage.adjustBalance(user.id, "deposit", deposit.amount);
+        await storage.updateUser(user.id, { hasDeposited: true });
         await storage.createTransaction({ userId: user.id, type: "deposit", amount: deposit.amount.toString(), description: "Dépôt validé par bankier" });
       }
       await storage.logAdminAction(req.session.userId!, "approve_deposit", deposit.userId, `Dépôt ${deposit.id} approuvé par bankier: ${deposit.amount}F`);
@@ -4214,8 +4368,7 @@ export async function registerRoutes(
       });
       const user = await storage.getUser(withdrawal.userId);
       if (user) {
-        const newBalance = parseFloat(user.balance) + withdrawal.amount;
-        await storage.updateUser(user.id, { balance: newBalance.toFixed(2) });
+        await storage.adjustBalance(user.id, "withdrawal", withdrawal.amount);
       }
       await storage.logAdminAction(req.session.userId!, "reject_withdrawal", withdrawal.userId, `Retrait ${withdrawal.id} rejeté par bankier et remboursé`);
       res.json(withdrawal);

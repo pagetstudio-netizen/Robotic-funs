@@ -1,31 +1,51 @@
 export const INVITATION_TASK_KEY_PREFIX = "invite_level1_";
 
 export const INVITATION_TASK_DEFAULTS = [
-  { taskKey: "invite_level1_3", requiredInvites: 3, reward: 60 },
-  { taskKey: "invite_level1_9", requiredInvites: 9, reward: 180 },
-  { taskKey: "invite_level1_18", requiredInvites: 18, reward: 540 },
-  { taskKey: "invite_level1_36", requiredInvites: 36, reward: 1080 },
-  { taskKey: "invite_level1_72", requiredInvites: 72, reward: 2880 },
-  { taskKey: "invite_level1_144", requiredInvites: 144, reward: 5760 },
-  { taskKey: "invite_level1_288", requiredInvites: 288, reward: 17280 },
+  { taskKey: "invite_level1_3", requiredInvites: 3, reward: 500 },
+  { taskKey: "invite_level1_5", requiredInvites: 5, reward: 1200 },
+  { taskKey: "invite_level1_10", requiredInvites: 10, reward: 2500 },
+  { taskKey: "invite_level1_30", requiredInvites: 30, reward: 6500 },
+  { taskKey: "invite_level1_100", requiredInvites: 100, reward: 15000 },
 ].map((tier, index) => ({
   ...tier,
   name: tier.taskKey,
-  description: `Inviter ${tier.requiredInvites} membres de niveau 1 à investir`,
+  description: `Inviter ${tier.requiredInvites} personnes à investir`,
   sortOrder: 101 + index,
   isActive: true,
 }));
 
+export interface ReferralProductPurchase {
+  userId: number;
+  purchaseProductType: string | null;
+  productType: string;
+  purchasePrice: number | string | null;
+  productPrice: number | string;
+  isFree: boolean;
+  assignedByAdmin: boolean;
+}
+
 export function countQualifiedDirectReferrals(
   referrals: Array<{ id: number; hasDeposited: boolean }>,
   approvedDepositUserIds: number[],
-  paidProductUserIds: number[],
+  productPurchases: ReferralProductPurchase[],
 ): number {
   const depositedIds = new Set([
     ...referrals.filter(referral => referral.hasDeposited).map(referral => referral.id),
     ...approvedDepositUserIds,
   ]);
-  const purchasedIds = new Set(paidProductUserIds);
+  const purchasedIds = new Set(
+    productPurchases
+      .filter(purchase => {
+        const productType = purchase.purchaseProductType ?? purchase.productType;
+        const price = Number(purchase.purchasePrice ?? purchase.productPrice);
+        return productType === "stable"
+          && !purchase.isFree
+          && !purchase.assignedByAdmin
+          && Number.isFinite(price)
+          && price > 0;
+      })
+      .map(purchase => purchase.userId),
+  );
 
   return new Set(
     referrals

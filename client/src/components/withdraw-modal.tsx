@@ -89,7 +89,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
 
   if (!user) return null;
 
-  const balance = parseFloat(user.balance || "0");
+  const balance = parseFloat(user.withdrawalBalance || "0");
   const defaultWallet = wallets?.find(w => w.isDefault);
   const fees = withdrawalSettings?.withdrawalFees || 15;
   const startHour = withdrawalSettings?.withdrawalStartHour || 8;
@@ -226,7 +226,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
           </DialogDescription>
           <div className="withdraw-modal-balance">
             <div>
-              <div className="withdraw-modal-balance-label">Solde du compte</div>
+              <div className="withdraw-modal-balance-label">Solde de retrait</div>
               <div className="withdraw-modal-balance-value">{formatCurrency(balance, user.country)}</div>
             </div>
             <span className="withdraw-modal-wallet" aria-hidden="true" />
@@ -282,7 +282,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
               </div>
 
               <div className="bg-secondary rounded-lg p-3 text-center">
-                <p className="text-sm text-muted-foreground">Solde disponible</p>
+                <p className="text-sm text-muted-foreground">Solde de retrait disponible</p>
                 <p className="text-xl font-bold text-foreground">{formatCurrency(balance, user.country)}</p>
               </div>
 

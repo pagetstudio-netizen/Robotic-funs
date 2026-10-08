@@ -174,7 +174,8 @@ export default function AccountPage() {
             <div className="account-card-content">
               <div className="account-balance-pill">
                 <span className="account-phone">{user.phone}</span>
-                <span className="account-balance">Solde actuel : {formatFcfa(user.balance)}</span>
+                <span className="account-balance">Solde de retrait : {formatFcfa(user.withdrawalBalance)}</span>
+                <span className="account-balance">Solde de dépôt : {formatFcfa(user.depositBalance)}</span>
               </div>
               <div className="account-shortcuts" aria-label="Opérations du compte">
                 <button type="button" onClick={() => navigate("/deposit")}>

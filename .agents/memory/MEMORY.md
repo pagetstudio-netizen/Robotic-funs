@@ -6,6 +6,7 @@
 - [Login privacy](login-privacy.md) — Do not persist passwords or phone numbers in browser storage; privacy scans classify remembered phone numbers as sensitive.
 - [Brand theme isolation](brand-theme-isolation.md) — Apply RoboticsFund branding to every route except `/robotpay`; preserve RobotPay’s original theme.
 - [Dashboard language and catalog](dashboard-language-and-catalog.md) — Keep the site in French, leave browser tabs/chrome untouched, and show real active products with FCFA values.
+- [Robot product artwork](robot-product-art.md) — Use the user's ten built-in robot images for stable and activity products; map Robot-N names first, then product IDs.
 - [Empty-state illustration](empty-state-illustration.md) — Use the user's uploaded illustration for genuine empty results across user, Admin, Banker, and RobotPay views; leave loading, errors, and payment progress unchanged.
 - [InPay callback classification](inpay-callbacks.md) — InPay payin and payout callbacks can both include order_number; classify using the merchant reference prefix first.
 - [InPay IP whitelist](inpay-ip-whitelist.md) — InPay rejects API calls with errno 5 until the server's public egress IP is whitelisted.
@@ -22,5 +23,7 @@
 - [Activity product launch clocks](activity-product-launch-clocks.md) — TG, BF, and CI share local time; BJ, CM, and NE launch one hour ahead.
 - [Activity product purchase rules](activity-product-purchase-rules.md) — Require a paid stable purchase and cap activity price at the highest single stable purchase; enforce stock and launch limits.
 - [Withdrawal product eligibility](withdrawal-product-eligibility.md) — Withdrawals require at least one active stable position; activity-only and completed positions do not qualify.
+- [Revoked product visibility](revoked-product-visibility.md) — Hide admin-revoked positions from user lists while retaining their record and distinguishing them from completed products.
 - [Referral commission eligibility](referral-commission-policy.md) — Pay referral commissions only on the referred user's first paid stable-product purchase.
 - [Product payout policy](product-payout-policy.md) — Product earnings are credited once at maturity; preserve and subtract any amounts already paid on legacy positions.
+- [Balance separation](balance-separation.md) — Keep non-withdrawable deposits and bonuses separate from withdrawable earnings and commissions.

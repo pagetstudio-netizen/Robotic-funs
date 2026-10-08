@@ -296,8 +296,17 @@ export default function DepositPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Demande envoyée !", description: "Votre dépôt est en attente de validation" });
+    onSuccess: (data) => {
+      toast(data.telegramNotificationSent === false
+        ? {
+            title: "Dépôt enregistré",
+            description: "La notification à l’administration n’a pas abouti. Ne relancez pas le paiement ; contactez l’administration avec votre référence.",
+            variant: "destructive",
+          }
+        : {
+            title: "Demande envoyée !",
+            description: "Votre dépôt est en attente de validation",
+          });
       queryClient.invalidateQueries({ queryKey: ["/api/deposits/history"] });
       refreshUser();
       setStep("amount");
@@ -1184,10 +1193,10 @@ export default function DepositPage() {
           </button>
         </header>
         <div className="recharge-top-row">
-          <section className="balance-summary" aria-label="Solde actuel">
-            <span className="balance-label">Solde actuel</span>
+          <section className="balance-summary" aria-label="Solde de dépôt">
+            <span className="balance-label">Solde de dépôt</span>
             <strong className="balance-value">
-              {Number.parseFloat(user.balance || "0").toLocaleString("fr-FR", {
+              {Number.parseFloat(user.depositBalance || "0").toLocaleString("fr-FR", {
                 maximumFractionDigits: 2,
               })} {currency}
             </strong>

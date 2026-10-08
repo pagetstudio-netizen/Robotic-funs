@@ -1,12 +1,29 @@
 import { db } from "./db";
 import { users, products, tasks, paymentChannels, platformSettings, countries } from "@shared/schema";
 import { JOHN_DEERE_PRODUCT_CATALOG, JOHN_DEERE_PRODUCT_IMAGE_PATHS } from "@shared/product-catalog";
-import { INVITATION_TASK_DEFAULTS } from "./invitation-tasks";
+import { INVITATION_TASK_DEFAULTS, INVITATION_TASK_KEY_PREFIX } from "./invitation-tasks";
 import bcrypt from "bcrypt";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 export async function seed() {
   console.log("Seeding database...");
+
+  // One-time migration: existing single-wallet balances become non-withdrawable deposit balance.
+  const walletSplitMigrationKey = "userWalletSplitV1";
+  const walletSplitMigration = await db.select({ key: platformSettings.key })
+    .from(platformSettings)
+    .where(eq(platformSettings.key, walletSplitMigrationKey))
+    .limit(1);
+  if (walletSplitMigration.length === 0) {
+    await db.transaction(async (tx) => {
+      await tx.update(users).set({
+        depositBalance: users.balance,
+        withdrawalBalance: "0",
+      });
+      await tx.insert(platformSettings).values({ key: walletSplitMigrationKey, value: "1" });
+    });
+    console.log("Existing balances moved to the non-withdrawable deposit wallet");
+  }
 
   // Create session table for connect-pg-simple (if not exists)
   await db.execute(sql`
@@ -226,31 +243,48 @@ export async function seed() {
     console.log(`John Deere product images applied to ${orderedProducts.length} products`);
   }
 
-  // Seed tasks only if table is empty (first install only — never overwrite admin changes)
-  const existingTasks = await db.select().from(tasks);
-  if (existingTasks.length === 0) {
-    await db.insert(tasks).values([
-      { name: "Parrain Bronze", description: "Inviter 3 personnes a investir", requiredInvites: 3, reward: 350, sortOrder: 1 },
-      { name: "Parrain Argent", description: "Inviter 5 personnes a investir", requiredInvites: 5, reward: 750, sortOrder: 2 },
-      { name: "Parrain Or", description: "Inviter 10 personnes a investir", requiredInvites: 10, reward: 2500, sortOrder: 3 },
-      { name: "Parrain Platine", description: "Inviter 30 personnes a investir", requiredInvites: 30, reward: 6500, sortOrder: 4 },
-      { name: "Parrain Diamant", description: "Inviter 100 personnes a investir", requiredInvites: 100, reward: 15000, sortOrder: 5 },
-      { name: "Parrain Elite", description: "Inviter 300 personnes a investir", requiredInvites: 300, reward: 50000, sortOrder: 6 },
-    ]);
-    console.log("Tasks seeded (first install)");
-  } else {
-    console.log(`Tasks skipped — ${existingTasks.length} existing tasks preserved`);
-  }
+  // One-time migration: replace old invitation tiers while preserving claimed-task history.
+  const invitationTaskMigrationKey = "invitationTaskTiersV2";
+  const invitationTaskMigration = await db.select({ key: platformSettings.key })
+    .from(platformSettings)
+    .where(eq(platformSettings.key, invitationTaskMigrationKey))
+    .limit(1);
+  if (invitationTaskMigration.length === 0) {
+    const existingTasks = await db.select().from(tasks);
+    const retainedTaskIds = new Set<number>();
 
-  const knownTaskKeys = new Set(
-    (await db.select({ name: tasks.name }).from(tasks)).map(({ name }) => name),
-  );
-  const missingInvitationTasks = INVITATION_TASK_DEFAULTS
-    .filter(({ taskKey }) => !knownTaskKeys.has(taskKey))
-    .map(({ taskKey: _taskKey, ...task }) => task);
-  if (missingInvitationTasks.length > 0) {
-    await db.insert(tasks).values(missingInvitationTasks);
-    console.log(`Invitation reward tiers added: ${missingInvitationTasks.length}`);
+    for (const { taskKey, ...tier } of INVITATION_TASK_DEFAULTS) {
+      const existing = existingTasks.find(task => task.name === taskKey);
+      if (existing) {
+        await db.update(tasks).set(tier).where(eq(tasks.id, existing.id));
+        retainedTaskIds.add(existing.id);
+      } else {
+        const [inserted] = await db.insert(tasks)
+          .values(tier)
+          .returning({ id: tasks.id });
+        if (inserted) retainedTaskIds.add(inserted.id);
+      }
+    }
+
+    const legacyTaskNames = new Set([
+      "Parrain Bronze",
+      "Parrain Argent",
+      "Parrain Or",
+      "Parrain Platine",
+      "Parrain Diamant",
+      "Parrain Elite",
+    ]);
+    const obsoleteTaskIds = existingTasks
+      .filter(task => (
+        task.name.startsWith(INVITATION_TASK_KEY_PREFIX) || legacyTaskNames.has(task.name)
+      ) && !retainedTaskIds.has(task.id))
+      .map(task => task.id);
+    if (obsoleteTaskIds.length > 0) {
+      await db.update(tasks).set({ isActive: false }).where(inArray(tasks.id, obsoleteTaskIds));
+    }
+
+    await db.insert(platformSettings).values({ key: invitationTaskMigrationKey, value: "1" });
+    console.log("Invitation task tiers migrated to the five requested milestones");
   }
 
   // Check if payment channels exist

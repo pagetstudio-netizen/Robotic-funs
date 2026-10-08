@@ -11,7 +11,7 @@ import type { Product } from "@shared/schema";
 import { isProductStockFull } from "@shared/product-purchase-limit";
 
 import serviceIcon from "@assets/20260311_214852_1773265973964.png";
-import { getJohnDeereProductImage, ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
+import { getRobotProductImage, ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
 import EmptyState from "@/components/empty-state";
 
 interface ProductWithOwnership extends Product {
@@ -57,7 +57,7 @@ export default function InvestPage() {
 
   if (!user) return null;
 
-  const balance     = parseFloat(user.balance || "0");
+  const balance     = parseFloat(user.depositBalance || "0");
   const country     = getCountryByCode(user.country);
   const currency    = country?.currency || "FCFA";
   const paidProducts = products?.filter(p => !p.isFree) || [];
@@ -118,8 +118,8 @@ export default function InvestPage() {
         {isLoading ? (
           Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)
         ) : displayed.length > 0 ? (
-          displayed.map((product, idx) => {
-            const img = getJohnDeereProductImage(product.imageUrl, idx);
+          displayed.map((product) => {
+            const img = getRobotProductImage(product.imageUrl, product.id, product.name);
             const stockFull = isProductStockFull(product.stockLimit, product.stockCount || 0);
             const launchAlreadyPurchased = product.productType === "activity"
               && product.canPurchaseThisLaunch === false;
@@ -139,7 +139,7 @@ export default function InvestPage() {
                     onError={(event) => {
                       if (product.productType === "activity") {
                         event.currentTarget.onerror = null;
-                        event.currentTarget.src = getJohnDeereProductImage(null, product.id);
+                        event.currentTarget.src = getRobotProductImage(null, product.id, product.name);
                       }
                     }}
                   />
@@ -202,8 +202,7 @@ export default function InvestPage() {
 
       {/* ── Purchase confirm modal ── */}
       {confirmProduct && (() => {
-        const prodIdx   = (products?.findIndex(p => p.id === confirmProduct.id) ?? 0);
-        const prodImg   = getJohnDeereProductImage(confirmProduct.imageUrl, prodIdx);
+        const prodImg   = getRobotProductImage(confirmProduct.imageUrl, confirmProduct.id, confirmProduct.name);
         const stockFull = isProductStockFull(confirmProduct.stockLimit, confirmProduct.stockCount || 0);
         const launchAlreadyPurchased = confirmProduct.productType === "activity"
           && confirmProduct.canPurchaseThisLaunch === false;

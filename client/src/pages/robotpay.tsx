@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, ClipboardCheck, Copy, ExternalLink, ImageIcon, Loader2, Phone, ShieldCheck } from "lucide-react";
+import { Check, ChevronRight, Copy, ExternalLink, Loader2, Phone, ShieldCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,6 @@ export default function RobotPayPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const amount = Number(params.get("amount") || 0);
   const country = (params.get("country") || "").toUpperCase();
@@ -56,10 +55,10 @@ export default function RobotPayPage() {
   const [redirectUrl, setRedirectUrl] = useState("");
   const [paymentLinkUnavailable, setPaymentLinkUnavailable] = useState(false);
   const [status, setStatus] = useState("pending");
-  const [screenshot, setScreenshot] = useState("");
-  const [screenshotName, setScreenshotName] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
   const [paymentMessage, setPaymentMessage] = useState("");
   const [manualSubmitted, setManualSubmitted] = useState(false);
+  const [telegramNotificationFailed, setTelegramNotificationFailed] = useState(false);
 
   const { data: countries = [] } = useQuery<ApiCountry[]>({ queryKey: ["/api/countries"] });
   const { data: providerInfo, isLoading: providerLoading } = useQuery<ProviderInfo>({
@@ -278,16 +277,19 @@ export default function RobotPayPage() {
       const number = operator?.manualNumber;
       if (!number) throw new Error("Numéro de paiement indisponible");
       if (!phone.trim()) throw new Error("Saisissez le numéro depuis lequel vous avez payé");
-      if (!screenshot) throw new Error("Ajoutez la capture d'écran du paiement");
+      if (!paymentReference.trim() && !paymentMessage.trim()) {
+        throw new Error("Saisissez la référence ou le message de confirmation du paiement");
+      }
       const res = await apiRequest("POST", "/api/deposits", {
         amount,
         accountName: user?.fullName || "",
         accountNumber: paymentPhone,
         paymentMethod: number.operatorName,
         country,
+        paymentSource: "robotpay",
         paymentNumberId: number.id,
-         channelName: number.paymentLink ? `${number.operatorName} - Lien de paiement` : `${number.operatorName} - ${number.phone}`,
-        screenshot,
+        channelName: number.paymentLink ? `${number.operatorName} - Lien de paiement` : `${number.operatorName} - ${number.phone}`,
+        reference: paymentReference.trim() || null,
         paymentMessage: paymentMessage.trim() || null,
       });
       if (!res.ok) throw new Error((await res.json()).message || "Envoi impossible");
@@ -296,6 +298,7 @@ export default function RobotPayPage() {
     onSuccess: (data) => {
       setDepositId(data.deposit?.id || null);
       setManualSubmitted(true);
+      setTelegramNotificationFailed(data.telegramNotificationSent === false);
       setStatus("pending");
       setStep(3);
       queryClient.invalidateQueries({ queryKey: ["/api/deposits/history"] });
@@ -323,6 +326,10 @@ export default function RobotPayPage() {
   const submitPhone = () => {
     if (!phone.trim()) { toast({ title: "Numéro requis", description: "Saisissez le numéro Mobile Money utilisé.", variant: "destructive" }); return; }
     if (!operator) { toast({ title: "Opérateur requis", description: "Sélectionnez votre opérateur.", variant: "destructive" }); return; }
+    if (operator.manualNumber && !paymentReference.trim() && !paymentMessage.trim()) {
+      toast({ title: "Confirmation de paiement requise", description: "Saisissez la référence ou le message reçu après le paiement.", variant: "destructive" });
+      return;
+    }
     setPaymentLinkUnavailable(false);
     if (operator.manualNumber) manualMutation.mutate();
     else {
@@ -355,25 +362,11 @@ export default function RobotPayPage() {
     }
   };
 
-  const handleScreenshotChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Fichier trop grand", description: "La capture doit faire 5 Mo maximum", variant: "destructive" });
-      return;
-    }
-    setScreenshotName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setScreenshot(String(reader.result || ""));
-    reader.readAsDataURL(file);
-  };
-
   const chooseOperator = (nextOperator: Operator) => {
     setOperator(nextOperator);
-    setScreenshot("");
-    setScreenshotName("");
+    setPaymentReference("");
     setPaymentMessage("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setTelegramNotificationFailed(false);
     setStep(1);
   };
 
@@ -409,7 +402,7 @@ export default function RobotPayPage() {
                        <button onClick={copyPaymentNumber} className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-[#00CC2C] px-3 py-2 text-sm font-semibold text-[#008f20]">
                          <Copy className="h-4 w-4" /> Copier le lien
                        </button>
-                       <p className="mt-2 text-xs text-gray-600">Effectuez le paiement via ce lien, puis envoyez la preuve ci-dessous.</p>
+                        <p className="mt-2 text-xs text-gray-600">Effectuez le paiement via ce lien, puis saisissez la référence ou le message reçu.</p>
                      </>
                    ) : (
                      <>
@@ -421,7 +414,7 @@ export default function RobotPayPage() {
                            <Copy className="h-4 w-4" /> Copier
                          </button>
                        </div>
-                       <p className="mt-2 text-xs text-gray-600">Effectuez le paiement sur ce numéro, puis envoyez la preuve ci-dessous.</p>
+                        <p className="mt-2 text-xs text-gray-600">Effectuez le paiement sur ce numéro, puis saisissez la référence ou le message reçu.</p>
                      </>
                    )}
                 </div>
@@ -440,22 +433,35 @@ export default function RobotPayPage() {
               {operator?.manualNumber && (
                 <div className="space-y-4 border-t border-gray-200 pt-4 text-left">
                   <div>
-                    <p className="mb-2 text-sm font-semibold text-gray-800">Capture d'écran du paiement <span className="text-red-500">*</span></p>
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleScreenshotChange} className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 py-5">
-                      {screenshot ? <><ClipboardCheck className="h-7 w-7 text-green-500" /><span className="text-sm text-green-600">{screenshotName}</span></> : <><ImageIcon className="h-7 w-7 text-gray-400" /><span className="text-sm text-gray-600">Ajouter la capture</span><span className="text-xs text-gray-400">JPG, PNG — max 5 Mo</span></>}
-                    </button>
-                    {screenshot && <img src={screenshot} alt="Aperçu de la capture" className="mt-2 max-h-44 w-full rounded-lg border object-contain" />}
+                    <label className="mb-2 block text-sm font-semibold text-gray-800">
+                      Référence ou message de paiement <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentReference}
+                      onChange={(event) => setPaymentReference(event.target.value)}
+                      maxLength={120}
+                      placeholder="Référence / ID de transaction"
+                      className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none"
+                    />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-gray-800">Message reçu après le paiement <span className="text-gray-400 font-normal">(recommandé)</span></label>
-                    <textarea value={paymentMessage} onChange={e => setPaymentMessage(e.target.value)} rows={3} placeholder="Collez ici le SMS ou message de confirmation..." className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm outline-none" />
+                    <label className="mb-2 block text-sm font-semibold text-gray-800">Message reçu après le paiement</label>
+                    <textarea
+                      value={paymentMessage}
+                      onChange={(event) => setPaymentMessage(event.target.value)}
+                      rows={3}
+                      maxLength={2000}
+                      placeholder="Collez ici le SMS ou message de confirmation..."
+                      className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm outline-none"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Renseignez au moins la référence ou le message reçu.</p>
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-center gap-5 pt-3">
                 <button onClick={() => { setOperator(null); setStep(0); }} className="w-[43%] rounded-md bg-[#78b9df] py-3 font-semibold text-white shadow-sm">&lt; Retour</button>
-                <button onClick={submitPhone} disabled={busy || !phone.trim() || (!!operator?.manualNumber && !screenshot)} className="w-[43%] rounded-md bg-[#078ee8] py-3 font-semibold text-white shadow-sm disabled:opacity-50">{busy ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : operator?.manualNumber ? "Envoyer la demande" : "Suivant >"}</button>
+                <button onClick={submitPhone} disabled={busy || !phone.trim() || (!!operator?.manualNumber && !paymentReference.trim() && !paymentMessage.trim())} className="w-[43%] rounded-md bg-[#078ee8] py-3 font-semibold text-white shadow-sm disabled:opacity-50">{busy ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : operator?.manualNumber ? "Envoyer la demande" : "Suivant >"}</button>
               </div>
             </div>
           )}
@@ -464,7 +470,7 @@ export default function RobotPayPage() {
               {redirectUrl ? <><p className="text-gray-700">{message || "Ouvrez la page sécurisée pour terminer votre paiement."}</p><a href={redirectUrl} target="_blank" rel="noreferrer" className="block rounded-lg bg-[#1486d8] text-white py-3 font-semibold">Ouvrir la page de paiement</a></> : (otpToken || ashtechOtpRequired) ? <>{ussd && <p className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-3 text-center font-mono text-xl font-bold tracking-widest text-[#00a526]">{ussd}</p>}<p className="text-sm text-gray-600">{ussd ? "Composez ce code sur votre téléphone pour obtenir le code OTP, puis saisissez-le ci-dessous." : "Un code OTP vous a été envoyé. Saisissez-le ci-dessous."}</p><input value={activeProvider === "ashtech" ? ashtechOtp : otp} onChange={e => activeProvider === "ashtech" ? setAshtechOtp(e.target.value.replace(/\D/g, "")) : setOtp(e.target.value)} inputMode="numeric" placeholder="Saisissez le code OTP" className="w-full border rounded-lg p-3 text-center text-xl" /><button onClick={submitOtp} disabled={busy} className="w-full rounded-lg bg-[#1486d8] py-3 font-semibold text-white disabled:opacity-50">Confirmer</button></> : <><ShieldCheck className="mx-auto h-16 w-16 animate-pulse text-green-400" /><p className="font-semibold text-lg">{status === "rejected" ? "Paiement échoué" : "Paiement en cours de traitement"}</p><p className="text-sm text-gray-500">{status === "rejected" ? activeProvider === "drimpay" ? "Le fournisseur n’a pas confirmé le paiement après cinq vérifications." : "Le paiement n’a pas été confirmé." : "Votre paiement est en cours de traitement. Veuillez patienter."}</p></>}
             </div>
           )}
-          {step === 3 && (manualSubmitted ? <div className="space-y-5 py-5 text-center"><Check className="mx-auto h-24 w-24 rounded-full bg-green-500 p-4 text-white" /><h2 className="text-xl text-gray-700">Demande envoyée</h2><p className="text-sm text-gray-500">Votre capture et les informations du paiement ont été transmises. Le dépôt sera crédité après vérification.</p><div className="rounded bg-gray-100 p-3 text-left text-sm leading-7 text-gray-700"><b>Opérateur :</b> {operator?.name}<br /><b>Montant :</b> {amount.toLocaleString()} {currency}<br /><b>Statut :</b> En attente de validation</div><button onClick={() => navigate("/")} className="text-lg text-[#4b91ef]">Retourner sur le site</button></div> : <div className="space-y-5 py-5 text-center"><div className="text-left border-b pb-3 text-xl text-gray-700">ROBOTPAY - {countryInfo?.name || country}</div><p className="text-left text-2xl text-gray-900">{amount.toLocaleString()} {currency}</p><Check className="w-24 h-24 mx-auto rounded-full bg-green-500 p-4 text-white" /><h2 className="text-xl text-gray-600">Votre paiement a été approuvé</h2><div className="rounded bg-gray-200 p-3 text-left text-sm leading-7 text-gray-700"><b>Payeur :</b> {phone}<br /><b>ID Transaction :</b> {transactionReference}<br /><b>Date Paiement :</b> {new Date().toLocaleString("fr-FR")}</div><p className="pt-12 text-gray-500">🔒 Sécurisé par <b className="text-[#174d79]">ROBOTPAY</b></p><button onClick={() => navigate("/")} className="text-lg text-[#4b91ef]">Retourner sur le site</button></div>)}
+          {step === 3 && (manualSubmitted ? <div className="space-y-5 py-5 text-center"><Check className="mx-auto h-24 w-24 rounded-full bg-green-500 p-4 text-white" /><h2 className="text-xl text-gray-700">Demande envoyée</h2><p className="text-sm text-gray-500">{telegramNotificationFailed ? `Votre demande #${depositId ?? ""} est enregistrée, mais la notification Telegram n’a pas pu être envoyée. Ne refaites pas le paiement ; contactez l’administration.` : "Votre référence ou message de paiement a été transmis à l’administration. Le dépôt sera crédité après vérification."}</p><div className="rounded bg-gray-100 p-3 text-left text-sm leading-7 text-gray-700"><b>Opérateur :</b> {operator?.name}<br /><b>Montant :</b> {amount.toLocaleString()} {currency}<br /><b>Référence :</b> {depositId ? `#${depositId}` : "En attente"}<br /><b>Statut :</b> En attente de validation</div><button onClick={() => navigate("/")} className="text-lg text-[#4b91ef]">Retourner sur le site</button></div> : <div className="space-y-5 py-5 text-center"><div className="text-left border-b pb-3 text-xl text-gray-700">ROBOTPAY - {countryInfo?.name || country}</div><p className="text-left text-2xl text-gray-900">{amount.toLocaleString()} {currency}</p><Check className="w-24 h-24 mx-auto rounded-full bg-green-500 p-4 text-white" /><h2 className="text-xl text-gray-600">Votre paiement a été approuvé</h2><div className="rounded bg-gray-200 p-3 text-left text-sm leading-7 text-gray-700"><b>Payeur :</b> {phone}<br /><b>ID Transaction :</b> {transactionReference}<br /><b>Date Paiement :</b> {new Date().toLocaleString("fr-FR")}</div><p className="pt-12 text-gray-500">🔒 Sécurisé par <b className="text-[#174d79]">ROBOTPAY</b></p><button onClick={() => navigate("/")} className="text-lg text-[#4b91ef]">Retourner sur le site</button></div>)}
         </section>
       </div>
     </main>

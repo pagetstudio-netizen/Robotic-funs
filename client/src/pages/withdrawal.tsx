@@ -153,7 +153,7 @@ export default function WithdrawalPage() {
 
   if (!user) return null;
 
-  const balance = parseFloat(user?.balance || "0");
+  const balance = parseFloat(user?.withdrawalBalance || "0");
 
   return (
     <main className="withdraw-reference">
@@ -1093,7 +1093,7 @@ export default function WithdrawalPage() {
         <div className="withdraw-top-row">
           <section className="balance-card" aria-label="Solde disponible">
             <div className="balance-copy">
-              <p className="balance-label">Solde actuel</p>
+              <p className="balance-label">Solde de retrait</p>
               <p className="balance-value" data-testid="text-balance">
                 {Math.round(balance).toLocaleString("fr-FR")} {currency}
               </p>

@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  getJohnDeereProductImage,
-} from "@/lib/john-deere-assets";
+import { getRobotProductImage } from "@/lib/john-deere-assets";
 import EmptyState from "@/components/empty-state";
 
 export default function OrdersPage() {
@@ -17,8 +15,11 @@ export default function OrdersPage() {
 
   if (!user) return null;
 
-  const getProductImage = (imageUrl: string | null | undefined, index: number) =>
-    getJohnDeereProductImage(imageUrl, index);
+  const getProductImage = (
+    imageUrl: string | null | undefined,
+    productId: number,
+    productName?: string | null,
+  ) => getRobotProductImage(imageUrl, productId, productName);
 
   const filteredProducts = userProducts?.filter((up: any) => 
     activeTab === "active" ? up.status === "active" : up.status !== "active"
@@ -90,7 +91,7 @@ export default function OrdersPage() {
                   <div className="flex items-start gap-4">
                     <div className="w-24 h-24 flex-shrink-0">
                       <img 
-                        src={getProductImage(up.product?.imageUrl, up.productId ? up.productId : index)}
+                        src={getProductImage(up.product?.imageUrl, up.productId || index + 1, up.product?.name)}
                         alt={up.product?.name || "Produit"}
                         className="w-full h-full object-cover rounded-lg"
                       />

@@ -8,8 +8,11 @@ export interface WithdrawalRequestStorage {
   getWallets(userId: number): Promise<WithdrawalWallet[]>;
   getDefaultWallet(userId: number): Promise<WithdrawalWallet | undefined>;
   getUserWithdrawalCountToday(userId: number): Promise<number>;
-  updateUser(userId: number, data: Partial<User>): Promise<User>;
-  createWithdrawal(data: Partial<Withdrawal>): Promise<Withdrawal>;
+  reserveWithdrawal(
+    userId: number,
+    amount: number,
+    data: Partial<Withdrawal>,
+  ): Promise<Withdrawal | undefined>;
 }
 
 export class WithdrawalRequestError extends Error {
@@ -56,9 +59,9 @@ export async function requestWithdrawal(
     }
   }
 
-  const balance = parseFloat(user.balance);
+  const balance = parseFloat(user.withdrawalBalance);
   if (numericAmount > balance) {
-    throw new WithdrawalRequestError("Solde insuffisant");
+    throw new WithdrawalRequestError("Solde de retrait insuffisant");
   }
 
   let wallet: WithdrawalWallet | undefined;
@@ -99,13 +102,7 @@ export async function requestWithdrawal(
   const feeAmount = Math.round(numericAmount * fees / 100);
   const netAmount = numericAmount - feeAmount;
 
-  await storage.updateUser(user.id, {
-    balance: (balance - numericAmount).toFixed(2),
-  });
-
-  const withdrawal = await storage.createWithdrawal({
-    userId: user.id,
-    amount: numericAmount,
+  const withdrawal = await storage.reserveWithdrawal(user.id, numericAmount, {
     netAmount,
     fees: feeAmount,
     accountName: wallet.accountName,
@@ -114,6 +111,9 @@ export async function requestWithdrawal(
     paymentMethod: wallet.paymentMethod,
     status: "pending",
   });
+  if (!withdrawal) {
+    throw new WithdrawalRequestError("Solde de retrait insuffisant");
+  }
 
   return { user, wallet, withdrawal, amount: numericAmount, netAmount };
 }

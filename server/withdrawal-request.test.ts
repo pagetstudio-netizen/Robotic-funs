@@ -14,7 +14,9 @@ function createWithdrawalFixtures(overrides: {
     id: 42,
     fullName: "Utilisateur test",
     country: "TG",
-    balance: "10000.00",
+    balance: "60000.00",
+    depositBalance: "50000.00",
+    withdrawalBalance: "10000.00",
     hasActiveProduct: true,
     isWithdrawalBlocked: false,
     mustInviteToWithdraw: false,
@@ -67,13 +69,12 @@ function createWithdrawalFixtures(overrides: {
     async getUserWithdrawalCountToday() {
       return overrides.todayCount ?? 0;
     },
-    async updateUser(userId: number, data: Record<string, unknown>) {
-      updates.push({ userId, data });
-      Object.assign(user, data);
-      return user;
-    },
-    async createWithdrawal(data: Record<string, unknown>) {
-      const withdrawal = { id: nextWithdrawalId++, ...data };
+    async reserveWithdrawal(userId: number, amount: number, data: Record<string, unknown>) {
+      if (Number(user.withdrawalBalance) < amount) return undefined;
+      user.withdrawalBalance = (Number(user.withdrawalBalance) - amount).toFixed(2);
+      user.balance = (Number(user.balance) - amount).toFixed(2);
+      updates.push({ userId, data: { withdrawalBalance: user.withdrawalBalance } });
+      const withdrawal = { id: nextWithdrawalId++, userId, amount, ...data };
       createdWithdrawals.push(withdrawal);
       return withdrawal;
     },
@@ -106,7 +107,7 @@ test("non-Benin withdrawal keeps using the default wallet even if another wallet
   assert.equal(result.netAmount, 4000);
   assert.equal(result.withdrawal.status, "pending");
   assert.deepEqual(fixtures.updates, [
-    { userId: 42, data: { balance: "5000.00" } },
+    { userId: 42, data: { withdrawalBalance: "5000.00" } },
   ]);
   assert.deepEqual(fixtures.createdWithdrawals, [
     {
@@ -132,6 +133,22 @@ test("non-Benin withdrawal keeps using the default wallet even if another wallet
     false,
     "withdrawal should not link to a prepayment",
   );
+  assert.equal(fixtures.user.depositBalance, "50000.00");
+  assert.equal(fixtures.user.withdrawalBalance, "5000.00");
+});
+
+test("a large deposit balance cannot be used to fund a withdrawal", async () => {
+  const fixtures = createWithdrawalFixtures({
+    user: { withdrawalBalance: "1000.00", balance: "51000.00" },
+  });
+
+  await assert.rejects(
+    requestWithdrawal(42, 5000, fixtures.storage),
+    { message: "Solde de retrait insuffisant" },
+  );
+
+  assert.deepEqual(fixtures.updates, []);
+  assert.deepEqual(fixtures.createdWithdrawals, []);
 });
 
 test("Benin withdrawal uses the wallet selected by the user", async () => {

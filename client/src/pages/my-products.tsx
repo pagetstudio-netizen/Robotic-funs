@@ -1,11 +1,12 @@
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
+import EmptyState from "@/components/empty-state";
 import { getCountryByCode } from "@/lib/countries";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 
-import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
+import { getRobotProductImage } from "@/lib/john-deere-assets";
 import "./my-products.css";
 
 interface UserProduct {
@@ -19,20 +20,12 @@ interface UserProduct {
   product: Product | null;
 }
 
-function getPurchasedProductImage(imageUrl: string | null | undefined, index: number) {
-  const image = imageUrl?.trim();
-  if (image && image.startsWith("/") && !image.startsWith("//")) return image;
-
-  if (image) {
-    try {
-      const parsed = new URL(image);
-      if (parsed.protocol === "https:" || parsed.protocol === "http:") return image;
-    } catch {
-      // Use a local equipment image when the stored URL is malformed.
-    }
-  }
-
-  return getJohnDeereProductImage(image, index);
+function getPurchasedProductImage(
+  imageUrl: string | null | undefined,
+  productId: number,
+  productName: string,
+) {
+  return getRobotProductImage(imageUrl, productId, productName);
 }
 
 export default function MyProductsPage() {
@@ -105,7 +98,9 @@ export default function MyProductsPage() {
               </button>
             </div>
           ) : allUserProducts.length === 0 ? (
-            <p className="products-empty">Plus de données</p>
+            <EmptyState className="products-empty">
+              <p>Plus de données</p>
+            </EmptyState>
           ) : (
             allUserProducts.map((up, index) => {
               const cycleDays = Number(up.product?.cycleDays) || 60;
@@ -143,11 +138,11 @@ export default function MyProductsPage() {
                     <div className="product-details">
                       <div className="product-image">
                         <img
-                          src={getPurchasedProductImage(up.product?.imageUrl, index)}
+                          src={getPurchasedProductImage(up.product?.imageUrl, up.product?.id ?? index + 1, productName)}
                           alt={productName}
                           onError={event => {
                             event.currentTarget.onerror = null;
-                            event.currentTarget.src = getJohnDeereProductImage(null, index);
+                            event.currentTarget.src = getRobotProductImage(null, up.product?.id ?? index + 1, productName);
                           }}
                         />
                       </div>

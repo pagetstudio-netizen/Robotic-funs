@@ -39,6 +39,49 @@ export function formatTelegramValue(value: unknown): string {
   return escapeHtml(value);
 }
 
+export type ManualDepositNotification = {
+  depositId: number;
+  userId: number;
+  userName: string;
+  userPhone: string;
+  payerPhone: string;
+  amount: number;
+  currency: string;
+  country: string;
+  operator: string;
+  paymentType: "numéro" | "lien";
+  paymentDestination: string;
+  recipientName?: string | null;
+  paymentNumberId: number;
+  reference?: string | null;
+  paymentMessage?: string | null;
+  createdAt: Date | string;
+};
+
+export function buildManualDepositNotification(data: ManualDepositNotification): string {
+  const createdAt = new Date(data.createdAt);
+  const timestamp = Number.isNaN(createdAt.getTime()) ? "—" : createdAt.toISOString();
+  return [
+    "💳 <b>Nouveau paiement manuel à vérifier — RobotPay</b>",
+    `Dépôt : <b>#${formatTelegramValue(data.depositId)}</b> — En attente`,
+    `Utilisateur : ${formatTelegramValue(data.userName)} (ID ${formatTelegramValue(data.userId)})`,
+    `Téléphone du compte : <code>${formatTelegramValue(data.userPhone)}</code>`,
+    `Téléphone payeur : <code>${formatTelegramValue(data.payerPhone)}</code>`,
+    `Montant : <b>${formatTelegramValue(data.amount)} ${formatTelegramValue(data.currency)}</b>`,
+    `Pays : ${formatTelegramValue(data.country)}`,
+    `Opérateur : ${formatTelegramValue(data.operator)}`,
+    `Type de paiement : ${formatTelegramValue(data.paymentType)}`,
+    `Compte destinataire : ${formatTelegramValue(data.recipientName || "—")}`,
+    `ID du moyen de paiement : ${formatTelegramValue(data.paymentNumberId)}`,
+    `Numéro/lien destinataire : <code>${formatTelegramValue(data.paymentDestination)}</code>`,
+    data.reference ? `Référence du paiement : <code>${formatTelegramValue(data.reference)}</code>` : "",
+    data.paymentMessage
+      ? `Message reçu :\n<pre>${formatTelegramValue(data.paymentMessage)}</pre>`
+      : "",
+    `Créé (UTC) : <code>${formatTelegramValue(timestamp)}</code>`,
+  ].filter(Boolean).join("\n");
+}
+
 async function telegramRequest(method: string, body: Record<string, unknown>) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return null;

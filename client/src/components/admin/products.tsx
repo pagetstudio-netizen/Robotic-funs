@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Loader2, TrendingUp, Plus, Trash2 } from "lucide-react";
-import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
+import { getRobotProductImage } from "@/lib/john-deere-assets";
 import type { Product } from "@shared/schema";
 import EmptyState from "@/components/empty-state";
 
@@ -375,29 +375,15 @@ export default function AdminProducts() {
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-12 h-12 rounded-lg object-contain border border-border"
-                      onError={(event) => {
-                        if (product.productType === "activity") {
-                          event.currentTarget.onerror = null;
-                          event.currentTarget.src = getJohnDeereProductImage(null, product.id);
-                        }
-                      }}
-                    />
-                  ) : product.productType === "activity" ? (
-                    <img
-                      src={getJohnDeereProductImage(null, product.id)}
-                      alt={product.name}
-                      className="w-12 h-12 rounded-lg object-cover border border-border"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-primary" />
-                    </div>
-                  )}
+                  <img
+                    src={getRobotProductImage(product.imageUrl, product.id, product.name)}
+                    alt={product.name}
+                    className="w-12 h-12 rounded-lg object-cover border border-border"
+                    onError={(event) => {
+                      event.currentTarget.onerror = null;
+                      event.currentTarget.src = getRobotProductImage(null, product.id, product.name);
+                    }}
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground">{product.name}</p>

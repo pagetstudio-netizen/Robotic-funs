@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import emptyStateIllustration from "@assets/1238dd33-a759-49c6-a408-97180f73076e_1791104304351.png";
+import emptyStateIllustration from "@assets/9fbbf513-879b-4d40-97e0-b2ec88550e18_1791421186188.png";
 import "./empty-state.css";
 
 interface EmptyStateProps {

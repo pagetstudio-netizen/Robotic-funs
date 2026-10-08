@@ -349,16 +349,33 @@ export default function HistoryPage() {
           font-weight: 400;
           line-height: 1.25;
         }
+        .history-balance-grid {
+          display: grid;
+          flex: 1;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: center;
+          gap: 12px;
+          margin-top: 14px;
+        }
+        .history-balance-item {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          text-align: center;
+        }
         .history-balance-value {
           display: flex;
-          flex: 1;
-          align-items: center;
+          align-items: baseline;
           justify-content: center;
           margin: 0;
           color: #fff;
-          font-size: clamp(32px, 7vw, 38px);
+          font-size: clamp(20px, 5.6vw, 30px);
           font-weight: 700;
-          line-height: 1;
+          line-height: 1.1;
+          overflow-wrap: anywhere;
+          text-align: center;
         }
         .history-tabs {
           position: sticky;
@@ -555,7 +572,10 @@ export default function HistoryPage() {
           .history-tabs { gap: 5px; padding-right: 3%; padding-left: 3%; }
           .history-tab { font-size: 11px; }
           .history-content { padding-right: 3%; padding-left: 3%; }
-          .history-balance-card { margin-right: 3%; margin-left: 3%; }
+          .history-balance-card { margin-right: 3%; margin-left: 3%; padding-right: 14px; padding-left: 14px; }
+          .history-balance-grid { gap: 14px; }
+          .history-balance-label { font-size: 13px; }
+          .history-balance-value { font-size: 18px; }
           .history-card { padding-right: 0; padding-left: 0; }
           .history-row { gap: 8px; font-size: 12px; }
           .history-row strong { font-size: 11px; }
@@ -580,11 +600,21 @@ export default function HistoryPage() {
           <h1 className="history-title">Historique du solde</h1>
         </header>
 
-        <section className="history-balance-card" aria-label="Solde actuel">
-          <span className="history-balance-label">Solde actuel</span>
-          <strong className="history-balance-value">
-            {formatAmount(user.balance || "0")} {currency}
-          </strong>
+        <section className="history-balance-card" aria-label="Soldes disponibles">
+          <div className="history-balance-grid">
+            <div className="history-balance-item">
+              <span className="history-balance-label">Solde de retrait</span>
+              <strong className="history-balance-value">
+                {formatAmount(user.withdrawalBalance || "0")} {currency}
+              </strong>
+            </div>
+            <div className="history-balance-item">
+              <span className="history-balance-label">Solde de dépôt</span>
+              <strong className="history-balance-value">
+                {formatAmount(user.depositBalance || "0")} {currency}
+              </strong>
+            </div>
+          </div>
         </section>
 
         <nav className="history-tabs" aria-label="Type d'enregistrement">

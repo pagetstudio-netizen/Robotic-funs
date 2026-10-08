@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import EmptyState from "@/components/empty-state";
 import { ChevronLeft, Menu, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -146,7 +147,9 @@ export default function TeamDetailsPage() {
             Impossible de charger les détails de l’équipe.
           </p>
         ) : membersByLevel.length === 0 ? (
-          <p className="team-details-message">Plus de données</p>
+          <EmptyState className="team-details-message">
+            <p>Plus de données</p>
+          </EmptyState>
         ) : (
           <div className="team-details-member-list">
             {membersByLevel.map((member) => (

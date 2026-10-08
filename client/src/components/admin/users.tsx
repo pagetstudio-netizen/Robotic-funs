@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,9 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/countries";
 import { Search, Edit, Ban, Shield, Lock, Unlock, Star, Users, Loader2, UserPlus, ChevronDown, ChevronUp, Trash2, ChevronLeft, ChevronRight, Landmark } from "lucide-react";
-import type { User, Product } from "@shared/schema";
+import { walletSchema } from "@shared/schema";
+import type { Country, User, Product, WithdrawalWallet } from "@shared/schema";
 import { ADMIN_PATH } from "@/lib/admin-path";
 import EmptyState from "@/components/empty-state";
+import { parseOperators } from "@/lib/countries";
 
 interface UserProductItem {
   id: number;
@@ -25,6 +27,7 @@ interface UserProductItem {
   dailyEarnings: string;
   payoutMode: "daily" | "maturity";
   isActive: boolean;
+  isRevoked: boolean;
   purchaseDate: string;
   daysClaimed: number;
   totalCycle: number;
@@ -59,6 +62,8 @@ interface DetailedTeam {
   totalLevel2Invested: number;
   totalLevel3Invested: number;
 }
+
+type AdminWalletForm = Pick<WithdrawalWallet, "accountName" | "accountNumber" | "paymentMethod" | "country">;
 
 function TeamMemberCard({ member }: { member: TeamMember; level: number }) {
   return (
@@ -120,8 +125,16 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | "banned" | "blocked" | "promoter">("all");
   const [selectedUser, setSelectedUser] = useState<UserWithTeam | null>(null);
-  const [editBalance, setEditBalance] = useState("");
+  const [editDepositBalance, setEditDepositBalance] = useState("");
+  const [editWithdrawalBalance, setEditWithdrawalBalance] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [adminWalletForm, setAdminWalletForm] = useState<AdminWalletForm>({
+    accountName: "",
+    accountNumber: "",
+    paymentMethod: "",
+    country: "",
+  });
   const [selectedProduct, setSelectedProduct] = useState("");
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [teamUserId, setTeamUserId] = useState<number | null>(null);
@@ -177,6 +190,81 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
       return res.json();
     },
     enabled: !!selectedUser?.id,
+  });
+
+  const { data: adminCountries = [] } = useQuery<Country[]>({
+    queryKey: ["/api/admin/countries"],
+    enabled: !!selectedUser,
+  });
+
+  const adminWalletQuery = useQuery<WithdrawalWallet | null>({
+    queryKey: ["/api/admin/users", selectedUser?.id, "withdrawal-wallet"],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/users/${selectedUser!.id}/withdrawal-wallet`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Impossible de charger le portefeuille");
+      return response.json();
+    },
+    enabled: !!selectedUser?.id,
+  });
+
+  useEffect(() => {
+    if (!selectedUser || !adminWalletQuery.isSuccess) return;
+    setAdminWalletForm({
+      accountName: adminWalletQuery.data?.accountName ?? selectedUser.fullName,
+      accountNumber: adminWalletQuery.data?.accountNumber ?? "",
+      paymentMethod: adminWalletQuery.data?.paymentMethod ?? "",
+      country: selectedUser.country,
+    });
+  }, [selectedUser?.id, adminWalletQuery.data, adminWalletQuery.isSuccess]);
+
+  useEffect(() => {
+    setNewPassword("");
+    setConfirmNewPassword("");
+  }, [selectedUser?.id]);
+
+  const selectedWalletCountry = adminCountries.find(
+    (country) => country.code.toUpperCase() === adminWalletForm.country.toUpperCase(),
+  );
+  const availableWalletOperators = parseOperators(selectedWalletCountry?.operators ?? "[]");
+
+  const saveWithdrawalWalletMutation = useMutation({
+    mutationFn: async ({ userId, wallet }: { userId: number; wallet: AdminWalletForm }) => {
+      const response = await apiRequest("PUT", `/api/admin/users/${userId}/withdrawal-wallet`, wallet);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Impossible de modifier le compte de retrait");
+      }
+      return response.json();
+    },
+    onSuccess: (_wallet, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users", variables.userId, "withdrawal-wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Compte de retrait mis à jour" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const passwordResetMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: number; password: string }) => {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/password`, { value: password });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Impossible de réinitialiser le mot de passe");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setNewPassword("");
+      setConfirmNewPassword("");
+      toast({ title: "Mot de passe réinitialisé" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
   });
 
   const revokeMutation = useMutation({
@@ -303,16 +391,28 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                       <Users className="w-4 h-4 mr-1" />
                       Equipe
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setSelectedUser(user)}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditDepositBalance(user.depositBalance || "0");
+                        setEditWithdrawalBalance(user.withdrawalBalance || "0");
+                        setSelectedUser(user);
+                      }}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Solde</p>
-                    <p className="font-medium text-foreground">{formatCurrency(parseFloat(user.balance), user.country)}</p>
+                    <p className="text-muted-foreground">Solde dépôt</p>
+                    <p className="font-medium text-foreground">{formatCurrency(parseFloat(user.depositBalance || "0"), user.country)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Solde retrait</p>
+                    <p className="font-medium text-foreground">{formatCurrency(parseFloat(user.withdrawalBalance || "0"), user.country)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Equipe</p>
@@ -478,39 +578,212 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                 </div>
               </div>
 
+              <div className="space-y-3 rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Compte de retrait</p>
+                  <p className="text-xs text-muted-foreground">
+                    Modifiez le titulaire, l’opérateur et le numéro utilisés pour les retraits.
+                  </p>
+                </div>
+                {adminWalletQuery.isLoading ? (
+                  <div className="flex justify-center py-3">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : adminWalletQuery.isError ? (
+                  <p className="text-sm text-destructive">Impossible de charger le compte de retrait.</p>
+                ) : (
+                  <>
+                    {!adminWalletQuery.data && (
+                      <p className="text-xs text-muted-foreground">
+                        Aucun compte enregistré. L’enregistrement créera le compte principal.
+                      </p>
+                    )}
+                    <div>
+                      <label className="text-xs text-muted-foreground">Pays du compte</label>
+                      <Input
+                        value={selectedWalletCountry?.name ?? selectedUser.country}
+                        readOnly
+                        className="mt-1"
+                        data-testid="input-admin-wallet-country"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Nom réel du titulaire</label>
+                      <Input
+                        value={adminWalletForm.accountName}
+                        onChange={(event) => setAdminWalletForm((current) => ({
+                          ...current,
+                          accountName: event.target.value,
+                        }))}
+                        maxLength={100}
+                        className="mt-1"
+                        data-testid="input-admin-wallet-name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Opérateur / banque</label>
+                      <Select
+                        value={adminWalletForm.paymentMethod}
+                        onValueChange={(paymentMethod) => setAdminWalletForm((current) => ({
+                          ...current,
+                          paymentMethod,
+                        }))}
+                      >
+                        <SelectTrigger className="mt-1" data-testid="select-admin-wallet-operator">
+                          <SelectValue placeholder="Choisir un opérateur configuré" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableWalletOperators.map((operator) => (
+                            <SelectItem key={operator} value={operator}>{operator}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {availableWalletOperators.length === 0 && (
+                        <p className="mt-1 text-xs text-destructive">
+                          Aucun opérateur n’est configuré pour ce pays.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Numéro de compte</label>
+                      <Input
+                        type="tel"
+                        value={adminWalletForm.accountNumber}
+                        onChange={(event) => setAdminWalletForm((current) => ({
+                          ...current,
+                          accountNumber: event.target.value,
+                        }))}
+                        maxLength={16}
+                        className="mt-1"
+                        data-testid="input-admin-wallet-number"
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        const parsed = walletSchema.safeParse(adminWalletForm);
+                        if (!parsed.success) {
+                          toast({
+                            title: "Informations invalides",
+                            description: parsed.error.errors[0]?.message || "Vérifiez les informations du compte.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        if (!availableWalletOperators.includes(parsed.data.paymentMethod)) {
+                          toast({
+                            title: "Opérateur indisponible",
+                            description: "Sélectionnez un opérateur configuré pour ce pays.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        saveWithdrawalWalletMutation.mutate({
+                          userId: selectedUser.id,
+                          wallet: parsed.data,
+                        });
+                      }}
+                      disabled={
+                        adminWalletQuery.isLoading ||
+                        saveWithdrawalWalletMutation.isPending ||
+                        !adminWalletForm.paymentMethod ||
+                        availableWalletOperators.length === 0
+                      }
+                      data-testid="button-save-admin-wallet"
+                    >
+                      {saveWithdrawalWalletMutation.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : "Enregistrer le compte de retrait"}
+                    </Button>
+                  </>
+                )}
+              </div>
+
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">Modifier le solde</label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="number"
-                      value={editBalance}
-                      onChange={(e) => setEditBalance(e.target.value)}
-                      placeholder="Nouveau solde"
-                    />
+                  <label className="text-sm font-medium">Modifier les soldes</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Solde de dépôt</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editDepositBalance}
+                        onChange={(e) => setEditDepositBalance(e.target.value)}
+                        placeholder="Solde de dépôt"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Solde de retrait</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editWithdrawalBalance}
+                        onChange={(e) => setEditWithdrawalBalance(e.target.value)}
+                        placeholder="Solde de retrait"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2">
                     <Button
-                      onClick={() => updateMutation.mutate({ userId: selectedUser.id, action: "balance", value: parseFloat(editBalance) })}
-                      disabled={updateMutation.isPending || !editBalance}
+                      className="w-full"
+                      onClick={() => updateMutation.mutate({
+                        userId: selectedUser.id,
+                        action: "balances",
+                        value: {
+                          depositBalance: Number(editDepositBalance),
+                          withdrawalBalance: Number(editWithdrawalBalance),
+                        },
+                      })}
+                      disabled={updateMutation.isPending || editDepositBalance === "" || editWithdrawalBalance === ""}
                     >
-                      {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
+                      {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer les soldes"}
                     </Button>
                   </div>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium">Reinitialiser mot de passe</label>
-                  <div className="flex gap-2 mt-1">
+                  <div className="mt-1 space-y-2">
                     <Input
-                      type="text"
+                      type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Nouveau mot de passe"
+                      autoComplete="new-password"
+                      minLength={6}
+                      maxLength={128}
+                      data-testid="input-admin-new-password"
                     />
+                    <Input
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirmer le nouveau mot de passe"
+                      autoComplete="new-password"
+                      minLength={6}
+                      maxLength={128}
+                      data-testid="input-admin-confirm-password"
+                    />
+                    {confirmNewPassword && newPassword !== confirmNewPassword && (
+                      <p className="text-xs text-destructive">Les mots de passe ne correspondent pas.</p>
+                    )}
                     <Button
-                      onClick={() => updateMutation.mutate({ userId: selectedUser.id, action: "password", value: newPassword })}
-                      disabled={updateMutation.isPending || !newPassword}
+                      className="w-full"
+                      onClick={() => passwordResetMutation.mutate({ userId: selectedUser.id, password: newPassword })}
+                      disabled={
+                        passwordResetMutation.isPending ||
+                        newPassword.length < 6 ||
+                        newPassword.length > 128 ||
+                        newPassword !== confirmNewPassword
+                      }
+                      data-testid="button-admin-reset-password"
                     >
-                      {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
+                      {passwordResetMutation.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : "Réinitialiser le mot de passe"}
                     </Button>
                   </div>
                 </div>
@@ -553,7 +826,7 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                               {up.productPrice.toLocaleString()} F - {up.dailyEarnings.toLocaleString()} F/jour calculé
                               {" · "}versé à l’échéance
                               {" · "}Jour {up.daysClaimed}/{up.totalCycle}
-                              {up.isActive ? " (Actif)" : " (Termine)"}
+                              {up.isRevoked ? " (Révoqué)" : up.isActive ? " (Actif)" : " (Terminé)"}
                             </p>
                           </div>
                           {up.isActive && (

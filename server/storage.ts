@@ -9,6 +9,7 @@ import {
 import { db } from "./db";
 import { INVITATION_TASK_KEY_PREFIX, countQualifiedDirectReferrals } from "./invitation-tasks";
 import { calculateMaturityPayout } from "./product-payout";
+import { isUserProductRevoked } from "./product-revocation";
 import {
   getHighestStablePurchasePrice,
   hasPurchasedActivityLaunch,
@@ -16,8 +17,9 @@ import {
   isProductStockFull,
 } from "../shared/product-purchase-limit";
 import { isFirstPaidStableProductPurchase } from "./referral-commission-policy";
+import { hasQualifyingActiveStableProduct } from "./withdrawal-product-eligibility";
 import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
-import bcrypt from "bcrypt";
+import { hashPassword } from "./password-utils";
 
 const DRIMPAY_STATUS_CHECK_SETTING_PREFIX = "__internal_drimpay_status_checks:";
 
@@ -62,6 +64,8 @@ export interface IStorage {
   getUserByReferralCode(code: string): Promise<User | undefined>;
   createUser(data: Partial<User>): Promise<User>;
   updateUser(id: number, data: Partial<User>): Promise<User>;
+  adjustBalance(userId: number, wallet: "deposit" | "withdrawal", amount: number, executor?: any): Promise<boolean>;
+  setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User>;
   getAllUsers(filter?: string, limit?: number, offset?: number): Promise<{ users: User[], total: number }>;
   
   // Products
@@ -108,6 +112,7 @@ export interface IStorage {
   
   // Withdrawals
   createWithdrawal(data: Partial<Withdrawal>): Promise<Withdrawal>;
+  reserveWithdrawal(userId: number, amount: number, data: Partial<Withdrawal>): Promise<Withdrawal | undefined>;
   getWithdrawals(status?: string): Promise<(Withdrawal & { user: User })[]>;
   getUserWithdrawals(userId: number): Promise<Withdrawal[]>;
   getWithdrawal(id: number): Promise<Withdrawal | undefined>;
@@ -225,7 +230,7 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(data: Partial<User>): Promise<User> {
     const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const hashedPassword = await bcrypt.hash(data.password!, 10);
+    const hashedPassword = await hashPassword(data.password!);
 
     // Get signup bonus from settings (default 200)
     let signupBonus = "200";
@@ -239,6 +244,8 @@ export class DatabaseStorage implements IStorage {
       password: hashedPassword,
       referralCode,
       balance: signupBonus,
+      depositBalance: signupBonus,
+      withdrawalBalance: "0",
     } as any).returning();
     
     await this.createTransaction({
@@ -253,9 +260,56 @@ export class DatabaseStorage implements IStorage {
 
   async updateUser(id: number, data: Partial<User>): Promise<User> {
     if (data.password) {
-      data.password = await bcrypt.hash(data.password, 10);
+      data.password = await hashPassword(data.password);
     }
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async adjustBalance(
+    userId: number,
+    wallet: "deposit" | "withdrawal",
+    amount: number,
+    executor: any = db,
+  ): Promise<boolean> {
+    if (!Number.isFinite(amount) || Math.round(amount * 100) !== amount * 100) {
+      throw new Error("Montant de solde invalide");
+    }
+
+    const delta = Number(amount.toFixed(2));
+    const walletColumn = wallet === "deposit" ? users.depositBalance : users.withdrawalBalance;
+    const walletUpdate = wallet === "deposit"
+      ? { depositBalance: sql`${users.depositBalance} + ${delta}` }
+      : { withdrawalBalance: sql`${users.withdrawalBalance} + ${delta}` };
+    const hasSufficientBalance = wallet === "deposit"
+      ? gte(users.depositBalance, (-delta).toFixed(2))
+      : gte(users.withdrawalBalance, (-delta).toFixed(2));
+    const conditions = delta < 0
+      ? and(eq(users.id, userId), hasSufficientBalance)
+      : eq(users.id, userId);
+    const [updated] = await executor.update(users).set({
+      ...walletUpdate,
+      balance: sql`${users.balance} + ${delta}`,
+    }).where(conditions).returning({ id: users.id });
+    return Boolean(updated);
+  }
+
+  async setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User> {
+    if (
+      !Number.isFinite(depositBalance) || depositBalance < 0 ||
+      !Number.isFinite(withdrawalBalance) || withdrawalBalance < 0
+    ) {
+      throw new Error("Les soldes doivent être des montants positifs ou nuls.");
+    }
+
+    const deposit = Number(depositBalance.toFixed(2));
+    const withdrawal = Number(withdrawalBalance.toFixed(2));
+    const [user] = await db.update(users).set({
+      depositBalance: deposit.toFixed(2),
+      withdrawalBalance: withdrawal.toFixed(2),
+      balance: (deposit + withdrawal).toFixed(2),
+    }).where(eq(users.id, userId)).returning();
+    if (!user) throw new Error("Utilisateur non trouvé");
     return user;
   }
 
@@ -378,24 +432,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async hasActiveStableProduct(userId: number): Promise<boolean> {
-    const [activePosition] = await db.select({ id: userProducts.id })
+    const positions = await db.select({
+      purchaseProductType: userProducts.purchaseProductType,
+      currentProductType: products.productType,
+      isActive: userProducts.isActive,
+      isRevoked: userProducts.isRevoked,
+      daysRemaining: userProducts.daysRemaining,
+      assignedByAdmin: userProducts.assignedByAdmin,
+    })
       .from(userProducts)
       .innerJoin(products, eq(userProducts.productId, products.id))
-      .where(and(
-        eq(userProducts.userId, userId),
-        eq(userProducts.isActive, true),
-        sql`${userProducts.daysRemaining} > 0`,
-        or(
-          eq(userProducts.purchaseProductType, "stable"),
-          and(
-            isNull(userProducts.purchaseProductType),
-            eq(products.productType, "stable"),
-          ),
-        ),
-      ))
-      .limit(1);
+      .where(eq(userProducts.userId, userId));
 
-    return Boolean(activePosition);
+    return hasQualifyingActiveStableProduct(positions);
   }
 
   async getAllUserProducts(userId: number): Promise<{ userProduct: UserProduct; product: Product }[]> {
@@ -405,9 +454,33 @@ export class DatabaseStorage implements IStorage {
     }).from(userProducts)
       .innerJoin(products, eq(userProducts.productId, products.id))
       .where(eq(userProducts.userId, userId));
-    
+
+    const hasLegacyRevocationCandidates = result.some(
+      ({ userProduct }) => !userProduct.isActive && !userProduct.isRevoked,
+    );
+    const legacyRevocations = hasLegacyRevocationCandidates
+      ? await db.select({
+          details: adminAuditLog.details,
+          revokedAt: adminAuditLog.createdAt,
+        }).from(adminAuditLog).where(and(
+          eq(adminAuditLog.action, "revoke_product"),
+          eq(adminAuditLog.targetUserId, userId),
+          sql`${adminAuditLog.details} ~ '^Produit [0-9]+ révoqué$'`,
+        ))
+      : [];
+    const legacyRevocationEvents = legacyRevocations.flatMap((log) => {
+      const match = /^Produit ([0-9]+) révoqué$/.exec(log.details);
+      const productId = Number(match?.[1]);
+      return match && Number.isInteger(productId)
+        ? [{ productId, revokedAt: log.revokedAt }]
+        : [];
+    });
+
     return result.map((row) => ({
-      userProduct: row.userProduct,
+      userProduct: {
+        ...row.userProduct,
+        isRevoked: isUserProductRevoked(row.userProduct, legacyRevocationEvents),
+      },
       product: productTermsAtPurchase(row.product, row.userProduct),
     })).sort((a, b) => {
       const dateA = a.userProduct.purchaseDate ? new Date(a.userProduct.purchaseDate).getTime() : 0;
@@ -521,14 +594,14 @@ export class DatabaseStorage implements IStorage {
           );
         }
 
-        const balance = Number(user.balance);
+        const balance = Number(user.depositBalance);
         if (!Number.isFinite(balance) || balance < product.price) {
           throw new Error("Solde insuffisant");
         }
-        await tx.update(users).set({
-          balance: sql`${users.balance} - ${product.price}`,
-          hasActiveProduct: true,
-        }).where(eq(users.id, userId));
+        if (!await this.adjustBalance(userId, "deposit", -product.price, tx)) {
+          throw new Error("Solde de dépôt insuffisant");
+        }
+        await tx.update(users).set({ hasActiveProduct: true }).where(eq(users.id, userId));
         await tx.insert(transactions).values({
           userId,
           type: "purchase",
@@ -584,7 +657,7 @@ export class DatabaseStorage implements IStorage {
 
   async removeUserProduct(userId: number, productId: number): Promise<void> {
     await db.update(userProducts)
-      .set({ isActive: false })
+      .set({ isActive: false, isRevoked: true })
       .where(and(eq(userProducts.userId, userId), eq(userProducts.productId, productId)));
   }
 
@@ -601,9 +674,7 @@ export class DatabaseStorage implements IStorage {
     const level1User = await this.getUserByReferralCode(user.referredBy);
     if (level1User) {
       const commission = amount * level1Rate;
-      await this.updateUser(level1User.id, {
-        balance: (parseFloat(level1User.balance) + commission).toFixed(2),
-      });
+      await this.adjustBalance(level1User.id, "withdrawal", commission);
       await this.createReferralCommission({
         userId: level1User.id,
         fromUserId: userId,
@@ -623,9 +694,7 @@ export class DatabaseStorage implements IStorage {
         const level2User = await this.getUserByReferralCode(level1User.referredBy);
         if (level2User) {
           const commission2 = amount * level2Rate;
-          await this.updateUser(level2User.id, {
-            balance: (parseFloat(level2User.balance) + commission2).toFixed(2),
-          });
+          await this.adjustBalance(level2User.id, "withdrawal", commission2);
           await this.createReferralCommission({
             userId: level2User.id,
             fromUserId: userId,
@@ -645,9 +714,7 @@ export class DatabaseStorage implements IStorage {
             const level3User = await this.getUserByReferralCode(level2User.referredBy);
             if (level3User) {
               const commission3 = amount * level3Rate;
-              await this.updateUser(level3User.id, {
-                balance: (parseFloat(level3User.balance) + commission3).toFixed(2),
-              });
+              await this.adjustBalance(level3User.id, "withdrawal", commission3);
               await this.createReferralCommission({
                 userId: level3User.id,
                 fromUserId: userId,
@@ -753,8 +820,8 @@ export class DatabaseStorage implements IStorage {
 
             if (!completedPosition || payoutAmount <= 0) return;
 
+            await this.adjustBalance(user.id, "withdrawal", payoutAmount, tx);
             await tx.update(users).set({
-              balance: sql`${users.balance} + ${payoutAmount}`,
               todayEarnings: sql`${users.todayEarnings} + ${payoutAmount}`,
               totalEarnings: sql`${users.totalEarnings} + ${payoutAmount}`,
             }).where(eq(users.id, user.id));
@@ -954,9 +1021,7 @@ export class DatabaseStorage implements IStorage {
     if (level1User) {
       const commission = Math.round(amount * level1Rate);
       if (commission > 0) {
-        await this.updateUser(level1User.id, {
-          balance: (parseFloat(level1User.balance) + commission).toFixed(2),
-        });
+        await this.adjustBalance(level1User.id, "withdrawal", commission);
         await this.createTransaction({
           userId: level1User.id,
           type: "deposit_commission",
@@ -970,9 +1035,7 @@ export class DatabaseStorage implements IStorage {
         if (level2User) {
           const comm2 = Math.round(amount * level2Rate);
           if (comm2 > 0) {
-            await this.updateUser(level2User.id, {
-              balance: (parseFloat(level2User.balance) + comm2).toFixed(2),
-            });
+            await this.adjustBalance(level2User.id, "withdrawal", comm2);
             await this.createTransaction({
               userId: level2User.id,
               type: "deposit_commission",
@@ -986,9 +1049,7 @@ export class DatabaseStorage implements IStorage {
             if (level3User) {
               const comm3 = Math.round(amount * level3Rate);
               if (comm3 > 0) {
-                await this.updateUser(level3User.id, {
-                  balance: (parseFloat(level3User.balance) + comm3).toFixed(2),
-                });
+                await this.adjustBalance(level3User.id, "withdrawal", comm3);
                 await this.createTransaction({
                   userId: level3User.id,
                   type: "deposit_commission",
@@ -1007,6 +1068,22 @@ export class DatabaseStorage implements IStorage {
   async createWithdrawal(data: Partial<Withdrawal>): Promise<Withdrawal> {
     const [withdrawal] = await db.insert(withdrawals).values(data as any).returning();
     return withdrawal;
+  }
+
+  async reserveWithdrawal(
+    userId: number,
+    amount: number,
+    data: Partial<Withdrawal>,
+  ): Promise<Withdrawal | undefined> {
+    return db.transaction(async (tx) => {
+      if (!await this.adjustBalance(userId, "withdrawal", -amount, tx)) return undefined;
+      const [withdrawal] = await tx.insert(withdrawals).values({
+        ...data,
+        userId,
+        amount,
+      } as any).returning();
+      return withdrawal;
+    });
   }
 
   async getWithdrawals(status?: string): Promise<(Withdrawal & { user: User })[]> {
@@ -1445,19 +1522,23 @@ export class DatabaseStorage implements IStorage {
           inArray(deposits.userId, referralIds),
           eq(deposits.status, "approved"),
         ));
-      const purchasedProductRows = await db.selectDistinct({ userId: userProducts.userId })
+      const purchasedProductRows = await db.selectDistinct({
+        userId: userProducts.userId,
+        purchaseProductType: userProducts.purchaseProductType,
+        productType: products.productType,
+        purchasePrice: userProducts.purchasePrice,
+        productPrice: products.price,
+        isFree: products.isFree,
+        assignedByAdmin: userProducts.assignedByAdmin,
+      })
         .from(userProducts)
         .innerJoin(products, eq(userProducts.productId, products.id))
-        .where(and(
-          inArray(userProducts.userId, referralIds),
-          eq(userProducts.assignedByAdmin, false),
-          eq(products.isFree, false),
-        ));
+        .where(inArray(userProducts.userId, referralIds));
 
       currentInvites = countQualifiedDirectReferrals(
         level1Refs,
         approvedDepositRows.map(row => row.userId),
-        purchasedProductRows.map(row => row.userId),
+        purchasedProductRows,
       );
     }
 
@@ -1474,7 +1555,7 @@ export class DatabaseStorage implements IStorage {
 
   async claimTask(userId: number, taskId: number): Promise<void> {
     await db.transaction(async tx => {
-      const [user] = await tx.select({ balance: users.balance })
+      const [user] = await tx.select({ withdrawalBalance: users.withdrawalBalance })
         .from(users)
         .where(eq(users.id, userId))
         .for("update");
@@ -1485,14 +1566,11 @@ export class DatabaseStorage implements IStorage {
 
       if (!taskStatus) throw new Error("Tâche non trouvée");
       if (taskStatus.isCompleted) throw new Error("Tâche déjà réclamée");
-      if (!taskStatus.canClaim) throw new Error("Conditions non remplies : recharge approuvée et achat d'un produit requis");
+      if (!taskStatus.canClaim) throw new Error("Conditions non remplies : recharge approuvée et achat d'un produit stable requis");
 
       await tx.insert(userTasks).values({ userId, taskId });
 
-      const newBalance = parseFloat(user.balance) + taskStatus.reward;
-      await tx.update(users)
-        .set({ balance: newBalance.toFixed(2) })
-        .where(eq(users.id, userId));
+      await this.adjustBalance(userId, "withdrawal", taskStatus.reward, tx);
 
       await tx.insert(transactions).values({
         userId,
@@ -1675,9 +1753,7 @@ export class DatabaseStorage implements IStorage {
       await tx.update(giftCodes).set({
         currentUses: sql`${giftCodes.currentUses} + 1`
       }).where(eq(giftCodes.id, giftCodeId));
-      await tx.update(users).set({
-        balance: sql`${users.balance} + ${amount}`
-      }).where(eq(users.id, userId));
+      await this.adjustBalance(userId, "deposit", amount, tx);
       await tx.insert(transactions).values({
         userId,
         type: "gift_code",
@@ -1785,43 +1861,43 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Ce produit n'est pas encore disponible à l'achat");
     }
 
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("Utilisateur introuvable");
-    if (parseFloat(user.balance) < sp.price) {
-      throw new Error(`Solde insuffisant. Il vous manque ${(sp.price - parseFloat(user.balance)).toLocaleString()} ${user.country === "TD" ? "XAF" : "XOF"}`);
-    }
-
-    // Check user has at least one active regular product
-    const activeProds = await db.select().from(userProducts)
-      .where(and(eq(userProducts.userId, userId), eq(userProducts.isActive, true)));
-    if (activeProds.length === 0) {
-      throw new Error("Vous devez posséder un produit actif avant d'accéder au Staking");
-    }
-
     const releaseDate = new Date(now.getTime() + sp.lockDays * 24 * 60 * 60 * 1000);
+    return db.transaction(async (tx) => {
+      const [user] = await tx.select().from(users).where(eq(users.id, userId)).for("update");
+      if (!user) throw new Error("Utilisateur introuvable");
+      const currentDeposit = parseFloat(user.depositBalance);
+      if (currentDeposit < sp.price) {
+        throw new Error(`Solde de dépôt insuffisant. Il vous manque ${(sp.price - currentDeposit).toLocaleString()} ${user.country === "TD" ? "XAF" : "XOF"}`);
+      }
 
-    const [staking] = await db.insert(userStakings).values({
-      userId,
-      stakingProductId,
-      amountPaid: sp.price,
-      returnAmount: sp.returnAmount,
-      purchasedAt: now,
-      releaseDate,
-      status: "active",
-    }).returning();
+      const activeProds = await tx.select().from(userProducts)
+        .where(and(eq(userProducts.userId, userId), eq(userProducts.isActive, true)));
+      if (activeProds.length === 0) {
+        throw new Error("Vous devez posséder un produit actif avant d'accéder au Staking");
+      }
 
-    // Deduct balance
-    const newBalance = (parseFloat(user.balance) - sp.price).toFixed(2);
-    await this.updateUser(userId, { balance: newBalance });
+      if (!await this.adjustBalance(userId, "deposit", -sp.price, tx)) {
+        throw new Error("Solde de dépôt insuffisant");
+      }
 
-    await this.createTransaction({
-      userId,
-      type: "staking",
-      amount: (-sp.price).toString(),
-      description: `Staking: ${sp.name}`,
+      const [staking] = await tx.insert(userStakings).values({
+        userId,
+        stakingProductId,
+        amountPaid: sp.price,
+        returnAmount: sp.returnAmount,
+        purchasedAt: now,
+        releaseDate,
+        status: "active",
+      }).returning();
+
+      await tx.insert(transactions).values({
+        userId,
+        type: "staking",
+        amount: (-sp.price).toString(),
+        description: `Staking: ${sp.name}`,
+      });
+      return staking;
     });
-
-    return staking;
   }
 
   async getUserStakings(userId: number): Promise<(UserStaking & { product: StakingProduct })[]> {
@@ -1849,18 +1925,27 @@ export class DatabaseStorage implements IStorage {
 
     for (const staking of matured) {
       try {
-        const user = await this.getUser(staking.userId);
-        if (!user) continue;
-        const newBalance = (parseFloat(user.balance) + staking.returnAmount).toFixed(2);
-        await this.updateUser(staking.userId, { balance: newBalance });
-        await db.update(userStakings)
+        await db.transaction(async (tx) => {
+          const [released] = await tx.update(userStakings)
           .set({ status: "released", releasedAt: now })
-          .where(eq(userStakings.id, staking.id));
-        await this.createTransaction({
-          userId: staking.userId,
-          type: "staking_release",
-          amount: staking.returnAmount.toString(),
-          description: `Déblocage staking #${staking.id}`,
+          .where(and(
+            eq(userStakings.id, staking.id),
+            eq(userStakings.status, "active"),
+            lte(userStakings.releaseDate, now),
+          ))
+          .returning({ id: userStakings.id });
+          if (!released) return;
+
+          if (!await this.adjustBalance(staking.userId, "withdrawal", staking.returnAmount, tx)) {
+            throw new Error("Utilisateur introuvable lors du versement du staking");
+          }
+
+          await tx.insert(transactions).values({
+            userId: staking.userId,
+            type: "staking_release",
+            amount: staking.returnAmount.toString(),
+            description: `Déblocage staking #${staking.id}`,
+          });
         });
       } catch (e) {
         console.error("Error releasing staking:", staking.id, e);
