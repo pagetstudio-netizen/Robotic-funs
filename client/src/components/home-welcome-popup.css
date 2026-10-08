@@ -80,7 +80,7 @@
 
 .home-welcome-body {
   position: absolute;
-  top: 122px;
+  top: 134px;
   right: 20px;
   bottom: 100px;
   left: 20px;
@@ -120,7 +120,7 @@
 .home-welcome-app-name {
   color: #ffd21e;
   font-size: clamp(18px, 5vw, 23px);
-  margin-bottom: 16px !important;
+  margin-bottom: 8px !important;
   font-weight: 800 !important;
   line-height: 1.08 !important;
 }
@@ -237,7 +237,7 @@
   }
 
   .home-welcome-body {
-    top: 105px;
+    top: 117px;
     right: 15px;
     bottom: 88px;
     left: 15px;
