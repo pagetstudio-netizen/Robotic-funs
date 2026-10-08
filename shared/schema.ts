@@ -79,6 +79,7 @@ export const products = pgTable("products", {
   stockLimit: integer("stock_limit"),
   isFree: boolean("is_free").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  isArchived: boolean("is_archived").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

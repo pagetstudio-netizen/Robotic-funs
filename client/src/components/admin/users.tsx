@@ -866,7 +866,7 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                         <SelectValue placeholder="Choisir un produit" />
                       </SelectTrigger>
                       <SelectContent>
-                        {products?.filter(p => !p.isFree).map((product) => (
+                        {products?.filter(p => !p.isFree && !p.isArchived).map((product) => (
                           <SelectItem key={product.id} value={product.id.toString()}>
                             {product.name} - {product.price.toLocaleString()} F
                           </SelectItem>

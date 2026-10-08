@@ -494,7 +494,7 @@ export class DatabaseStorage implements IStorage {
 
       if (linkedPurchases.length > 0 || linkedCommissions.length > 0) {
         await tx.update(products)
-          .set({ isActive: false })
+          .set({ isActive: false, isArchived: true })
           .where(eq(products.id, id));
         return { archived: true };
       }

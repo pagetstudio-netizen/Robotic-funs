@@ -59,7 +59,9 @@ export default function AdminProducts() {
   const { data: products, isLoading } = useQuery<AdminProduct[]>({
     queryKey: ["/api/admin/products/all"],
   });
-  const visibleProducts = (products || []).filter((product) => product.productType === productView);
+  const visibleProducts = (products || []).filter(
+    (product) => product.productType === productView && !product.isArchived,
+  );
   const nextActivitySequence = getNextActivityProductNumber(products || []);
 
   const editForm = useForm<ProductForm>({
