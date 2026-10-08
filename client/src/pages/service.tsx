@@ -26,13 +26,11 @@ function ServiceContact({
   title,
   action,
   href,
-  enabled,
   testId,
 }: {
   title: string;
   action: string;
   href: string;
-  enabled: boolean;
   testId: string;
 }) {
   return (
@@ -40,25 +38,15 @@ function ServiceContact({
       <img className="service-contact-icon" src={supportTelegramIcon} alt="" aria-hidden="true" />
       <div className="service-link-copy">
         <h2>{title}</h2>
-        {enabled ? (
-          <a
-            className="service-link-action"
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid={testId}
-          >
-            {action}
-          </a>
-        ) : (
-          <span
-            className="service-link-action is-disabled"
-            aria-disabled="true"
-            data-testid={`${testId}-disabled`}
-          >
-            Désactivé
-          </span>
-        )}
+        <a
+          className="service-link-action"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid={testId}
+        >
+          {action}
+        </a>
       </div>
     </article>
   );
@@ -124,13 +112,12 @@ export default function ServicePage() {
         />
 
         <section className="service-client-contacts" aria-label="Contacts officiels">
-          {contacts.map((contact) => (
+          {contacts.filter((contact) => contact.enabled).map((contact) => (
             <ServiceContact
               key={contact.key}
               title={contact.title}
               action={contact.action}
               href={contact.href}
-              enabled={contact.enabled}
               testId={contact.testId}
             />
           ))}
