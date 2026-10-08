@@ -7,10 +7,13 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getPaymentMethodsForCountry, type ApiCountry } from "@/lib/countries";
-import { Loader2, Trash2, CreditCard, ChevronLeft, ChevronRight, Shield, Check, Search, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Loader2, Trash2, CreditCard, ChevronLeft, ChevronRight, Shield, Check } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import type { WithdrawalWallet } from "@shared/schema";
 import EmptyState from "@/components/empty-state";
+import "@/components/auth-redesign.css";
+import "@/components/auth-screenshot.css";
 
 const walletSchema = z.object({
   accountName: z.string().min(2, "Nom du titulaire requis"),
@@ -30,7 +33,7 @@ export default function WalletPage() {
   const openFormDirectly = params.get("mode") === "form";
   const [showBankSheet, setShowBankSheet] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState("");
-  const [bankSearch, setBankSearch] = useState("");
+  const bankDialogRef = useRef<HTMLElement | null>(null);
 
   const { data: wallets, isLoading } = useQuery<WithdrawalWallet[]>({
     queryKey: ["/api/wallets"],
@@ -43,6 +46,40 @@ export default function WalletPage() {
   const { data: apiCountries = [] } = useQuery<ApiCountry[]>({
     queryKey: ["/api/countries"],
   });
+
+  useEffect(() => {
+    if (!showBankSheet) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousRootOverscroll = root.style.overscrollBehavior;
+    const previousBodyOverscroll = body.style.overscrollBehavior;
+    root.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    root.style.overscrollBehavior = "none";
+    body.style.overscrollBehavior = "none";
+
+    const focusFrame = window.requestAnimationFrame(() => bankDialogRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowBankSheet(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", closeOnEscape);
+      root.style.overflow = previousRootOverflow;
+      body.style.overflow = previousBodyOverflow;
+      root.style.overscrollBehavior = previousRootOverscroll;
+      body.style.overscrollBehavior = previousBodyOverscroll;
+      previouslyFocused?.focus();
+    };
+  }, [showBankSheet]);
 
   const form = useForm<WalletForm>({
     resolver: zodResolver(walletSchema),
@@ -141,7 +178,6 @@ export default function WalletPage() {
   const handleChooseMethod = (method: string) => {
     setSelectedMethod(method);
     form.setValue("paymentMethod", method);
-    setBankSearch("");
     setShowBankSheet(false);
   };
 
@@ -255,55 +291,82 @@ export default function WalletPage() {
           <br className="hidden min-[390px]:block" /> échec de retrait.
         </p>
 
-        {/* Bank bottom sheet */}
+        {/* Operator picker uses the same tilted modal as the authentication country selector. */}
         {showBankSheet && (
-          <div className="country-picker-overlay" onClick={() => { setBankSearch(""); setShowBankSheet(false); }}>
-            <section
-              className="country-picker"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Choisir un opérateur"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="country-picker-close"
-                onClick={() => { setBankSearch(""); setShowBankSheet(false); }}
-                aria-label="Fermer"
+          createPortal(
+            <div className="auth-picker-portal auth-redesign auth-screenshot">
+              <div
+                className="auth-picker-overlay"
+                role="presentation"
+                onClick={() => setShowBankSheet(false)}
               >
-                <X aria-hidden="true" />
-              </button>
-              <div className="country-picker-search">
-                <Search aria-hidden="true" />
-                <input
-                  autoFocus
-                  value={bankSearch}
-                  onChange={(e) => setBankSearch(e.target.value)}
-                  placeholder="Rechercher"
-                  aria-label="Rechercher un opérateur"
-                />
+                <section
+                  ref={bankDialogRef}
+                  className="auth-picker-panel"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Choisir un opérateur"
+                  tabIndex={-1}
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setShowBankSheet(false);
+                      return;
+                    }
+                    if (event.key !== "Tab") return;
+
+                    const focusable = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not([disabled])"),
+                    );
+                    if (!focusable.length) return;
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                      event.preventDefault();
+                      last.focus();
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                      event.preventDefault();
+                      first.focus();
+                    }
+                  }}
+                >
+                  <div className="auth-picker-wheel">
+                    <div className="auth-picker-list" aria-label="Opérateurs disponibles">
+                      {paymentMethods.length > 0 ? paymentMethods.map((method) => {
+                        const selected = selectedMethod === method;
+                        return (
+                          <button
+                            type="button"
+                            key={method}
+                            onClick={() => handleChooseMethod(method)}
+                            className={`auth-picker-row${selected ? " is-selected" : ""}`}
+                            aria-pressed={selected}
+                            data-testid={`button-bank-${method}`}
+                          >
+                            <span className="auth-picker-option-icon" aria-hidden="true">
+                              <CreditCard />
+                            </span>
+                            <span className="auth-picker-name">{method}</span>
+                            {selected && (
+                              <span className="auth-picker-check" aria-hidden="true">
+                                <Check />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      }) : (
+                        <EmptyState size="compact" className="auth-picker-empty">
+                          Aucun opérateur disponible
+                        </EmptyState>
+                      )}
+                    </div>
+                  </div>
+                </section>
               </div>
-              <div className="country-picker-list">
-                {paymentMethods
-                  .filter((method) => method.toLowerCase().includes(bankSearch.trim().toLowerCase()))
-                  .map((method) => (
-                  <button
-                    key={method}
-                    onClick={() => handleChooseMethod(method)}
-                    className={`country-picker-row${selectedMethod === method ? " is-selected" : ""}`}
-                    data-testid={`button-bank-${method}`}
-                  >
-                    <span>{method}</span>
-                    {selectedMethod === method && (
-                      <span className="country-picker-check"><Check aria-hidden="true" /></span>
-                    )}
-                  </button>
-                ))}
-                {paymentMethods.filter((method) => method.toLowerCase().includes(bankSearch.trim().toLowerCase())).length === 0 && (
-                   <EmptyState size="compact" className="country-picker-empty">Aucun opérateur trouvé</EmptyState>
-                )}
-              </div>
-            </section>
-          </div>
+            </div>,
+            document.body,
+          )
         )}
       </div>
     );

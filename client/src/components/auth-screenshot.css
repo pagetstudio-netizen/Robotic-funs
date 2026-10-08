@@ -6,12 +6,16 @@
   --auth-copy: #f4f6fb;
   --auth-muted: #a5afc1;
   --auth-orange: #f47b21;
-  min-height: 100dvh;
+  height: 100svh;
+  min-height: 100svh;
+  max-height: 100svh;
   overflow-x: hidden;
   overflow-y: hidden;
+  overscroll-behavior: none;
   background: var(--auth-page);
   color: var(--auth-copy);
   font-family: Inter, "Segoe UI", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
 }
 
 .auth-screenshot .auth-shell {
@@ -20,8 +24,8 @@
   isolation: isolate;
   width: min(100%, 512px);
   max-width: 512px;
-  height: 100dvh;
-  min-height: 100dvh;
+  height: 100svh;
+  min-height: 100svh;
   margin-inline: auto;
   overflow: visible;
   background: var(--auth-page);
@@ -178,7 +182,7 @@
   inset: auto;
   z-index: 1;
   width: 100%;
-  min-height: calc(100dvh - 54.3cqw);
+  min-height: calc(100svh - 54.3cqw);
   margin-top: 54.3cqw;
   overflow: visible;
   padding: 0 3.9cqw max(9cqw, env(safe-area-inset-bottom));
@@ -255,7 +259,7 @@
   background: transparent;
   color: #f4f6fb;
   font: inherit;
-  font-size: 3.9cqw;
+  font-size: max(16px, 3.9cqw);
   font-weight: 400;
 }
 
@@ -676,6 +680,23 @@
   border: 1px solid rgba(255, 255, 255, 0.32);
   background: rgba(255, 255, 255, 0.08);
   box-shadow: none;
+}
+
+.auth-screenshot .auth-picker-option-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4dbe7;
+}
+
+.auth-screenshot .auth-picker-option-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.8;
 }
 
 .auth-screenshot .auth-picker-flag svg,

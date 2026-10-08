@@ -17,17 +17,63 @@ export function AuthPageShell({ children, mode }: AuthPageShellProps) {
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousScrollY = window.scrollY;
+    const previousHtml = {
+      height: html.style.height,
+      overflow: html.style.overflow,
+      overscrollBehavior: html.style.overscrollBehavior,
+    };
+    const previousBody = {
+      height: body.style.height,
+      overflow: body.style.overflow,
+      overscrollBehavior: body.style.overscrollBehavior,
+      position: body.style.position,
+      top: body.style.top,
+      right: body.style.right,
+      bottom: body.style.bottom,
+      left: body.style.left,
+      width: body.style.width,
+    };
+
+    html.style.height = "100%";
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.height = "100%";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.position = "fixed";
+    body.style.inset = "0";
+    body.style.width = "100%";
+    window.scrollTo(0, 0);
+
+    return () => {
+      html.style.height = previousHtml.height;
+      html.style.overflow = previousHtml.overflow;
+      html.style.overscrollBehavior = previousHtml.overscrollBehavior;
+      body.style.height = previousBody.height;
+      body.style.overflow = previousBody.overflow;
+      body.style.overscrollBehavior = previousBody.overscrollBehavior;
+      body.style.position = previousBody.position;
+      body.style.top = previousBody.top;
+      body.style.right = previousBody.right;
+      body.style.bottom = previousBody.bottom;
+      body.style.left = previousBody.left;
+      body.style.width = previousBody.width;
+      window.scrollTo(0, previousScrollY);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!languageModalOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setLanguageModalOpen(false);
     };
     window.addEventListener("keydown", closeOnEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [languageModalOpen]);
