@@ -556,11 +556,6 @@ export default function HistoryPage() {
           color: #768078;
           font-size: 14px;
         }
-        .history-empty img {
-          width: 112px;
-          height: 112px;
-          object-fit: contain;
-        }
         .history-load-error {
           padding: 32px 16px;
           color: #9c3434;
