@@ -41,7 +41,7 @@ export function Current() {
             <div className="home-welcome-details">
               <p className="home-welcome-app-name">RoboticsFund</p>
               <p>Commission : 25%</p>
-              <p className="home-welcome-bonus">Bonus d’inscription : 500 FCFA</p>
+              <p className="home-welcome-bonus">Tâches et roue de la chance : 500 FCFA</p>
               <p>Gains journaliers, retraits de 9 h à 17 h</p>
               <p className="home-welcome-minimums">
                 <span>Dépôt minimum : 3 000 FCFA</span>

@@ -4,20 +4,18 @@ import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
-import telegramIcon from "@assets/telegram_(2)_1791499687678.png";
+import telegramIcon from "@assets/telegram_(2)_1791501754806.png";
 import welcomeRobot from "@assets/file_000000004d8081f4bc975fdd26cf35e2_1791499669048.png";
 import "./home-welcome-popup.css";
 
 interface HomePopupSettings {
   groupLink?: string;
-  groupEnabled?: string;
   popupButtonLabel?: string;
   signupBonus?: string;
   minDeposit?: string;
   minWithdrawal?: string;
   withdrawalStartHour?: string;
   withdrawalEndHour?: string;
-  level1Commission?: string;
 }
 
 function safeTelegramUrl(value?: string) {
@@ -36,11 +34,6 @@ function formatFcfa(value?: string) {
   return Number.isFinite(amount)
     ? `${Math.round(amount).toLocaleString("fr-FR")} FCFA`
     : "— FCFA";
-}
-
-function formatPercent(value?: string) {
-  const rate = Number(value);
-  return Number.isFinite(rate) ? `${rate}%` : "—";
 }
 
 export default function HomeWelcomePopup() {
@@ -80,8 +73,7 @@ export default function HomeWelcomePopup() {
   }, []);
 
   const groupUrl = safeTelegramUrl(settings?.groupLink);
-  const groupEnabled = settings?.groupEnabled !== "false";
-  const canJoinGroup = Boolean(groupUrl && groupEnabled);
+  const canJoinGroup = Boolean(groupUrl);
   const joinLabel = settings?.popupButtonLabel?.trim() || "Groupe officiel";
 
   return (
@@ -97,12 +89,13 @@ export default function HomeWelcomePopup() {
             <img
               className="home-welcome-illustration"
               src={welcomeRobot}
-              alt="Robot jaune de RoboticsFund"
+              alt=""
+              aria-hidden="true"
             />
 
             <div className="home-welcome-body">
-              <DialogPrimitive.Title className="home-welcome-title">
-                Dernières nouvelles
+              <DialogPrimitive.Title className="sr-only">
+                Bienvenue chez RoboticsFund
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="sr-only">
                 Informations de la plateforme et lien du groupe Telegram.
@@ -124,10 +117,7 @@ export default function HomeWelcomePopup() {
                   <span>Retrait minimum&nbsp;:</span>{" "}
                   <strong>{formatFcfa(settings?.minWithdrawal)}</strong>
                 </p>
-                <p>
-                  <span>Commission d’équipe&nbsp;:</span>{" "}
-                  <strong>{formatPercent(settings?.level1Commission)}</strong>
-                </p>
+                <p>Tâches et roue chanceux</p>
               </div>
             </div>
 

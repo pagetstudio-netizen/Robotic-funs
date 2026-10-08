@@ -29,23 +29,23 @@ export function ReferenceMatch() {
             className="reference-welcome-dialog"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="reference-welcome-title"
+            aria-label="Bienvenue chez RoboticsFund"
           >
             <div className="reference-welcome-stage">
               <div className="reference-welcome-card" aria-hidden="true" />
               <img
                 className="reference-welcome-illustration"
                 src="/__mockup/images/welcome-robot.png"
-                alt="Robot jaune de RoboticsFund"
+                alt=""
+                aria-hidden="true"
               />
               <div className="reference-welcome-body">
-                <h1 id="reference-welcome-title" className="reference-welcome-title">Dernières nouvelles</h1>
                 <div className="reference-welcome-details">
                   <p className="reference-welcome-app-name">Bienvenue chez <strong>RoboticsFund&nbsp;!</strong></p>
                   <p><span>Bonus d’inscription&nbsp;:</span> <strong>500 FCFA</strong></p>
                   <p><span>Dépôt minimum&nbsp;:</span> <strong>3 000 FCFA</strong></p>
                   <p><span>Retrait minimum&nbsp;:</span> <strong>1 500 FCFA</strong></p>
-                  <p><span>Commission d’équipe&nbsp;:</span> <strong>25%</strong></p>
+                  <p>Tâches et roue chanceux</p>
                 </div>
               </div>
               <a className="reference-welcome-telegram" href="#official-group" aria-label="Groupe officiel">
