@@ -172,6 +172,7 @@ function AppNavigationShell() {
     "/wallet",
     "/history",
     "/about",
+    "/service",
   ];
   const isAdminPanel = location === ADMIN_PATH || location.startsWith(`${ADMIN_PATH}/`);
   const showNavigation =
@@ -311,11 +312,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/service">
-        <ProtectedRoute>
-          <AppLayout>
-            <ServicePage />
-          </AppLayout>
-        </ProtectedRoute>
+        <AppLayout>
+          <ServicePage />
+        </AppLayout>
       </Route>
       <Route path="/wallet">
         <ProtectedRoute>
