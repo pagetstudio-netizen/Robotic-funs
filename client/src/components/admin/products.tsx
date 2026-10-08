@@ -16,6 +16,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Loader2, TrendingUp, Plus, Trash2 } from "lucide-react";
 import { getRobotProductImage } from "@/lib/john-deere-assets";
 import type { Product } from "@shared/schema";
+import {
+  formatActivityProductName,
+  getNextActivityProductNumber,
+} from "@shared/activity-product-names";
 import EmptyState from "@/components/empty-state";
 
 const productSchema = z.object({
@@ -30,12 +34,11 @@ const productSchema = z.object({
 });
 
 type ProductForm = z.infer<typeof productSchema>;
-type ActivityProductDraft = Pick<ProductForm, "name" | "price" | "dailyEarnings" | "cycleDays" | "stockLimit">;
+type ActivityProductDraft = Pick<ProductForm, "price" | "dailyEarnings" | "cycleDays" | "stockLimit">;
 type ActivityProductPayload = Omit<ActivityProductDraft, "stockLimit"> & { stockLimit: number | null };
 type AdminProduct = Product & { stockCount?: number };
 
 const emptyActivityDraft = (): ActivityProductDraft => ({
-  name: "",
   price: "",
   dailyEarnings: "",
   cycleDays: "80",
@@ -57,6 +60,7 @@ export default function AdminProducts() {
     queryKey: ["/api/admin/products/all"],
   });
   const visibleProducts = (products || []).filter((product) => product.productType === productView);
+  const nextActivitySequence = getNextActivityProductNumber(products || []);
 
   const editForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
@@ -198,7 +202,7 @@ export default function AdminProducts() {
     updateMutation.mutate({
       id: selectedProduct.id,
       data: {
-        name: data.name,
+        ...(selectedProduct.productType !== "activity" ? { name: data.name } : {}),
         price,
         dailyEarnings,
         cycleDays,
@@ -232,14 +236,13 @@ export default function AdminProducts() {
       return;
     }
     if (activityRows.some((row) =>
-      row.name.trim().length < 2
-      || !Number.isSafeInteger(Number(row.price)) || Number(row.price) <= 0
+      !Number.isSafeInteger(Number(row.price)) || Number(row.price) <= 0
       || !Number.isSafeInteger(Number(row.dailyEarnings)) || Number(row.dailyEarnings) <= 0
       || !Number.isSafeInteger(Number(row.cycleDays)) || Number(row.cycleDays) <= 0
       || (Boolean(row.stockLimit?.trim())
         && (!Number.isSafeInteger(Number(row.stockLimit)) || Number(row.stockLimit) <= 0 || Number(row.stockLimit) > 2_147_483_647))
     )) {
-      setActivityFormError("Complétez les informations de chaque produit et indiquez une limite de places valide ou laissez-la vide.");
+      setActivityFormError("Complétez le prix, le gain journalier et la durée de chaque produit, puis indiquez une limite de places valide ou laissez-la vide.");
       return;
     }
     setActivityFormError("");
@@ -248,7 +251,6 @@ export default function AdminProducts() {
       launchTime: activityLaunchTime,
       products: activityRows.map((row) => ({
         ...row,
-        name: row.name.trim(),
         stockLimit: row.stockLimit?.trim() ? Number(row.stockLimit) : null,
       })),
     });
@@ -263,8 +265,19 @@ export default function AdminProducts() {
     <form onSubmit={form.handleSubmit(submitLabel === "Créer" ? handleCreate : handleUpdate)} className="space-y-4">
       <FormField control={form.control} name="name" render={({ field }) => (
         <FormItem>
-          <FormLabel>Nom du produit</FormLabel>
-          <FormControl><Input {...field} placeholder="Ex. : Tracteur série 5E" /></FormControl>
+          <FormLabel>{showSchedule ? "Nom attribué automatiquement" : "Nom du produit"}</FormLabel>
+          <FormControl>
+            <Input
+              {...field}
+              readOnly={showSchedule}
+              placeholder={showSchedule ? "Nom attribué automatiquement" : "Ex. : Tracteur série 5E"}
+            />
+          </FormControl>
+          {showSchedule && (
+            <p className="text-xs text-muted-foreground">
+              Le nom Robotics-fund AVC est attribué automatiquement et ne peut pas être modifié.
+            </p>
+          )}
           <FormMessage />
         </FormItem>
       )} />
@@ -546,13 +559,12 @@ export default function AdminProducts() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      aria-label={`Nom du produit ${index + 1}`}
-                      value={row.name}
-                      onChange={(event) => updateActivityRow(index, "name", event.target.value)}
-                      placeholder="Nom du produit"
-                      required
-                    />
+                    <p className="col-span-2 text-sm text-muted-foreground">
+                      Nom attribué :{" "}
+                      <strong className="text-foreground">
+                        {formatActivityProductName(nextActivitySequence + index)}
+                      </strong>
+                    </p>
                     <Input
                       aria-label={`Prix du produit ${index + 1}`}
                       type="number"

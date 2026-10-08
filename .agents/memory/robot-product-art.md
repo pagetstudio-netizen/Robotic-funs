@@ -7,6 +7,8 @@ Use the ten product images supplied by the user as the built-in image set for bo
 
 On homepage product cards, display the matching `Robot-N` alias instead of the configured product name. Derive it from an existing `Robot-N` name first, or from the same product-ID mapping used for the fallback image. Do not rename stored product records or change product names in administration.
 
-**Why:** The user provided these as the real product images for every product type and specifically asked homepage cards to show `Robot-N` instead of the configured product names.
+The retired free-product slot was removed from numbering without changing any remaining database IDs, so product ID 2 now maps to Robot-1 and its first built-in image.
 
-**How to apply:** Keep product image selection centralized and make sure product lists, details, orders, and administration all use the same image mapping; limit the visible `Robot-N` label requirement to homepage cards.
+**Why:** The user provided these as the real product images for every product type, asked homepage cards to show `Robot-N` instead of configured names, and chose to remove the unused free product while shifting the remaining aliases without changing stored IDs.
+
+**How to apply:** Keep product image selection centralized and make sure product lists, details, orders, and administration all use the same image mapping; apply the post-removal offset in the fallback mapping, and limit the visible `Robot-N` label requirement to homepage cards.

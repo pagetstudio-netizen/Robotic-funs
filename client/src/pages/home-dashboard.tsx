@@ -771,7 +771,9 @@ export default function HomeDashboard() {
               const gainLabel = isActivityProduct
                 ? "Gains à l’échéance"
                 : product.isFree ? "Bonus quotidien" : "Gains journaliers";
-              const displayName = getRobotProductDisplayName(product.id, product.name);
+              const displayName = product.productType === "activity"
+                ? product.name
+                : getRobotProductDisplayName(product.id, product.name);
               const imageUrl = getRobotProductImage(product.imageUrl, product.id, product.name);
               const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
               const launchAlreadyPurchased = product.productType === "activity"

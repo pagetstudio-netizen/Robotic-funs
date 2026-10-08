@@ -47,8 +47,8 @@ export function getRobotProductDisplayName(
   const robotNumber = productName?.match(/robot[\s_-]*(\d+)/i)?.[1];
   if (robotNumber) return `Robot-${Number(robotNumber)}`;
 
-  const idIndex = Number.isFinite(productId) && productId > 0
-    ? Math.trunc(productId) - 1
+  const idIndex = Number.isFinite(productId) && productId > 1
+    ? Math.trunc(productId) - 2
     : 0;
   const safeIndex = ((idIndex % ROBOT_PRODUCT_IMAGES.length) + ROBOT_PRODUCT_IMAGES.length)
     % ROBOT_PRODUCT_IMAGES.length;
@@ -71,8 +71,8 @@ export function getRobotProductImage(
 
   if (storedImage && !storedImage.startsWith("/john-deere/products/")) return storedImage;
 
-  const idIndex = Number.isFinite(productId) && productId > 0
-    ? Math.trunc(productId) - 1
+  const idIndex = Number.isFinite(productId) && productId > 1
+    ? Math.trunc(productId) - 2
     : 0;
   const safeIndex = ((idIndex % ROBOT_PRODUCT_IMAGES.length) + ROBOT_PRODUCT_IMAGES.length)
     % ROBOT_PRODUCT_IMAGES.length;

@@ -12,6 +12,10 @@ import { normalizeBeninPhone } from "@shared/phone";
 import { z } from "zod";
 import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
 import { hasPurchasedActivityLaunch } from "../shared/product-purchase-limit";
+import {
+  formatActivityProductName,
+  getNextActivityProductNumber,
+} from "../shared/activity-product-names";
 import ConnectPgSimple from "connect-pg-simple";
 import { 
   initiatePayment, 
@@ -3763,8 +3767,8 @@ export async function registerRoutes(
       }
 
       const rows: Partial<Product>[] = [];
+      let activitySequence = getNextActivityProductNumber(await storage.getAllProducts());
       for (const row of submittedProducts) {
-        const name = typeof row?.name === "string" ? row.name.trim() : "";
         const price = Number(row?.price);
         const dailyEarnings = Number(row?.dailyEarnings);
         const cycleDays = Number(row?.cycleDays);
@@ -3772,17 +3776,16 @@ export async function registerRoutes(
         const stockLimit = stockLimitInput == null || stockLimitInput === ""
           ? null
           : Number(stockLimitInput);
-        if (name.length < 2
-          || !Number.isSafeInteger(price) || price <= 0
+        if (!Number.isSafeInteger(price) || price <= 0
           || !Number.isSafeInteger(dailyEarnings) || dailyEarnings <= 0
           || !Number.isSafeInteger(cycleDays) || cycleDays <= 0
           || (stockLimit !== null && (!Number.isSafeInteger(stockLimit) || stockLimit <= 0 || stockLimit > 2_147_483_647))
           || dailyEarnings * cycleDays > 2_147_483_647) {
-          return res.status(400).json({ message: "Chaque produit doit avoir un nom, un prix, un gain journalier et une durée valides. La limite de places doit être un entier positif." });
+          return res.status(400).json({ message: "Chaque produit doit avoir un prix, un gain journalier et une durée valides. La limite de places doit être un entier positif." });
         }
 
         rows.push({
-          name,
+          name: formatActivityProductName(activitySequence++),
           price,
           dailyEarnings,
           cycleDays,
@@ -3820,10 +3823,15 @@ export async function registerRoutes(
       const body = req.body ?? {};
       const update: Partial<Product> = {};
       if (body.name !== undefined) {
-        if (typeof body.name !== "string" || body.name.trim().length < 2) {
+        if (existing.productType === "activity") {
+          if (typeof body.name !== "string" || body.name.trim() !== existing.name) {
+            return res.status(400).json({ message: "Le nom des produits d’activité est attribué automatiquement." });
+          }
+        } else if (typeof body.name !== "string" || body.name.trim().length < 2) {
           return res.status(400).json({ message: "Le nom du produit est invalide." });
+        } else {
+          update.name = body.name.trim();
         }
-        update.name = body.name.trim();
       }
       for (const field of ["price", "dailyEarnings", "cycleDays"] as const) {
         if (body[field] === undefined) continue;

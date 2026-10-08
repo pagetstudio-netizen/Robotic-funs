@@ -22,6 +22,7 @@
 - [Withdrawal account editing](withdrawal-account-editing.md) — Each user has one editable primary withdrawal account; keep operators sourced from Admin-configured countries.
 - [Activity product launch clocks](activity-product-launch-clocks.md) — TG, BF, and CI share local time; BJ, CM, and NE launch one hour ahead.
 - [Activity product purchase rules](activity-product-purchase-rules.md) — Require a paid stable purchase and cap activity price at the highest single stable purchase; enforce stock and launch limits.
+- [Activity product names](activity-product-names.md) — Name all activity products Robotics-fund AVC1, AVC2, etc.; assign the sequence automatically for existing and future products.
 - [Withdrawal product eligibility](withdrawal-product-eligibility.md) — Withdrawals require at least one active stable position; activity-only and completed positions do not qualify.
 - [Revoked product visibility](revoked-product-visibility.md) — Hide admin-revoked positions from user lists while retaining their record and distinguishing them from completed products.
 - [Referral commission eligibility](referral-commission-policy.md) — Pay referral commissions only on the referred user's first paid stable-product purchase.
