@@ -6,7 +6,7 @@
 - [Login privacy](login-privacy.md) — Do not persist passwords or phone numbers in browser storage; privacy scans classify remembered phone numbers as sensitive.
 - [Brand theme isolation](brand-theme-isolation.md) — Apply RoboticsFund branding to every route except `/robotpay`; preserve RobotPay’s original theme.
 - [Dashboard language and catalog](dashboard-language-and-catalog.md) — Keep the site in French, leave browser tabs/chrome untouched, and show real active products with FCFA values.
-- [Robot product artwork](robot-product-art.md) — Use the user's ten built-in robot images for stable and activity products; map Robot-N names first, then product IDs.
+- [Robot product artwork](robot-product-art.md) — Use built-in robot images for products; homepage cards show the matching Robot-N alias without renaming stored products.
 - [Empty-state illustration](empty-state-illustration.md) — Use the user's uploaded illustration for genuine empty results across user, Admin, Banker, and RobotPay views; leave loading, errors, and payment progress unchanged.
 - [InPay callback classification](inpay-callbacks.md) — InPay payin and payout callbacks can both include order_number; classify using the merchant reference prefix first.
 - [InPay IP whitelist](inpay-ip-whitelist.md) — InPay rejects API calls with errno 5 until the server's public egress IP is whitelisted.

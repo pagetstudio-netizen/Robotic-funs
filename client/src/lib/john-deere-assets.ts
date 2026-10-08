@@ -40,6 +40,22 @@ export const ROBOT_PRODUCT_IMAGES = [
   robotImage10,
 ] as const;
 
+export function getRobotProductDisplayName(
+  productId: number,
+  productName?: string | null,
+) {
+  const robotNumber = productName?.match(/robot[\s_-]*(\d+)/i)?.[1];
+  if (robotNumber) return `Robot-${Number(robotNumber)}`;
+
+  const idIndex = Number.isFinite(productId) && productId > 0
+    ? Math.trunc(productId) - 1
+    : 0;
+  const safeIndex = ((idIndex % ROBOT_PRODUCT_IMAGES.length) + ROBOT_PRODUCT_IMAGES.length)
+    % ROBOT_PRODUCT_IMAGES.length;
+
+  return `Robot-${safeIndex + 1}`;
+}
+
 export function getRobotProductImage(
   imageUrl: string | null | undefined,
   productId: number,

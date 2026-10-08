@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getRobotProductImage } from "@/lib/john-deere-assets";
+import { getRobotProductDisplayName, getRobotProductImage } from "@/lib/john-deere-assets";
 import { useToast } from "@/hooks/use-toast";
 import { isProductStockFull } from "@shared/product-purchase-limit";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -765,6 +765,7 @@ export default function HomeDashboard() {
               const cycleDays = Number(product.cycleDays) || 0;
               const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
               const displayedGain = product.isFree ? dailyEarnings : totalReturn;
+              const displayName = getRobotProductDisplayName(product.id, product.name);
               const imageUrl = getRobotProductImage(product.imageUrl, product.id, product.name);
               const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
               const launchAlreadyPurchased = product.productType === "activity"
@@ -776,7 +777,7 @@ export default function HomeDashboard() {
                       {imageUrl ? (
                         <img
                           src={imageUrl}
-                          alt={product.name}
+                          alt={displayName}
                           loading={index > 1 ? "lazy" : "eager"}
                            onError={(event) => {
                              event.currentTarget.onerror = null;
@@ -786,14 +787,14 @@ export default function HomeDashboard() {
                       ) : (
                         <img
                           src={getRobotProductImage(null, product.id, product.name)}
-                          alt={product.name}
+                           alt={displayName}
                           loading={index > 1 ? "lazy" : "eager"}
                         />
                       )}
                     </div>
                     <div className="rf-product-heading">
                       {!product.isFree && <span className="rf-vip">VIP</span>}
-                      <h2 className="rf-product-name" title={product.name}>{product.name}</h2>
+                      <h2 className="rf-product-name" title={displayName}>{displayName}</h2>
                       {product.productType === "activity" && product.stockLimit != null && (
                         <span className={`rf-product-stock ${stockFull ? "is-full" : ""}`}>
                           {stockFull
@@ -817,7 +818,7 @@ export default function HomeDashboard() {
                     </div>
                     <div className="rf-stat">
                       <span className="rf-stat-value">{formatFcfa(displayedGain)}</span>
-                      <span className="rf-stat-label">{product.isFree ? "Bonus quotidien" : "Gain à l’échéance"}</span>
+                      <span className="rf-stat-label">{product.isFree ? "Bonus quotidien" : "Gains journaliers"}</span>
                     </div>
                     <button
                       type="button"
@@ -826,7 +827,7 @@ export default function HomeDashboard() {
                         ? navigate(`/products/${product.id}`)
                         : setConfirmProduct(product)}
                       disabled={stockFull || launchAlreadyPurchased}
-                      aria-label={`${product.isFree ? "Découvrir" : "Acheter"} ${product.name}`}
+                      aria-label={`${product.isFree ? "Découvrir" : "Acheter"} ${displayName}`}
                     >
                       {stockFull
                         ? "Complet"
