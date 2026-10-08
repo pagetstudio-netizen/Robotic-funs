@@ -13,6 +13,8 @@ The wheel page should display these exact informational messages without changin
 
 The home-page button label is “Wheel of Fortune”.
 
-**Why:** the user specified referral- and purchase-earned turns, excluded offered products, assigned wheel prizes to the deposit balance, then confirmed that the newer wheel copy is informational only and does not change the current award rules. The user later changed the home button label to “Wheel of Fortune.”
+The wheel must keep showing all nine labels from 100 to 35,000 FCFA, but never award more than 500 FCFA. The server payout pool is 100/200/300/500 FCFA; 500 FCFA has a 5% chance, with the remaining probability split across 100/200/300. Higher labels are display-only.
 
-**How to apply:** enforce spin eligibility in the paid stable-purchase transaction regardless of the displayed copy, consume turns and credit prizes atomically on the server, and keep administrative grants protected and auditable.
+**Why:** the user specified referral- and purchase-earned turns, excluded offered products, assigned wheel prizes to the deposit balance, confirmed the newer wheel copy is informational only, and set a hard 500 FCFA maximum while retaining the larger labels. A 5% chance implements their request that 500 FCFA be rare. The home button label is “Wheel of Fortune.”
+
+**How to apply:** enforce spin eligibility in the paid stable-purchase transaction regardless of the displayed copy; select only from the capped payout pool, consume turns and credit prizes atomically on the server, and keep administrative grants protected and auditable.
