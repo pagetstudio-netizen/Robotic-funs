@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  FORTUNE_WHEEL_DRAW_PRIZES,
   FORTUNE_WHEEL_PRIZES,
   getFortuneWheelRotationDegrees,
+  selectFortuneWheelPrizeIndex,
 } from "../shared/fortune-wheel";
 import { getStablePurchaseSpinAwards } from "./fortune-wheel-policy";
 
@@ -19,6 +21,33 @@ test("fortune wheel uses the nine prize amounts shown to users", () => {
     35000,
   ]);
   assert.ok(FORTUNE_WHEEL_PRIZES.every((amount) => amount >= 100));
+});
+
+test("wheel payouts never exceed 500 FCFA and keep the higher labels display-only", () => {
+  assert.deepEqual(FORTUNE_WHEEL_DRAW_PRIZES, [100, 200, 300, 500]);
+  assert.deepEqual(FORTUNE_WHEEL_DRAW_PRIZES, FORTUNE_WHEEL_PRIZES.slice(0, 4));
+  assert.ok(FORTUNE_WHEEL_DRAW_PRIZES.every((amount) => amount <= 500));
+});
+
+test("500 FCFA is a rare 5 percent wheel prize", () => {
+  const counts = new Map<number, number>();
+  for (let roll = 0; roll < 100; roll += 1) {
+    const prizeIndex = selectFortuneWheelPrizeIndex(roll);
+    const amount = FORTUNE_WHEEL_PRIZES[prizeIndex];
+    counts.set(amount, (counts.get(amount) ?? 0) + 1);
+  }
+
+  assert.deepEqual([...counts.entries()], [
+    [100, 45],
+    [200, 30],
+    [300, 20],
+    [500, 5],
+  ]);
+});
+
+test("wheel prize selection rejects values outside the random draw range", () => {
+  assert.throws(() => selectFortuneWheelPrizeIndex(-1), RangeError);
+  assert.throws(() => selectFortuneWheelPrizeIndex(100), RangeError);
 });
 
 test("the selected wheel segment aligns with the fixed pointer after full rotations", () => {

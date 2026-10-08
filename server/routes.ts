@@ -10,7 +10,10 @@ import {
   verifyPassword,
 } from "./password-utils";
 import { normalizeBeninPhone } from "@shared/phone";
-import { FORTUNE_WHEEL_PRIZES } from "@shared/fortune-wheel";
+import {
+  FORTUNE_WHEEL_PRIZES,
+  selectFortuneWheelPrizeIndex,
+} from "@shared/fortune-wheel";
 import { z } from "zod";
 import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
 import { hasPurchasedActivityLaunch } from "../shared/product-purchase-limit";
@@ -2838,7 +2841,7 @@ export async function registerRoutes(
   // The server consumes a free spin, selects the prize, and credits the deposit wallet atomically.
   app.post("/api/fortune-wheel/spin", requireAuth, async (req, res) => {
     try {
-      const prizeIndex = randomInt(FORTUNE_WHEEL_PRIZES.length);
+      const prizeIndex = selectFortuneWheelPrizeIndex(randomInt(100));
       const amount = FORTUNE_WHEEL_PRIZES[prizeIndex];
       const spin = await storage.spinFortuneWheel(req.session.userId!, amount);
 

@@ -19,7 +19,7 @@ import {
 import { isFirstPaidStableProductPurchase } from "./referral-commission-policy";
 import { getStablePurchaseSpinAwards } from "./fortune-wheel-policy";
 import { hasQualifyingActiveStableProduct } from "./withdrawal-product-eligibility";
-import { FORTUNE_WHEEL_PRIZES } from "@shared/fortune-wheel";
+import { FORTUNE_WHEEL_DRAW_PRIZES } from "@shared/fortune-wheel";
 import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
 import { hashPassword } from "./password-utils";
 
@@ -320,7 +320,7 @@ export class DatabaseStorage implements IStorage {
     userId: number,
     amount: number,
   ): Promise<{ userFound: boolean; claimed: boolean; availableSpins: number }> {
-    if (!FORTUNE_WHEEL_PRIZES.includes(amount as (typeof FORTUNE_WHEEL_PRIZES)[number])) {
+    if (!FORTUNE_WHEEL_DRAW_PRIZES.includes(amount as (typeof FORTUNE_WHEEL_DRAW_PRIZES)[number])) {
       throw new Error("Montant du gain invalide.");
     }
 
