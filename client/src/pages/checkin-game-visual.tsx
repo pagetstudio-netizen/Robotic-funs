@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Link } from "wouter";
 import "./checkin-game-visual.css";
@@ -10,7 +10,11 @@ interface CheckinGameVisualProps {
   isClaiming: boolean;
   availableSpins: number;
   resultAmount: number | null;
+  resultMessage: string | null;
+  isNoSpinsModalOpen: boolean;
   errorMessage: string | null;
+  onDismissNoSpins: () => void;
+  onDismissResult: () => void;
   onPlay: () => void;
 }
 
@@ -29,7 +33,11 @@ export default function CheckinGameVisual({
   isClaiming,
   availableSpins,
   resultAmount,
+  resultMessage,
+  isNoSpinsModalOpen,
   errorMessage,
+  onDismissNoSpins,
+  onDismissResult,
   onPlay,
 }: CheckinGameVisualProps) {
   const sliceAngle = labels.length ? 360 / labels.length : 360;
@@ -48,9 +56,9 @@ export default function CheckinGameVisual({
   } as CSSProperties;
 
   const hasFreeSpins = availableSpins > 0;
-  const actionDisabled = isSpinning || isClaiming || !hasFreeSpins;
+  const actionDisabled = isSpinning || isClaiming;
   const actionDescription = !hasFreeSpins
-    ? "Aucun tour gratuit disponible"
+    ? "Afficher les informations pour obtenir un tour de roue gratuit"
     : isClaiming
       ? "Confirmation du gain en cours"
       : isSpinning
@@ -63,6 +71,31 @@ export default function CheckinGameVisual({
       : hasFreeSpins
         ? `${availableSpins} tour${availableSpins === 1 ? "" : "s"} gratuit${availableSpins === 1 ? "" : "s"} disponible${availableSpins === 1 ? "" : "s"}`
         : "Aucun tour gratuit disponible pour le moment";
+  const dialogKind = resultAmount !== null ? "result" : isNoSpinsModalOpen ? "no-spins" : null;
+  const dismissDialog = dialogKind === "result" ? onDismissResult : onDismissNoSpins;
+
+  useEffect(() => {
+    if (!dialogKind) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => {
+      document.getElementById("fortune-wheel-dialog-close")?.focus();
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismissDialog();
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [dialogKind, dismissDialog]);
 
   return (
     <main className="fortune-redesign">
@@ -76,7 +109,10 @@ export default function CheckinGameVisual({
           >
             <ChevronLeft aria-hidden="true" />
           </Link>
-          <p>Utilisez vos tours gratuits pour tenter de gagner des FCFA.</p>
+          <div className="fortune-redesign__instructions">
+            <p>Chaque investissement réussi vous donne droit à une participation au tirage au sort.</p>
+            <p>Si vous parvenez à inviter un utilisateur à s'inscrire, vous gagnez un tour de roue chanceux</p>
+          </div>
         </header>
 
         <section
@@ -149,6 +185,7 @@ export default function CheckinGameVisual({
                 disabled={actionDisabled}
                 aria-label={actionDescription}
                 aria-busy={isSpinning || isClaiming}
+                aria-haspopup="dialog"
               >
                 <img src="/fortune-wheel/go-button.png" alt="" aria-hidden="true" />
               </button>
@@ -172,6 +209,55 @@ export default function CheckinGameVisual({
           )}
         </section>
       </div>
+      {dialogKind && (
+        <div className="fortune-wheel-modal-backdrop">
+          <section
+            className="fortune-wheel-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="fortune-wheel-dialog-title"
+            aria-describedby="fortune-wheel-dialog-description"
+          >
+            <div className="fortune-wheel-modal__content">
+              <h2 id="fortune-wheel-dialog-title">
+                {dialogKind === "result" ? "Succès" : "Aucun tour disponible"}
+              </h2>
+              {dialogKind === "result" ? (
+                <>
+                  <p id="fortune-wheel-dialog-description" className="fortune-wheel-modal__message">
+                    {resultMessage || `Vous avez gagné ${formatPrize(resultAmount!)} FCFA !`}
+                  </p>
+                  <p className="fortune-wheel-modal__detail">
+                    Votre gain a été crédité sur votre solde de dépôt.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p id="fortune-wheel-dialog-description" className="fortune-wheel-modal__message">
+                    Vous n'avez pas de tour gratuit disponible pour le moment.
+                  </p>
+                  <p className="fortune-wheel-modal__detail">
+                    Chaque investissement réussi vous donne droit à une participation au tirage au sort.
+                  </p>
+                  <p className="fortune-wheel-modal__detail">
+                    Si vous parvenez à inviter un utilisateur à s'inscrire, vous gagnez un tour de roue chanceux
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="fortune-wheel-modal__footer">
+              <button
+                id="fortune-wheel-dialog-close"
+                type="button"
+                onClick={dismissDialog}
+                autoFocus
+              >
+                D’ACCORD
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getCountryByCode } from "@/lib/countries";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import {
   FORTUNE_WHEEL_PRIZES,
   getFortuneWheelRotationDegrees,
@@ -32,10 +30,11 @@ function formatAmount(value: number) {
 
 export default function CheckinPage() {
   const { user, refreshUser } = useAuth();
-  const { toast } = useToast();
   const [wheelRotationDegrees, setWheelRotationDegrees] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [resultAmount, setResultAmount] = useState<number | null>(null);
+  const [resultMessage, setResultMessage] = useState<string | null>(null);
+  const [isNoSpinsModalOpen, setIsNoSpinsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const spinTimer = useRef<number | null>(null);
 
@@ -56,6 +55,8 @@ export default function CheckinPage() {
     onMutate: () => {
       setErrorMessage(null);
       setResultAmount(null);
+      setResultMessage(null);
+      setIsNoSpinsModalOpen(false);
     },
     onSuccess: (result) => {
       if (
@@ -80,11 +81,7 @@ export default function CheckinPage() {
       spinTimer.current = window.setTimeout(() => {
         setIsSpinning(false);
         setResultAmount(result.amount);
-        toast({
-          title: "Tour gratuit utilisé !",
-          description: result.message || `Vous avez gagné ${formatAmount(result.amount)} FCFA.`,
-          duration: 2500,
-        });
+        setResultMessage(result.message || `Vous avez gagné ${formatAmount(result.amount)} FCFA !`);
         void Promise.allSettled([
           queryClient.invalidateQueries({ queryKey: ["/api/fortune-wheel/status"] }),
           queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
@@ -94,19 +91,19 @@ export default function CheckinPage() {
     },
     onError: (error: Error) => {
       const status = (error as Error & { status?: number }).status;
+      if (status === 400) {
+        setIsNoSpinsModalOpen(true);
+        void statusQuery.refetch();
+        return;
+      }
       setErrorMessage(
-        status === 400
-          ? "Vous n'avez pas de tour gratuit disponible."
-          : error.message || "Impossible de lancer la roue. Réessayez.",
+        error.message || "Impossible de lancer la roue. Réessayez.",
       );
-      if (status === 400) void statusQuery.refetch();
     },
   });
 
   if (!user) return null;
 
-  const currency = getCountryByCode(user.country)?.currency || "FCFA";
-  const currencyLabel = /^(XOF|XAF|FCFA)$/i.test(currency) ? "FCFA" : currency;
   const availableSpins = statusQuery.data?.availableSpins ?? 0;
   const visibleError =
     errorMessage ||
@@ -122,9 +119,24 @@ export default function CheckinPage() {
       isClaiming={claimMutation.isPending || statusQuery.isLoading}
       availableSpins={availableSpins}
       resultAmount={resultAmount}
+      resultMessage={resultMessage}
+      isNoSpinsModalOpen={isNoSpinsModalOpen}
       errorMessage={visibleError}
+      onDismissNoSpins={() => setIsNoSpinsModalOpen(false)}
+      onDismissResult={() => {
+        setResultAmount(null);
+        setResultMessage(null);
+      }}
       onPlay={() => {
-        if (claimMutation.isPending || isSpinning || availableSpins < 1) return;
+        if (claimMutation.isPending || isSpinning || statusQuery.isLoading) return;
+        if (statusQuery.isError) {
+          setErrorMessage("Impossible de vérifier vos tours gratuits pour le moment.");
+          return;
+        }
+        if (availableSpins < 1) {
+          setIsNoSpinsModalOpen(true);
+          return;
+        }
         claimMutation.mutate();
       }}
     />
