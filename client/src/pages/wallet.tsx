@@ -14,6 +14,7 @@ import type { WithdrawalWallet } from "@shared/schema";
 import EmptyState from "@/components/empty-state";
 import "@/components/auth-redesign.css";
 import "@/components/auth-screenshot.css";
+import operatorCardIcon from "@assets/item3_1791499329750.png";
 
 const walletSchema = z.object({
   accountName: z.string().min(2, "Nom du titulaire requis"),
@@ -345,7 +346,13 @@ export default function WalletPage() {
                             data-testid={`button-bank-${method}`}
                           >
                             <span className="auth-picker-option-icon" aria-hidden="true">
-                              <CreditCard />
+                              <span
+                                className="auth-picker-option-icon-glyph"
+                                style={{
+                                  maskImage: `url("${operatorCardIcon}")`,
+                                  WebkitMaskImage: `url("${operatorCardIcon}")`,
+                                }}
+                              />
                             </span>
                             <span className="auth-picker-name">{method}</span>
                             {selected && (

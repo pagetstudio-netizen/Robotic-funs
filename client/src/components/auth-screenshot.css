@@ -701,10 +701,17 @@
   color: inherit;
 }
 
-.auth-screenshot .auth-picker-option-icon svg {
-  width: 18px;
+.auth-screenshot .auth-picker-option-icon-glyph {
+  display: block;
+  width: 22px;
   height: 18px;
-  stroke-width: 2;
+  background: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 
 .auth-screenshot .auth-picker-flag svg,
