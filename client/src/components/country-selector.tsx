@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import type { ApiCountry } from "@/lib/countries";
@@ -92,74 +93,74 @@ export function CountrySelector({ open, onClose, onSelect, selectedCountryCode }
     }
   }
 
-  return (
-    <div
-      className="auth-picker-overlay"
-      onClick={onClose}
-      role="presentation"
-    >
-      <section
-        ref={dialogRef}
-        className="auth-picker-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="auth-country-dialog-title"
-        tabIndex={-1}
-        onKeyDown={handleDialogKeyDown}
-        onClick={(event) => event.stopPropagation()}
+  return createPortal(
+    <div className="auth-picker-portal auth-redesign auth-screenshot">
+      <div
+        className="auth-picker-overlay"
+        onClick={onClose}
+        role="presentation"
       >
-        <header className="auth-picker-heading">
-          <h2 id="auth-country-dialog-title">Choisir un pays</h2>
-        </header>
-        <div className="auth-picker-wheel">
-          <div
-            className="auth-picker-list"
-            aria-label="Pays disponibles"
-          >
-            {isLoading ? (
-              <div className="auth-picker-state" role="status">Chargement des pays…</div>
-            ) : isError ? (
-              <div className="auth-picker-state auth-picker-error" role="alert">
-                <span>Impossible de charger les pays.</span>
-                <button type="button" onClick={() => refetch()}>Réessayer</button>
-              </div>
-            ) : countries.length === 0 ? (
-              <div className="auth-picker-state">
-                <EmptyState size="compact" className="auth-picker-empty">
-                  Aucun pays disponible
-                </EmptyState>
-              </div>
-            ) : (
-              countries.map((country) => {
-                const selected = country.code === activeSelectedCountryCode;
-                return (
-                  <button
-                    type="button"
-                    key={country.code}
-                    className={`auth-picker-row${selected ? " is-selected" : ""}`}
-                    onClick={() => {
-                      onSelect(country.code);
-                      onClose();
-                    }}
-                    aria-pressed={selected}
-                    data-country-code={country.code}
-                    data-testid={`country-option-${country.code}`}
-                  >
-                    <span className="auth-picker-flag" aria-hidden="true">{countryFlag(country.code)}</span>
-                    <span className="auth-picker-name">{country.name}</span>
-                    <span className="auth-picker-prefix">+{country.phonePrefix}</span>
-                    {selected && (
-                      <span className="auth-picker-check" aria-hidden="true">
-                        <Check />
-                      </span>
-                    )}
-                  </button>
-                );
-              })
-            )}
+        <section
+          ref={dialogRef}
+          className="auth-picker-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sélection du pays"
+          tabIndex={-1}
+          onKeyDown={handleDialogKeyDown}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="auth-picker-wheel">
+            <div
+              className="auth-picker-list"
+              aria-label="Pays disponibles"
+            >
+              {isLoading ? (
+                <div className="auth-picker-state" role="status">Chargement des pays…</div>
+              ) : isError ? (
+                <div className="auth-picker-state auth-picker-error" role="alert">
+                  <span>Impossible de charger les pays.</span>
+                  <button type="button" onClick={() => refetch()}>Réessayer</button>
+                </div>
+              ) : countries.length === 0 ? (
+                <div className="auth-picker-state">
+                  <EmptyState size="compact" className="auth-picker-empty">
+                    Aucun pays disponible
+                  </EmptyState>
+                </div>
+              ) : (
+                countries.map((country) => {
+                  const selected = country.code === activeSelectedCountryCode;
+                  return (
+                    <button
+                      type="button"
+                      key={country.code}
+                      className={`auth-picker-row${selected ? " is-selected" : ""}`}
+                      onClick={() => {
+                        onSelect(country.code);
+                        onClose();
+                      }}
+                      aria-pressed={selected}
+                      data-country-code={country.code}
+                      data-testid={`country-option-${country.code}`}
+                    >
+                      <span className="auth-picker-flag" aria-hidden="true">{countryFlag(country.code)}</span>
+                      <span className="auth-picker-name">{country.name}</span>
+                      <span className="auth-picker-prefix">+{country.phonePrefix}</span>
+                      {selected && (
+                        <span className="auth-picker-check" aria-hidden="true">
+                          <Check />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </div>,
+    document.body,
   );
 }

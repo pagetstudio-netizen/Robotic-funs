@@ -483,82 +483,53 @@
   }
 }
 
-/* Dark country dialog inspired by the supplied account-selection reference. */
+/* Compact country list portal matches the dropdown shown in the reference. */
+.auth-picker-portal.auth-redesign.auth-screenshot {
+  z-index: 9999;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
+}
+
 .auth-screenshot .auth-picker-overlay {
   z-index: 130;
   align-items: center;
   justify-content: center;
-  padding: 16px 22px;
+  padding: 16px 20px;
   background: rgba(1, 4, 11, 0.76);
   backdrop-filter: blur(2px);
+  pointer-events: auto;
 }
 
 .auth-screenshot .auth-picker-panel {
-  --auth-picker-row-height: 58px;
-  width: min(100%, 460px);
-  height: min(76dvh, 680px);
-  min-height: min(380px, calc(100dvh - 32px));
+  display: flex;
+  width: min(84vw, 360px);
+  height: auto;
+  min-height: 0;
   max-height: calc(100dvh - 32px);
+  flex: 0 1 auto;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid #28364f;
-  border-radius: 16px;
+  border-radius: 10px;
+  padding: 8px;
   background: #111a2d;
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
   color: #f3f5fa;
   transform: rotate(-1deg);
 }
 
-.auth-screenshot .auth-picker-heading {
-  display: flex;
-  min-height: 66px;
-  flex: none;
-  align-items: center;
-  justify-content: flex-start;
-  border-bottom: 1px solid #28344a;
-  padding: 10px 18px;
-}
-
-.auth-screenshot .auth-picker-heading h2 {
-  margin: 0;
-  color: #f5f6fa;
-  font-family: inherit;
-  font-size: 19px;
-  font-weight: 700;
-  text-align: left;
-}
-
-.auth-screenshot .auth-picker-cancel,
-.auth-screenshot .auth-picker-done {
-  min-height: 38px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.auth-screenshot .auth-picker-cancel {
-  color: #bac4d3;
-}
-
-.auth-screenshot .auth-picker-done {
-  min-width: 76px;
-  border: 1px solid #ff9a2e;
-  border-radius: 999px;
-  padding: 0 13px;
-  background: linear-gradient(180deg, #ffad2f 0%, #ff8014 58%, #fa6e08 100%);
-  color: #fff;
-}
-
-.auth-screenshot .auth-picker-done:disabled {
-  border-color: #596276;
-  background: #343e51;
-  color: #9ba6b9;
-}
-
 .auth-screenshot .auth-picker-wheel {
   position: relative;
   display: flex;
+  width: 100%;
   min-height: 0;
-  flex: 1;
-  margin: 12px 12px 14px;
+  max-height: min(70dvh, 420px);
+  flex: 0 1 auto;
+  margin: 0;
 }
 
 .auth-screenshot .auth-picker-center-band {
@@ -569,24 +540,33 @@
   position: static;
   inset: auto;
   display: flex;
+  width: 100%;
   min-height: 0;
-  flex: 1;
+  max-height: min(70dvh, 420px);
+  flex: 0 1 auto;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding: 0 10px 8px;
+  padding: 0;
   scroll-snap-type: none;
   scroll-behavior: auto;
+  scrollbar-width: none;
+}
+
+.auth-screenshot .auth-picker-list::-webkit-scrollbar {
+  display: none;
 }
 
 .auth-screenshot .auth-picker-row {
   position: relative;
+  display: flex;
+  justify-content: flex-start;
   gap: 10px;
-  min-height: 58px;
-  height: 58px;
-  flex: 0 0 58px;
+  min-height: 50px;
+  height: 50px;
+  flex: 0 0 50px;
   border: 1px solid rgba(141, 157, 183, 0.12);
   border-radius: 8px;
   padding: 0 12px;
@@ -596,6 +576,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 1.2;
+  text-align: left;
   opacity: 1;
   transform: none;
   transition: background-color 140ms ease, border-color 140ms ease;
@@ -638,13 +619,16 @@
 }
 
 .auth-screenshot .auth-picker-name {
+  flex: 1;
   font-family: inherit;
   font-size: 15px;
   font-weight: inherit;
+  text-align: left;
 }
 
 .auth-screenshot .auth-picker-prefix,
 .auth-screenshot .auth-picker-row.is-selected .auth-picker-prefix {
+  margin-left: auto;
   color: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -670,37 +654,14 @@
   line-height: 1;
 }
 
-.auth-screenshot .auth-picker-row:focus-visible,
-.auth-screenshot .auth-picker-cancel:focus-visible,
-.auth-screenshot .auth-picker-done:focus-visible {
+.auth-screenshot .auth-picker-row:focus-visible {
   outline: 2px solid #ffad2f;
   outline-offset: 2px;
 }
 
 @media (max-width: 600px) {
   .auth-screenshot .auth-picker-overlay {
-    align-items: center;
     padding: 16px 20px;
-  }
-
-  .auth-screenshot .auth-picker-panel {
-    width: 100%;
-    height: min(76dvh, 680px);
-    min-height: min(380px, calc(100dvh - 32px));
-    max-height: calc(100dvh - 32px);
-    border: 1px solid #28364f;
-    border-radius: 16px;
-    padding-bottom: 0;
-  }
-
-  .auth-screenshot .auth-picker-heading {
-    padding-inline: 16px;
-  }
-
-  .auth-screenshot .auth-picker-row {
-    min-height: 54px;
-    height: 54px;
-    flex-basis: 54px;
   }
 }
 
