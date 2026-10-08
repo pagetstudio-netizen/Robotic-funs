@@ -12,13 +12,11 @@ import {
 import { cn } from "@/lib/utils"
 
 const TOAST_DURATION_MS = 2500
-const INVITE_TOAST_DURATION_MS = 3000
 
 export function Toaster() {
   const { toasts } = useToast()
   const [location] = useLocation()
   const isRobotPay = location === "/robotpay"
-  const isInviteTab = location === "/tasks"
 
   return (
     <ToastProvider>
@@ -37,7 +35,7 @@ export function Toaster() {
           <Toast
             key={id}
             variant={variant}
-            duration={isInviteTab ? INVITE_TOAST_DURATION_MS : TOAST_DURATION_MS}
+            duration={TOAST_DURATION_MS}
             className={
               isRobotPay
                 ? undefined
