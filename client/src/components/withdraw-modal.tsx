@@ -19,6 +19,12 @@ const withdrawSchema = z.object({
 
 type WithdrawForm = z.infer<typeof withdrawSchema>;
 
+interface UserProductSummary {
+  status: string;
+  daysRemaining: number;
+  productType: "stable" | "activity";
+}
+
 interface WithdrawModalProps {
   open: boolean;
   onClose: () => void;
@@ -30,6 +36,11 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
 
   const { data: wallets } = useQuery<WithdrawalWallet[]>({
     queryKey: ["/api/wallets"],
+    enabled: open,
+  });
+
+  const { data: userProducts = [] } = useQuery<UserProductSummary[]>({
+    queryKey: ["/api/user/products"],
     enabled: open,
   });
 
@@ -84,12 +95,18 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   const startHour = withdrawalSettings?.withdrawalStartHour || 8;
   const endHour = withdrawalSettings?.withdrawalEndHour || 17;
   const country = getCountryByCode(user.country);
+  const hasActiveStableProduct = userProducts.some(
+    (product) =>
+      product.status === "active" &&
+      product.daysRemaining > 0 &&
+      product.productType === "stable",
+  );
 
   const amount = parseInt(form.watch("amount") || "0");
   const feeAmount = Math.round(amount * fees / 100);
   const netAmount = amount - feeAmount;
 
-  const canWithdraw = user.hasDeposited && user.hasActiveProduct && !user.isWithdrawalBlocked && defaultWallet;
+  const canWithdraw = user.hasDeposited && hasActiveStableProduct && !user.isWithdrawalBlocked && defaultWallet;
   const isCameroonOrBenin = user.country === "CM" || user.country === "BJ";
   const actualStartHour = isCameroonOrBenin ? 9 : startHour;
   const actualEndHour = isCameroonOrBenin ? 18 : endHour;
@@ -225,7 +242,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
                 <p className="font-medium text-destructive">Retrait non disponible</p>
                 <ul className="mt-2 space-y-1 text-muted-foreground">
                   {!user.hasDeposited && <li>- Effectuez un dépôt</li>}
-                  {!user.hasActiveProduct && <li>- Achetez un produit</li>}
+                  {!hasActiveStableProduct && <li>- Vous devez avoir un produit stable actif</li>}
                   {!defaultWallet && <li>- Enregistrez un portefeuille de retrait</li>}
                   {user.isWithdrawalBlocked && <li>- Votre retrait est bloqué</li>}
                   {user.mustInviteToWithdraw && <li>- Invitez quelqu'un qui investit</li>}

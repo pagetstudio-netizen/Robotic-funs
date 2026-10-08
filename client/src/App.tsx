@@ -165,8 +165,12 @@ function AppNavigationShell() {
     "/history",
     "/about",
   ];
+  const isAdminPanel = location === ADMIN_PATH || location.startsWith(`${ADMIN_PATH}/`);
   const showNavigation =
-    Boolean(user) && !publicPaths.includes(location) && !servicePaths.includes(location);
+    Boolean(user)
+    && !isAdminPanel
+    && !publicPaths.includes(location)
+    && !servicePaths.includes(location);
 
   return (
     <div className="min-h-screen">

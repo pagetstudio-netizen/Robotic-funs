@@ -6,6 +6,7 @@ function createWithdrawalFixtures(overrides: {
   user?: Record<string, unknown>;
   settings?: Record<string, string>;
   todayCount?: number;
+  hasActiveStableProduct?: boolean;
 } = {}) {
   const updates: Array<{ userId: number; data: Record<string, unknown> }> = [];
   const createdWithdrawals: Array<Record<string, unknown>> = [];
@@ -43,6 +44,9 @@ function createWithdrawalFixtures(overrides: {
     async getUser(userId: number) {
       return userId === user.id ? user : undefined;
     },
+    async hasActiveStableProduct() {
+      return overrides.hasActiveStableProduct ?? true;
+    },
     async getSettings() {
       return {
         minWithdrawal: "1000",
@@ -77,6 +81,21 @@ function createWithdrawalFixtures(overrides: {
 
   return { storage, updates, createdWithdrawals, user, wallet, alternateWallet };
 }
+
+test("withdrawal requires an active stable product, not just a historical product flag", async () => {
+  const fixtures = createWithdrawalFixtures({
+    user: { hasActiveProduct: true },
+    hasActiveStableProduct: false,
+  });
+
+  await assert.rejects(
+    requestWithdrawal(42, 5000, fixtures.storage),
+    { message: "Vous devez avoir un produit stable actif pour effectuer un retrait." },
+  );
+
+  assert.deepEqual(fixtures.updates, []);
+  assert.deepEqual(fixtures.createdWithdrawals, []);
+});
 
 test("non-Benin withdrawal keeps using the default wallet even if another wallet ID is sent", async () => {
   const fixtures = createWithdrawalFixtures();

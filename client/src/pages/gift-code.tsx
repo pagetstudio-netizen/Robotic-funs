@@ -2,19 +2,33 @@ import { useEffect, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import GiftCodeModal from "@/components/gift-code-modal";
+import { useToast } from "@/hooks/use-toast";
 import treasureChest from "@assets/treasure-chest.png";
 import "./gift-code.css";
 
 export default function GiftCodePage() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (!isOpening) return;
-    const timer = window.setTimeout(() => setIsOpening(false), 1900);
+    const timer = window.setTimeout(() => {
+      setIsOpening(false);
+      if (successMessage) {
+        toast({ title: "Coffre ouvert !", description: successMessage });
+        setSuccessMessage("");
+      }
+    }, 1400);
     return () => window.clearTimeout(timer);
-  }, [isOpening]);
+  }, [isOpening, successMessage, toast]);
+
+  const handleClaimSuccess = (message?: string) => {
+    setSuccessMessage(message || "Votre code cadeau a été réclamé avec succès.");
+    setIsOpening(true);
+  };
 
   return (
     <main className={`treasure-page${isOpening ? " is-opening" : ""}`}>
@@ -50,7 +64,7 @@ export default function GiftCodePage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         variant="treasure"
-        onClaimSuccess={() => setIsOpening(true)}
+          onClaimSuccess={handleClaimSuccess}
       />
     </main>
   );

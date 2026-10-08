@@ -2,6 +2,7 @@ import type { User, Withdrawal, WithdrawalWallet } from "../shared/schema";
 
 export interface WithdrawalRequestStorage {
   getUser(userId: number): Promise<User | undefined>;
+  hasActiveStableProduct(userId: number): Promise<boolean>;
   getSettings(): Promise<Record<string, string>>;
   getTeamStats(userId: number): Promise<{ level1Invested: number }>;
   getWallets(userId: number): Promise<WithdrawalWallet[]>;
@@ -40,8 +41,8 @@ export async function requestWithdrawal(
     throw new WithdrawalRequestError(`Montant minimum: ${minWithdrawal} FCFA`);
   }
 
-  if (!user.hasActiveProduct) {
-    throw new WithdrawalRequestError("Achetez d'abord un produit");
+  if (!await storage.hasActiveStableProduct(user.id)) {
+    throw new WithdrawalRequestError("Vous devez avoir un produit stable actif pour effectuer un retrait.");
   }
 
   if (user.isWithdrawalBlocked) {

@@ -77,6 +77,7 @@ export interface IStorage {
   // User Products
   getUserProducts(userId: number): Promise<(UserProduct & { product: Product })[]>;
   getAllUserProducts(userId: number): Promise<{ userProduct: UserProduct; product: Product }[]>;
+  hasActiveStableProduct(userId: number): Promise<boolean>;
   purchaseProduct(userId: number, productId: number, assignedByAdmin?: boolean): Promise<UserProduct>;
   removeUserProduct(userId: number, productId: number): Promise<void>;
   updateUserProduct(id: number, data: Partial<UserProduct>): Promise<UserProduct>;
@@ -374,6 +375,27 @@ export class DatabaseStorage implements IStorage {
       ...r.userProduct,
       product: productTermsAtPurchase(r.product, r.userProduct),
     }));
+  }
+
+  async hasActiveStableProduct(userId: number): Promise<boolean> {
+    const [activePosition] = await db.select({ id: userProducts.id })
+      .from(userProducts)
+      .innerJoin(products, eq(userProducts.productId, products.id))
+      .where(and(
+        eq(userProducts.userId, userId),
+        eq(userProducts.isActive, true),
+        sql`${userProducts.daysRemaining} > 0`,
+        or(
+          eq(userProducts.purchaseProductType, "stable"),
+          and(
+            isNull(userProducts.purchaseProductType),
+            eq(products.productType, "stable"),
+          ),
+        ),
+      ))
+      .limit(1);
+
+    return Boolean(activePosition);
   }
 
   async getAllUserProducts(userId: number): Promise<{ userProduct: UserProduct; product: Product }[]> {

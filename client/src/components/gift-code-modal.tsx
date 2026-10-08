@@ -44,15 +44,15 @@ export default function GiftCodeModal({
       const response = await apiRequest("POST", "/api/gift-codes/claim", { code: giftCode });
       return response.json();
     },
-    onSuccess: async (data) => {
-      await refreshUser();
+    onSuccess: (data) => {
       setCode("");
       if (variant === "treasure") {
         onClaimSuccess?.(data.message);
         onOpenChange(false);
-        return;
+      } else {
+        setSuccessMessage(data.message || "Votre code cadeau a été réclamé avec succès.");
       }
-      setSuccessMessage(data.message || "Votre code cadeau a été réclamé avec succès.");
+      void refreshUser();
     },
     onError: (error: Error) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });

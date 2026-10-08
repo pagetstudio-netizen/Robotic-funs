@@ -11,6 +11,9 @@ import {
 } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
+const TOAST_DURATION_MS = 2500
+const INVITE_TOAST_DURATION_MS = 3000
+
 export function Toaster() {
   const { toasts } = useToast()
   const [location] = useLocation()
@@ -20,7 +23,6 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, variant, action, ...props }) {
-        const isDestructive = variant === "destructive"
         const actionElement =
           !isRobotPay && action && React.isValidElement(action)
             ? React.cloneElement(action as React.ReactElement<{ className?: string }>, {
@@ -35,7 +37,7 @@ export function Toaster() {
           <Toast
             key={id}
             variant={variant}
-            duration={isInviteTab ? 3000 : isDestructive ? 6000 : 2500}
+            duration={isInviteTab ? INVITE_TOAST_DURATION_MS : TOAST_DURATION_MS}
             className={
               isRobotPay
                 ? undefined

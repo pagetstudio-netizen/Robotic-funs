@@ -14,11 +14,13 @@
 - [Toast appearance](toast-notifications.md) — Keep John Deere toasts as compact, centered charcoal popups with a white exclamation and copy; leave RobotPay's legacy toast style unchanged.
 - [Transaction history rules](transaction-history-rules.md) — User histories omit provider names; deposits show no fees; admins search by the shared `deqmsll` order number.
 - [DrimPay integration](drimpay-integration.md) — Keep credentials in server Secrets, activate per country, and retain guarded, idempotent payment reconciliation.
+- [Gift-code redemption feedback](gift-code-redemption.md) — After a confirmed claim, show chest feedback immediately; refresh the account balance in the background.
 - [Mobile screenshot scale](mobile-screenshot-scale.md) — Derive CSS viewport dimensions from original phone captures; chat thumbnails are not CSS pixels.
 - [Responsive clip paths](responsive-clip-paths.md) — CSS `path()` in Chromium rejects percentage coordinates; use an object-bounding-box SVG clip for responsive curves.
 - [Screenshot artwork extraction](screenshot-artwork-extraction.md) — Crop distinctive artwork from original captures, isolate its silhouette, and animate surrounding layers separately.
 - [Withdrawal account editing](withdrawal-account-editing.md) — Each user has one editable primary withdrawal account; keep operators sourced from Admin-configured countries.
 - [Activity product launch clocks](activity-product-launch-clocks.md) — TG, BF, and CI share local time; BJ, CM, and NE launch one hour ahead.
 - [Activity product purchase rules](activity-product-purchase-rules.md) — Require a paid stable purchase and cap activity price at the highest single stable purchase; enforce stock and launch limits.
+- [Withdrawal product eligibility](withdrawal-product-eligibility.md) — Withdrawals require at least one active stable position; activity-only and completed positions do not qualify.
 - [Referral commission eligibility](referral-commission-policy.md) — Pay referral commissions only on the referred user's first paid stable-product purchase.
 - [Product payout policy](product-payout-policy.md) — Product earnings are credited once at maturity; preserve and subtract any amounts already paid on legacy positions.

@@ -928,6 +928,7 @@ export async function registerRoutes(
         ),
         totalReturn: up.userProduct.purchaseTotalReturn ?? up.product.totalReturn,
         status: up.userProduct.isActive ? 'active' : 'completed',
+        productType: up.product.productType,
         product: up.product
       }));
       
