@@ -75,6 +75,9 @@ export default function CheckinPage() {
         current + getFortuneWheelRotationDegrees(result.prizeIndex),
       );
       setIsSpinning(true);
+      const spinDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 650
+        : SPIN_DURATION_MS;
 
       spinTimer.current = window.setTimeout(() => {
         setIsSpinning(false);
@@ -89,7 +92,7 @@ export default function CheckinPage() {
           queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
           refreshUser(),
         ]);
-      }, SPIN_DURATION_MS);
+      }, spinDuration);
     },
     onError: (error: Error) => {
       const status = (error as Error & { status?: number }).status;

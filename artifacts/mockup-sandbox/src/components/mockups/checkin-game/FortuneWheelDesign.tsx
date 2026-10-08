@@ -1,17 +1,19 @@
 import type { CSSProperties } from "react";
 import { ChevronLeft } from "lucide-react";
-import { Link } from "wouter";
-import "./checkin-game-visual.css";
+import "./FortuneWheelDesign.css";
 
-interface CheckinGameVisualProps {
-  labels: number[];
-  wheelRotationDegrees: number;
-  isSpinning: boolean;
-  isClaiming: boolean;
-  hasClaimedToday: boolean;
-  resultAmount: number | null;
-  errorMessage: string | null;
-  onPlay: () => void;
+const DEMO_PRIZES = [100, 200, 300, 500, 1500, 5000, 7000, 30000, 35000];
+const WHEEL_COLORS = ["#2458a3", "#80a6e9"];
+
+interface FortuneWheelDesignProps {
+  labels?: number[];
+  wheelRotationDegrees?: number;
+  isSpinning?: boolean;
+  isClaiming?: boolean;
+  hasClaimedToday?: boolean;
+  resultAmount?: number | null;
+  errorMessage?: string | null;
+  onPlay?: () => void;
 }
 
 function formatPrize(amount: number) {
@@ -20,25 +22,23 @@ function formatPrize(amount: number) {
     .replace(/[\u202f\u00a0]/g, "\u00a0");
 }
 
-const WHEEL_COLORS = ["#2458a3", "#80a6e9"];
-
-export default function CheckinGameVisual({
-  labels,
-  wheelRotationDegrees,
-  isSpinning,
-  isClaiming,
-  hasClaimedToday,
-  resultAmount,
-  errorMessage,
+export default function FortuneWheelDesign({
+  labels = DEMO_PRIZES,
+  wheelRotationDegrees = 0,
+  isSpinning = false,
+  isClaiming = false,
+  hasClaimedToday = false,
+  resultAmount = null,
+  errorMessage = null,
   onPlay,
-}: CheckinGameVisualProps) {
+}: FortuneWheelDesignProps) {
   const sliceAngle = labels.length ? 360 / labels.length : 360;
   const wheelBackground = labels.length
     ? `conic-gradient(from 0deg, ${labels
         .map((_, index) => {
           const start = index * sliceAngle;
           const end = (index + 1) * sliceAngle;
-        return `${WHEEL_COLORS[index % WHEEL_COLORS.length]} ${start}deg ${end}deg`;
+          return `${WHEEL_COLORS[index % WHEEL_COLORS.length]} ${start}deg ${end}deg`;
         })
         .join(", ")})`
     : "conic-gradient(#2458a3, #80a6e9, #2458a3)";
@@ -46,7 +46,6 @@ export default function CheckinGameVisual({
     "--wheel-rotation": `${wheelRotationDegrees}deg`,
     "--wheel-background": wheelBackground,
   } as CSSProperties;
-
   const actionDisabled = isSpinning || isClaiming || hasClaimedToday;
   const actionDescription = hasClaimedToday
     ? "Votre tour du jour est terminé"
@@ -56,7 +55,7 @@ export default function CheckinGameVisual({
         ? "La roue tourne"
         : "Jouer à la roue de la fortune";
   const statusMessage = isClaiming
-    ? "Le serveur confirme le tirage…"
+    ? "Confirmation du gain…"
     : isSpinning
       ? "La roue tourne…"
       : "";
@@ -65,14 +64,14 @@ export default function CheckinGameVisual({
     <main className="fortune-redesign">
       <div className="fortune-redesign__shell">
         <header className="fortune-redesign__intro">
-          <Link
+          <a
             href="/"
             className="fortune-redesign__back"
             aria-label="Retour à l’accueil"
             data-testid="button-back"
           >
             <ChevronLeft aria-hidden="true" />
-          </Link>
+          </a>
           <p>Un tour aujourd’hui pour tenter de gagner des FCFA.</p>
         </header>
 
@@ -90,25 +89,25 @@ export default function CheckinGameVisual({
               >
                 <img
                   className="fortune-redesign__coin-art fortune-redesign__coin-art--one"
-                  src="/fortune-wheel/coin-stack-1.png"
+                  src="/__mockup/images/fortune-wheel/coin-stack-1.png"
                   alt=""
                   aria-hidden="true"
                 />
                 <img
                   className="fortune-redesign__coin-art fortune-redesign__coin-art--two"
-                  src="/fortune-wheel/coin-stack-2.png"
+                  src="/__mockup/images/fortune-wheel/coin-stack-2.png"
                   alt=""
                   aria-hidden="true"
                 />
                 <img
                   className="fortune-redesign__coin-art fortune-redesign__coin-art--three"
-                  src="/fortune-wheel/coin-stack-2.png"
+                  src="/__mockup/images/fortune-wheel/coin-stack-2.png"
                   alt=""
                   aria-hidden="true"
                 />
                 <img
                   className="fortune-redesign__coin-art fortune-redesign__coin-art--four"
-                  src="/fortune-wheel/coin-stack-1.png"
+                  src="/__mockup/images/fortune-wheel/coin-stack-1.png"
                   alt=""
                   aria-hidden="true"
                 />
@@ -135,21 +134,26 @@ export default function CheckinGameVisual({
               </div>
               <img
                 className="fortune-redesign__rim"
-                src="/fortune-wheel/metal-rim.png"
+                src="/__mockup/images/fortune-wheel/metal-rim.png"
                 alt=""
                 aria-hidden="true"
               />
-              <button
-                className={`fortune-redesign__go${hasClaimedToday ? " is-claimed" : ""}`}
-                type="button"
-                onClick={onPlay}
-                disabled={actionDisabled}
-                aria-label={actionDescription}
-                aria-busy={isSpinning || isClaiming}
-              >
-                <img src="/fortune-wheel/go-button.png" alt="" aria-hidden="true" />
-              </button>
+                <button
+                  className={`fortune-redesign__go${hasClaimedToday ? " is-claimed" : ""}`}
+                  type="button"
+                  onClick={() => onPlay?.()}
+                  disabled={actionDisabled}
+                  aria-label={actionDescription}
+                  aria-busy={isSpinning || isClaiming}
+                >
+                  <img
+                    src="/__mockup/images/fortune-wheel/go-button.png"
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </button>
             </div>
+
             <div className="fortune-redesign__status-wrap" aria-live="polite" role="status">
               <p className="fortune-redesign__status">
                 {hasClaimedToday ? "La connexion d'aujourd'hui est terminée" : statusMessage}
@@ -162,7 +166,7 @@ export default function CheckinGameVisual({
             </div>
           </div>
 
-          {errorMessage && (
+          {errorMessage && !hasClaimedToday && (
             <p className="fortune-redesign__error" role="alert">
               {errorMessage}
             </p>

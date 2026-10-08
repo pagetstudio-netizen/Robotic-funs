@@ -1,4 +1,14 @@
-export const FORTUNE_WHEEL_PRIZES = [100, 100, 100, 100, 200, 200, 500, 1000] as const;
+export const FORTUNE_WHEEL_PRIZES = [
+  100,
+  200,
+  300,
+  500,
+  1500,
+  5000,
+  7000,
+  30000,
+  35000,
+] as const;
 
 export function getFortuneWheelRotationDegrees(
   prizeIndex: number,

@@ -160,6 +160,7 @@ function AppNavigationShell() {
     "/deposit",
     "/robotpay",
     "/withdrawal",
+    "/checkin",
     "/change-password",
     "/wallet",
     "/history",

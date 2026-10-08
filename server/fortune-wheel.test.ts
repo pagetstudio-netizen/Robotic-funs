@@ -5,8 +5,18 @@ import {
   getFortuneWheelRotationDegrees,
 } from "../shared/fortune-wheel";
 
-test("fortune wheel prizes stay at or above the minimum communicated to users", () => {
-  assert.deepEqual(FORTUNE_WHEEL_PRIZES, [100, 100, 100, 100, 200, 200, 500, 1000]);
+test("fortune wheel uses the nine prize amounts shown to users", () => {
+  assert.deepEqual(FORTUNE_WHEEL_PRIZES, [
+    100,
+    200,
+    300,
+    500,
+    1500,
+    5000,
+    7000,
+    30000,
+    35000,
+  ]);
   assert.ok(FORTUNE_WHEEL_PRIZES.every((amount) => amount >= 100));
 });
 
