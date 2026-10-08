@@ -42,7 +42,7 @@ export function Toaster() {
               isRobotPay
                 ? undefined
                 : cn(
-                    "w-[min(220px,calc(100vw-2rem))] min-h-[178px] max-h-[240px] flex-col items-center justify-center gap-1.5 rounded-[10px] border-0 bg-[rgba(35,35,35,0.81)] px-4 py-[18px] text-center text-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] backdrop-blur-[1px]",
+                    "w-[min(220px,calc(100vw-2rem))] min-h-0 max-h-[190px] flex-col items-center justify-center gap-1.5 rounded-[10px] border-0 bg-[rgba(35,35,35,0.81)] px-4 py-[18px] text-center text-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] backdrop-blur-[1px]",
                     "data-[state=open]:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-bottom-1 data-[state=closed]:fade-out-0 motion-reduce:animate-none motion-reduce:transition-none"
                   )
             }
