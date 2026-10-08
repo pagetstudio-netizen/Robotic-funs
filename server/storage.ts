@@ -17,7 +17,9 @@ import {
   isProductStockFull,
 } from "../shared/product-purchase-limit";
 import { isFirstPaidStableProductPurchase } from "./referral-commission-policy";
+import { getStablePurchaseSpinAwards } from "./fortune-wheel-policy";
 import { hasQualifyingActiveStableProduct } from "./withdrawal-product-eligibility";
+import { FORTUNE_WHEEL_PRIZES } from "@shared/fortune-wheel";
 import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
 import { hashPassword } from "./password-utils";
 
@@ -65,11 +67,14 @@ export interface IStorage {
   createUser(data: Partial<User>): Promise<User>;
   updateUser(id: number, data: Partial<User>): Promise<User>;
   adjustBalance(userId: number, wallet: "deposit" | "withdrawal", amount: number, executor?: any): Promise<boolean>;
-  claimDailyFortunePrize(
+  getFortuneWheelStatus(
+    userId: number,
+  ): Promise<{ userFound: boolean; availableSpins: number }>;
+  spinFortuneWheel(
     userId: number,
     amount: number,
-    now: Date,
-  ): Promise<{ userFound: boolean; claimed: boolean; hoursRemaining: number }>;
+  ): Promise<{ userFound: boolean; claimed: boolean; availableSpins: number }>;
+  grantFortuneWheelSpins(userId: number, count: number): Promise<number | undefined>;
   setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User>;
   getAllUsers(filter?: string, limit?: number, offset?: number): Promise<{ users: User[], total: number }>;
   
@@ -299,46 +304,53 @@ export class DatabaseStorage implements IStorage {
     return Boolean(updated);
   }
 
-  async claimDailyFortunePrize(
+  async getFortuneWheelStatus(
+    userId: number,
+  ): Promise<{ userFound: boolean; availableSpins: number }> {
+    const [user] = await db.select({ fortuneWheelSpins: users.fortuneWheelSpins })
+      .from(users)
+      .where(eq(users.id, userId));
+    return {
+      userFound: Boolean(user),
+      availableSpins: Math.max(0, Number(user?.fortuneWheelSpins ?? 0)),
+    };
+  }
+
+  async spinFortuneWheel(
     userId: number,
     amount: number,
-    now: Date,
-  ): Promise<{ userFound: boolean; claimed: boolean; hoursRemaining: number }> {
-    if (!Number.isFinite(amount) || amount <= 0 || Math.round(amount) !== amount) {
+  ): Promise<{ userFound: boolean; claimed: boolean; availableSpins: number }> {
+    if (!FORTUNE_WHEEL_PRIZES.includes(amount as (typeof FORTUNE_WHEEL_PRIZES)[number])) {
       throw new Error("Montant du gain invalide.");
     }
 
     return db.transaction(async (tx) => {
       const [lockedUser] = await tx
-        .select({ lastDailyBonusClaim: users.lastDailyBonusClaim })
+        .select({ fortuneWheelSpins: users.fortuneWheelSpins })
         .from(users)
         .where(eq(users.id, userId))
         .for("update");
 
       if (!lockedUser) {
-        return { userFound: false, claimed: false, hoursRemaining: 0 };
+        return { userFound: false, claimed: false, availableSpins: 0 };
       }
 
-      const lastClaim = lockedUser.lastDailyBonusClaim
-        ? new Date(lockedUser.lastDailyBonusClaim)
-        : null;
-      if (lastClaim) {
-        const remainingMs = 24 * 60 * 60 * 1000 - (now.getTime() - lastClaim.getTime());
-        if (remainingMs > 0) {
-          return {
-            userFound: true,
-            claimed: false,
-            hoursRemaining: Math.ceil(remainingMs / (60 * 60 * 1000)),
-          };
-        }
+      const availableSpins = Math.max(0, Number(lockedUser.fortuneWheelSpins));
+      if (availableSpins === 0) {
+        return { userFound: true, claimed: false, availableSpins: 0 };
       }
 
-      const updated = await this.adjustBalance(userId, "withdrawal", amount, tx);
+      const [updatedSpins] = await tx.update(users)
+        .set({ fortuneWheelSpins: sql`${users.fortuneWheelSpins} - 1` })
+        .where(and(eq(users.id, userId), gte(users.fortuneWheelSpins, 1)))
+        .returning({ fortuneWheelSpins: users.fortuneWheelSpins });
+      if (!updatedSpins) {
+        return { userFound: true, claimed: false, availableSpins: 0 };
+      }
+
+      const updated = await this.adjustBalance(userId, "deposit", amount, tx);
       if (!updated) throw new Error("Impossible de créditer le gain.");
 
-      await tx.update(users)
-        .set({ lastDailyBonusClaim: now })
-        .where(eq(users.id, userId));
       await tx.insert(transactions).values({
         userId,
         type: "wheel_prize",
@@ -346,8 +358,23 @@ export class DatabaseStorage implements IStorage {
         description: "Roue de la fortune",
       });
 
-      return { userFound: true, claimed: true, hoursRemaining: 0 };
+      return {
+        userFound: true,
+        claimed: true,
+        availableSpins: updatedSpins.fortuneWheelSpins,
+      };
     });
+  }
+
+  async grantFortuneWheelSpins(userId: number, count: number): Promise<number | undefined> {
+    if (!Number.isSafeInteger(count) || count < 1 || count > 1000) {
+      throw new Error("Le nombre de tours doit être compris entre 1 et 1 000.");
+    }
+    const [updated] = await db.update(users)
+      .set({ fortuneWheelSpins: sql`${users.fortuneWheelSpins} + ${count}` })
+      .where(eq(users.id, userId))
+      .returning({ fortuneWheelSpins: users.fortuneWheelSpins });
+    return updated?.fortuneWheelSpins;
   }
 
   async setBalances(userId: number, depositBalance: number, withdrawalBalance: number): Promise<User> {
@@ -688,6 +715,24 @@ export class DatabaseStorage implements IStorage {
         payoutMode: "maturity",
         purchasePrepaidEarnings: 0,
       }).returning();
+
+      const spinAwards = getStablePurchaseSpinAwards({
+        productType: product.productType,
+        isPaidPurchase,
+        assignedByAdmin,
+        isFirstStableProductPurchase,
+        isReferred: Boolean(user.referredBy),
+      });
+      if (spinAwards.buyerSpins > 0) {
+        await tx.update(users)
+          .set({ fortuneWheelSpins: sql`${users.fortuneWheelSpins} + ${spinAwards.buyerSpins}` })
+          .where(eq(users.id, userId));
+      }
+      if (spinAwards.sponsorSpins > 0 && user.referredBy && user.referredBy !== user.referralCode) {
+        await tx.update(users)
+          .set({ fortuneWheelSpins: sql`${users.fortuneWheelSpins} + ${spinAwards.sponsorSpins}` })
+          .where(eq(users.referralCode, user.referredBy));
+      }
 
       return { product, userProduct, isFirstStableProductPurchase };
     });

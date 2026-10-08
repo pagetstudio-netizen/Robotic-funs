@@ -10,17 +10,15 @@ import {
 } from "@shared/fortune-wheel";
 import CheckinGameVisual from "./checkin-game-visual";
 
-interface DailyBonusStatus {
-  canClaim: boolean;
-  hoursRemaining: number;
-  totalBonusClaimed: number;
-  daysPointed: number;
+interface FortuneWheelStatus {
+  availableSpins: number;
 }
 
 interface ClaimResponse {
   success: boolean;
   amount: number;
   prizeIndex: number;
+  availableSpins: number;
   message?: string;
 }
 
@@ -41,8 +39,8 @@ export default function CheckinPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const spinTimer = useRef<number | null>(null);
 
-  const statusQuery = useQuery<DailyBonusStatus>({
-    queryKey: ["/api/daily-bonus-status"],
+  const statusQuery = useQuery<FortuneWheelStatus>({
+    queryKey: ["/api/fortune-wheel/status"],
     enabled: Boolean(user),
   });
 
@@ -52,7 +50,7 @@ export default function CheckinPage() {
 
   const claimMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/claim-daily-bonus", {});
+      const response = await apiRequest("POST", "/api/fortune-wheel/spin", {});
       return response.json() as Promise<ClaimResponse>;
     },
     onMutate: () => {
@@ -66,7 +64,7 @@ export default function CheckinPage() {
       ) {
         setErrorMessage("Le résultat du tirage n'a pas pu être vérifié.");
         void refreshUser();
-        void queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] });
+        void queryClient.invalidateQueries({ queryKey: ["/api/fortune-wheel/status"] });
         return;
       }
 
@@ -83,12 +81,12 @@ export default function CheckinPage() {
         setIsSpinning(false);
         setResultAmount(result.amount);
         toast({
-          title: "Pointage réussi !",
+          title: "Tour gratuit utilisé !",
           description: result.message || `Vous avez gagné ${formatAmount(result.amount)} FCFA.`,
           duration: 2500,
         });
         void Promise.allSettled([
-          queryClient.invalidateQueries({ queryKey: ["/api/daily-bonus-status"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/fortune-wheel/status"] }),
           queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
           refreshUser(),
         ]);
@@ -98,7 +96,7 @@ export default function CheckinPage() {
       const status = (error as Error & { status?: number }).status;
       setErrorMessage(
         status === 400
-          ? "La connexion d'aujourd'hui est terminée"
+          ? "Vous n'avez pas de tour gratuit disponible."
           : error.message || "Impossible de lancer la roue. Réessayez.",
       );
       if (status === 400) void statusQuery.refetch();
@@ -109,15 +107,11 @@ export default function CheckinPage() {
 
   const currency = getCountryByCode(user.country)?.currency || "FCFA";
   const currencyLabel = /^(XOF|XAF|FCFA)$/i.test(currency) ? "FCFA" : currency;
-  const alreadyClaimed = statusQuery.data?.canClaim === false;
-  const hasClaimedToday =
-    alreadyClaimed ||
-    resultAmount !== null ||
-    errorMessage === "La connexion d'aujourd'hui est terminée";
+  const availableSpins = statusQuery.data?.availableSpins ?? 0;
   const visibleError =
     errorMessage ||
     (statusQuery.isError
-      ? "Statut indisponible. Le serveur vérifiera votre tour avant le tirage."
+      ? "Impossible de vérifier vos tours gratuits pour le moment."
       : null);
 
   return (
@@ -126,11 +120,11 @@ export default function CheckinPage() {
       wheelRotationDegrees={wheelRotationDegrees}
       isSpinning={isSpinning}
       isClaiming={claimMutation.isPending || statusQuery.isLoading}
-      hasClaimedToday={hasClaimedToday}
+      availableSpins={availableSpins}
       resultAmount={resultAmount}
       errorMessage={visibleError}
       onPlay={() => {
-        if (claimMutation.isPending || isSpinning || hasClaimedToday) return;
+        if (claimMutation.isPending || isSpinning || availableSpins < 1) return;
         claimMutation.mutate();
       }}
     />

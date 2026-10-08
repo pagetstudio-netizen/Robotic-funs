@@ -20,6 +20,7 @@
 - [Responsive clip paths](responsive-clip-paths.md) — CSS `path()` in Chromium rejects percentage coordinates; use an object-bounding-box SVG clip for responsive curves.
 - [Screenshot artwork extraction](screenshot-artwork-extraction.md) — Crop distinctive artwork from original captures, isolate its silhouette, and animate surrounding layers separately.
 - [Fortune wheel artwork](fortune-wheel-artwork.md) — Use the real wheel artwork from the user’s reference instead of CSS-drawn coin or GO graphics.
+- [Fortune wheel turns](fortune-wheel-spins.md) — Turns come from qualifying referred-user stable purchases or admin grants; prizes credit the deposit balance, not check-in.
 - [Withdrawal account editing](withdrawal-account-editing.md) — Each user has one editable primary withdrawal account; keep operators sourced from Admin-configured countries.
 - [Activity product launch clocks](activity-product-launch-clocks.md) — TG, BF, and CI share local time; BJ, CM, and NE launch one hour ahead.
 - [Activity product purchase rules](activity-product-purchase-rules.md) — Require a paid stable purchase and cap activity price at the highest single stable purchase; enforce stock and launch limits.

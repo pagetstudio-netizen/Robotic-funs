@@ -2823,26 +2823,33 @@ export async function registerRoutes(
     }
   });
 
-  // Daily fortune wheel claim; the server selects and credits the prize.
-  app.post("/api/claim-daily-bonus", requireAuth, async (req, res) => {
+  app.get("/api/fortune-wheel/status", requireAuth, async (req, res) => {
     try {
-      const now = new Date();
-      const prizeIndex = randomInt(FORTUNE_WHEEL_PRIZES.length);
-      const amount = FORTUNE_WHEEL_PRIZES[prizeIndex];
-      const claim = await storage.claimDailyFortunePrize(
-        req.session.userId!,
-        amount,
-        now,
-      );
-
-      if (!claim.userFound) {
+      const status = await storage.getFortuneWheelStatus(req.session.userId!);
+      if (!status.userFound) {
         return res.status(404).json({ message: "Utilisateur non trouvé." });
       }
-      if (!claim.claimed) {
+      return res.json({ availableSpins: status.availableSpins });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // The server consumes a free spin, selects the prize, and credits the deposit wallet atomically.
+  app.post("/api/fortune-wheel/spin", requireAuth, async (req, res) => {
+    try {
+      const prizeIndex = randomInt(FORTUNE_WHEEL_PRIZES.length);
+      const amount = FORTUNE_WHEEL_PRIZES[prizeIndex];
+      const spin = await storage.spinFortuneWheel(req.session.userId!, amount);
+
+      if (!spin.userFound) {
+        return res.status(404).json({ message: "Utilisateur non trouvé." });
+      }
+      if (!spin.claimed) {
         return res.status(400).json({
-          message: "La connexion d'aujourd'hui est terminée",
-          canClaim: false,
-          hoursRemaining: claim.hoursRemaining,
+          message: "Vous n'avez pas de tour gratuit disponible.",
+          canSpin: false,
+          availableSpins: 0,
         });
       }
 
@@ -2850,48 +2857,11 @@ export async function registerRoutes(
         success: true,
         amount,
         prizeIndex,
+        availableSpins: spin.availableSpins,
         message: `Vous avez gagné ${amount} FCFA !`,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.get("/api/daily-bonus-status", requireAuth, async (req, res) => {
-    try {
-      const user = await storage.getUser(req.session.userId!);
-      if (!user) {
-        return res.status(404).json({ message: "Utilisateur non trouve" });
-      }
-
-      const now = new Date();
-      const lastClaim = user.lastDailyBonusClaim ? new Date(user.lastDailyBonusClaim) : null;
-      
-      let canClaim = true;
-      let hoursRemaining = 0;
-
-      if (lastClaim) {
-        const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceClaim < 24) {
-          canClaim = false;
-          hoursRemaining = Math.ceil(24 - hoursSinceClaim);
-        }
-      }
-
-      const allTransactions = await storage.getUserTransactions(req.session.userId!);
-      const bonusTransactions = allTransactions.filter(
-        (t: any) =>
-          (t.type === "bonus" && t.description === "Bonus quotidien") ||
-          (t.type === "wheel_prize" && t.description === "Roue de la fortune")
-      );
-      const totalBonusClaimed = bonusTransactions.reduce(
-        (sum: number, t: any) => sum + parseFloat(t.amount || "0"), 0
-      );
-      const daysPointed = bonusTransactions.length;
-
-      res.json({ canClaim, hoursRemaining, totalBonusClaimed, daysPointed });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -3552,6 +3522,34 @@ export async function registerRoutes(
       res.json(team);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/fortune-wheel-spins", requireAdmin, async (req, res) => {
+    try {
+      const userId = Number(getRouteParam(req.params.id));
+      const count = Number(req.body?.count);
+      if (!Number.isSafeInteger(userId) || userId <= 0) {
+        return res.status(400).json({ message: "Utilisateur invalide." });
+      }
+      if (!Number.isSafeInteger(count) || count < 1 || count > 1000) {
+        return res.status(400).json({ message: "Le nombre de tours doit être compris entre 1 et 1 000." });
+      }
+
+      const availableSpins = await storage.grantFortuneWheelSpins(userId, count);
+      if (availableSpins === undefined) {
+        return res.status(404).json({ message: "Utilisateur introuvable." });
+      }
+
+      await storage.logAdminAction(
+        req.session.userId!,
+        "grant_fortune_wheel_spins",
+        userId,
+        `${count} tour(s) gratuit(s) attribué(s). Nouveau total : ${availableSpins}.`,
+      );
+      return res.json({ success: true, availableSpins });
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message || "Impossible d'attribuer les tours gratuits." });
     }
   });
 

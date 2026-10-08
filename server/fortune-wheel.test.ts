@@ -4,6 +4,7 @@ import {
   FORTUNE_WHEEL_PRIZES,
   getFortuneWheelRotationDegrees,
 } from "../shared/fortune-wheel";
+import { getStablePurchaseSpinAwards } from "./fortune-wheel-policy";
 
 test("fortune wheel uses the nine prize amounts shown to users", () => {
   assert.deepEqual(FORTUNE_WHEEL_PRIZES, [
@@ -37,4 +38,38 @@ test("fortune wheel rotation rejects an invalid prize index", () => {
     () => getFortuneWheelRotationDegrees(FORTUNE_WHEEL_PRIZES.length),
     RangeError,
   );
+});
+
+test("a referred user earns one spin for every paid stable purchase, and the sponsor only on the first", () => {
+  assert.deepEqual(getStablePurchaseSpinAwards({
+    productType: "stable",
+    isPaidPurchase: true,
+    assignedByAdmin: false,
+    isFirstStableProductPurchase: true,
+    isReferred: true,
+  }), { buyerSpins: 1, sponsorSpins: 1 });
+
+  assert.deepEqual(getStablePurchaseSpinAwards({
+    productType: "stable",
+    isPaidPurchase: true,
+    assignedByAdmin: false,
+    isFirstStableProductPurchase: false,
+    isReferred: true,
+  }), { buyerSpins: 1, sponsorSpins: 0 });
+});
+
+test("free, admin-assigned, activity, and non-referred purchases do not award wheel spins", () => {
+  const ineligiblePurchases = [
+    { productType: "stable" as const, isPaidPurchase: false, assignedByAdmin: false, isFirstStableProductPurchase: true, isReferred: true },
+    { productType: "stable" as const, isPaidPurchase: true, assignedByAdmin: true, isFirstStableProductPurchase: true, isReferred: true },
+    { productType: "activity" as const, isPaidPurchase: true, assignedByAdmin: false, isFirstStableProductPurchase: false, isReferred: true },
+    { productType: "stable" as const, isPaidPurchase: true, assignedByAdmin: false, isFirstStableProductPurchase: true, isReferred: false },
+  ];
+
+  for (const purchase of ineligiblePurchases) {
+    assert.deepEqual(getStablePurchaseSpinAwards(purchase), {
+      buyerSpins: 0,
+      sponsorSpins: 0,
+    });
+  }
 });

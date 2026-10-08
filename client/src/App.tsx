@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import BottomNav from "@/components/bottom-nav";
 import HomeWelcomePopup from "@/components/home-welcome-popup";
 import { ADMIN_PATH } from "@/lib/admin-path";
+import { applyPageMetadata } from "@/lib/page-metadata";
 
 const LoginPage = lazy(() => import("@/pages/login"));
 const RegisterPage = lazy(() => import("@/pages/register"));
@@ -155,6 +156,10 @@ function BrandThemeScope({ children }: { children: React.ReactNode }) {
 function AppNavigationShell() {
   const { user } = useAuth();
   const [location] = useLocation();
+  useEffect(() => {
+    applyPageMetadata(location);
+  }, [location]);
+
   const publicPaths = ["/login", "/register", "/invitation", "/rejoindre"];
   const servicePaths = [
     "/deposit",

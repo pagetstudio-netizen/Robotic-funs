@@ -169,6 +169,7 @@ function RewardHistoryRow({
   createdAt,
   amount,
   currentBalance,
+  balanceLabel,
   currency,
   orderNumber,
   testId,
@@ -177,6 +178,7 @@ function RewardHistoryRow({
   createdAt: string;
   amount: string | number;
   currentBalance: string | number;
+  balanceLabel?: string;
   currency: string;
   orderNumber: string;
   testId: string;
@@ -203,7 +205,7 @@ function RewardHistoryRow({
       </div>
       <div className="reward-row-values">
         <strong>+ {formatMoney(amount)}</strong>
-        <span>Solde actuel {formatMoney(currentBalance)} {currency}</span>
+        <span>{balanceLabel || "Solde actuel"} {formatMoney(currentBalance)} {currency}</span>
       </div>
     </article>
   );
@@ -664,7 +666,12 @@ export default function HistoryPage() {
                     createdAt={transaction.createdAt}
                     title={getRewardTitle(transaction)}
                     amount={transaction.amount}
-                    currentBalance={user.balance || "0"}
+                    currentBalance={
+                      transaction.type === "wheel_prize"
+                        ? user.depositBalance || "0"
+                        : user.balance || "0"
+                    }
+                    balanceLabel={transaction.type === "wheel_prize" ? "Solde de dépôt" : undefined}
                     currency={currency}
                   />
                 ))}

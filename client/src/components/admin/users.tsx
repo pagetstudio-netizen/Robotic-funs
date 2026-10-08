@@ -127,6 +127,7 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
   const [selectedUser, setSelectedUser] = useState<UserWithTeam | null>(null);
   const [editDepositBalance, setEditDepositBalance] = useState("");
   const [editWithdrawalBalance, setEditWithdrawalBalance] = useState("");
+  const [spinsToGrant, setSpinsToGrant] = useState("1");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [adminWalletForm, setAdminWalletForm] = useState<AdminWalletForm>({
@@ -222,6 +223,7 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
   useEffect(() => {
     setNewPassword("");
     setConfirmNewPassword("");
+    setSpinsToGrant("1");
   }, [selectedUser?.id]);
 
   const selectedWalletCountry = adminCountries.find(
@@ -244,6 +246,36 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
       toast({ title: "Compte de retrait mis à jour" });
     },
     onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const grantSpinsMutation = useMutation<
+    { availableSpins: number },
+    Error,
+    { userId: number; count: number }
+  >({
+    mutationFn: async ({ userId, count }) => {
+      const response = await apiRequest(
+        "POST",
+        `/api/admin/users/${userId}/fortune-wheel-spins`,
+        { count },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Impossible d’attribuer les tours gratuits");
+      }
+      return response.json();
+    },
+    onSuccess: (result, variables) => {
+      setSelectedUser((current) => current?.id === variables.userId
+        ? { ...current, fortuneWheelSpins: result.availableSpins }
+        : current);
+      setSpinsToGrant("1");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: `${variables.count} tour(s) gratuit(s) attribué(s)` });
+    },
+    onError: (error) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
   });
@@ -575,6 +607,44 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                   <Users className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
                   <p className="text-xs text-muted-foreground">Niveau 3</p>
                   <p className="font-bold">{selectedUser.level3Count}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Tours gratuits de la roue</p>
+                  <p className="text-xs text-muted-foreground">
+                    Disponibles actuellement : {selectedUser.fortuneWheelSpins ?? 0}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    step="1"
+                    value={spinsToGrant}
+                    onChange={(event) => setSpinsToGrant(event.target.value)}
+                    aria-label="Nombre de tours gratuits à attribuer"
+                    data-testid="input-admin-wheel-spins"
+                  />
+                  <Button
+                    onClick={() => grantSpinsMutation.mutate({
+                      userId: selectedUser.id,
+                      count: Number(spinsToGrant),
+                    })}
+                    disabled={
+                      grantSpinsMutation.isPending ||
+                      !Number.isSafeInteger(Number(spinsToGrant)) ||
+                      Number(spinsToGrant) < 1 ||
+                      Number(spinsToGrant) > 1000
+                    }
+                    data-testid="button-admin-grant-wheel-spins"
+                  >
+                    {grantSpinsMutation.isPending
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : "Attribuer"}
+                  </Button>
                 </div>
               </div>
 

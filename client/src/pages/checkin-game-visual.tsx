@@ -8,7 +8,7 @@ interface CheckinGameVisualProps {
   wheelRotationDegrees: number;
   isSpinning: boolean;
   isClaiming: boolean;
-  hasClaimedToday: boolean;
+  availableSpins: number;
   resultAmount: number | null;
   errorMessage: string | null;
   onPlay: () => void;
@@ -27,7 +27,7 @@ export default function CheckinGameVisual({
   wheelRotationDegrees,
   isSpinning,
   isClaiming,
-  hasClaimedToday,
+  availableSpins,
   resultAmount,
   errorMessage,
   onPlay,
@@ -47,19 +47,22 @@ export default function CheckinGameVisual({
     "--wheel-background": wheelBackground,
   } as CSSProperties;
 
-  const actionDisabled = isSpinning || isClaiming || hasClaimedToday;
-  const actionDescription = hasClaimedToday
-    ? "Votre tour du jour est terminé"
+  const hasFreeSpins = availableSpins > 0;
+  const actionDisabled = isSpinning || isClaiming || !hasFreeSpins;
+  const actionDescription = !hasFreeSpins
+    ? "Aucun tour gratuit disponible"
     : isClaiming
       ? "Confirmation du gain en cours"
       : isSpinning
         ? "La roue tourne"
-        : "Jouer à la roue de la fortune";
+        : `Jouer à la roue de la fortune, ${availableSpins} tour(s) gratuit(s) disponible(s)`;
   const statusMessage = isClaiming
     ? "Le serveur confirme le tirage…"
     : isSpinning
       ? "La roue tourne…"
-      : "";
+      : hasFreeSpins
+        ? `${availableSpins} tour${availableSpins === 1 ? "" : "s"} gratuit${availableSpins === 1 ? "" : "s"} disponible${availableSpins === 1 ? "" : "s"}`
+        : "Aucun tour gratuit disponible pour le moment";
 
   return (
     <main className="fortune-redesign">
@@ -73,7 +76,7 @@ export default function CheckinGameVisual({
           >
             <ChevronLeft aria-hidden="true" />
           </Link>
-          <p>Un tour aujourd’hui pour tenter de gagner des FCFA.</p>
+          <p>Utilisez vos tours gratuits pour tenter de gagner des FCFA.</p>
         </header>
 
         <section
@@ -83,7 +86,7 @@ export default function CheckinGameVisual({
           <div className="fortune-redesign__wheel-side">
             <div className="fortune-redesign__wheel-frame">
               <div
-                className={`fortune-redesign__wheel${!isSpinning && !isClaiming && !hasClaimedToday ? " is-idle" : ""}`}
+                className={`fortune-redesign__wheel${!isSpinning && !isClaiming ? " is-idle" : ""}`}
                 style={wheelStyle}
                 role="group"
                 aria-label={`Roue avec ${labels.map((amount) => `${formatPrize(amount)} FCFA`).join(", ")}`}
@@ -140,7 +143,7 @@ export default function CheckinGameVisual({
                 aria-hidden="true"
               />
               <button
-                className={`fortune-redesign__go${hasClaimedToday ? " is-claimed" : ""}`}
+                className={`fortune-redesign__go${!hasFreeSpins ? " is-unavailable" : ""}`}
                 type="button"
                 onClick={onPlay}
                 disabled={actionDisabled}
@@ -152,9 +155,9 @@ export default function CheckinGameVisual({
             </div>
             <div className="fortune-redesign__status-wrap" aria-live="polite" role="status">
               <p className="fortune-redesign__status">
-                {hasClaimedToday ? "La connexion d'aujourd'hui est terminée" : statusMessage}
+                {statusMessage}
               </p>
-              {hasClaimedToday && resultAmount !== null && (
+              {resultAmount !== null && (
                 <p className="fortune-redesign__result">
                   Gain confirmé : <strong>{formatPrize(resultAmount)} FCFA</strong>
                 </p>
