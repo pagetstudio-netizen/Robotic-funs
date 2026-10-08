@@ -12,14 +12,6 @@ import { CountrySelector } from "@/components/country-selector";
 import { ChevronRight, Eye, EyeOff, Loader2, LockKeyhole, Phone, ShieldCheck } from "lucide-react";
 import { normalizeBeninPhone } from "@shared/phone";
 
-const visualCodeCharacters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-
-function createVisualCode() {
-  return Array.from({ length: 4 }, () =>
-    visualCodeCharacters[Math.floor(Math.random() * visualCodeCharacters.length)],
-  ).join("");
-}
-
 const registerSchema = z.object({
   phone: z.string().min(8, "Numéro de téléphone invalide"),
   country: z.string().min(2, "Sélectionnez un pays"),
@@ -45,8 +37,6 @@ export default function RegisterPage() {
   const [countryModalOpen, setCountryModalOpen] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const [visualCode, setVisualCode] = useState(createVisualCode);
-  const [enteredVisualCode, setEnteredVisualCode] = useState("");
 
   const params = new URLSearchParams(searchString);
   // Keep accepting legacy invitation links that placed a second "?" before code.
@@ -94,13 +84,6 @@ export default function RegisterPage() {
   })();
 
   async function onSubmit(data: RegisterForm) {
-    if (enteredVisualCode.trim().toUpperCase() !== visualCode) {
-      toast({ title: "Code incorrect", description: "Saisissez le code affiché sur l’écran.", variant: "destructive" });
-      setVisualCode(createVisualCode());
-      setEnteredVisualCode("");
-      return;
-    }
-
     const phone = data.country.toUpperCase() === "BJ"
       ? normalizeBeninPhone(data.phone)
       : data.phone.trim();
@@ -179,7 +162,7 @@ export default function RegisterPage() {
               {...form.register("password")}
               type={passwordVisible ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="Mot de passe (8 à 15 caractères)"
+              placeholder="Mot de passe"
               aria-label="Mot de passe"
               aria-invalid={Boolean(form.formState.errors.password)}
               data-testid="input-password"
@@ -218,37 +201,6 @@ export default function RegisterPage() {
             </button>
           </div>
           {form.formState.errors.confirmPassword && <p className="auth-error">{form.formState.errors.confirmPassword.message}</p>}
-
-          <div className="auth-field auth-verification-field">
-            <ShieldCheck className="auth-verification-icon" aria-hidden="true" />
-            <input
-              value={enteredVisualCode}
-              onChange={(event) => setEnteredVisualCode(event.target.value)}
-              type="text"
-              autoComplete="off"
-              autoCapitalize="characters"
-              maxLength={4}
-              placeholder="Code"
-              aria-label="Code affiché"
-              data-testid="input-visual-code"
-            />
-            <button
-              className="auth-visual-code"
-              type="button"
-              onClick={() => {
-                setVisualCode(createVisualCode());
-                setEnteredVisualCode("");
-              }}
-              aria-label="Afficher un nouveau code"
-              data-testid="button-refresh-visual-code"
-            >
-              {Array.from(visualCode).map((character, index) => (
-                <span key={`${index}-${character}`} className={`auth-visual-char auth-visual-char-${index + 1}`}>
-                  {character}
-                </span>
-              ))}
-            </button>
-          </div>
 
           <label className="auth-field auth-invitation-field">
             <ShieldCheck className="auth-leading-icon" aria-hidden="true" />
