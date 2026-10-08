@@ -674,54 +674,100 @@ nav button:active,
   transform: scale(0.9);
 }
 
-/* Full-page loader inspired by the segmented blue spinner reference. */
+/* Compact loading card shown over a clear, undimmed page. */
 .page-loading-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
   display: grid;
   place-items: center;
-  background: rgba(8, 10, 14, .78);
-  backdrop-filter: blur(1px);
+  background: transparent;
+}
+
+.page-loading-modal {
+  display: flex;
+  width: min(170px, calc(100vw - 32px));
+  height: 134px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 6px;
+  background: #595959;
+  color: #fff;
 }
 
 .page-loading-spinner {
   position: relative;
-  width: 52px;
-  height: 52px;
-  animation: page-loading-rotate 1.1s linear infinite;
+  width: 40px;
+  height: 40px;
+  animation: page-loading-rotate 900ms linear infinite;
 }
 
 .page-loading-spinner > span {
   position: absolute;
-  width: 11px;
-  height: 15px;
-  border-radius: 1px;
-  background: #08a9e6;
-  box-shadow: 0 0 9px rgba(8, 169, 230, .35);
+  top: 3px;
+  left: 18px;
+  width: 4px;
+  height: 8px;
+  transform-origin: 2px 17px;
+  border-radius: 2px;
+  background: #e7e7e7;
 }
 
 .page-loading-spinner > span:nth-child(1) {
-  top: 5px;
-  left: 20px;
-  background: #31c5f2;
+  transform: rotate(0deg);
+  opacity: 1;
 }
-
 .page-loading-spinner > span:nth-child(2) {
-  top: 18px;
-  right: 5px;
+  transform: rotate(30deg);
+  opacity: .92;
 }
-
 .page-loading-spinner > span:nth-child(3) {
-  bottom: 5px;
-  left: 20px;
-  background: #087dbb;
+  transform: rotate(60deg);
+  opacity: .84;
+}
+.page-loading-spinner > span:nth-child(4) {
+  transform: rotate(90deg);
+  opacity: .76;
+}
+.page-loading-spinner > span:nth-child(5) {
+  transform: rotate(120deg);
+  opacity: .68;
+}
+.page-loading-spinner > span:nth-child(6) {
+  transform: rotate(150deg);
+  opacity: .6;
+}
+.page-loading-spinner > span:nth-child(7) {
+  transform: rotate(180deg);
+  opacity: .52;
+}
+.page-loading-spinner > span:nth-child(8) {
+  transform: rotate(210deg);
+  opacity: .44;
+}
+.page-loading-spinner > span:nth-child(9) {
+  transform: rotate(240deg);
+  opacity: .36;
+}
+.page-loading-spinner > span:nth-child(10) {
+  transform: rotate(270deg);
+  opacity: .3;
+}
+.page-loading-spinner > span:nth-child(11) {
+  transform: rotate(300deg);
+  opacity: .24;
+}
+.page-loading-spinner > span:nth-child(12) {
+  transform: rotate(330deg);
+  opacity: .18;
 }
 
-.page-loading-spinner > span:nth-child(4) {
-  top: 18px;
-  left: 5px;
-  background: #1398d2;
+.page-loading-label {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 @keyframes page-loading-rotate {
@@ -735,6 +781,6 @@ nav button:active,
 
 @media (prefers-reduced-motion: reduce) {
   .page-loading-spinner {
-    animation-duration: 3s;
+    animation-duration: 2.5s;
   }
 }

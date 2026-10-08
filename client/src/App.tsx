@@ -46,12 +46,14 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 function PageLoading() {
   return (
     <div className="page-loading-overlay" role="status" aria-label="Chargement de la page">
-      <span className="page-loading-spinner" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-        <span />
-      </span>
+      <div className="page-loading-modal">
+        <span className="page-loading-spinner" aria-hidden="true">
+          {Array.from({ length: 12 }, (_, index) => (
+            <span key={index} />
+          ))}
+        </span>
+        <span className="page-loading-label">Loading</span>
+      </div>
     </div>
   );
 }
