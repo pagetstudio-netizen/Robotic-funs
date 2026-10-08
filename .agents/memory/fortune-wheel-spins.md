@@ -13,8 +13,8 @@ The wheel page should display these exact informational messages without changin
 
 The home-page button label is “Wheel of Fortune”.
 
-The wheel must keep showing all nine labels from 100 to 35,000 FCFA, but never award more than 500 FCFA. The server payout pool is 100/200/300/500 FCFA; 500 FCFA has a 5% chance, with the remaining probability split across 100/200/300. Higher labels are display-only.
+The wheel must keep showing all nine labels from 100 to 35,000 FCFA, but never award more than 500 FCFA. Twenty percent of turns lose; the wheel stops on a divider, not a labeled amount, and no balance is credited. The remaining 80% are wins split 45/30/20/5 across 100/200/300/500 FCFA. Higher labels are display-only.
 
-**Why:** the user specified referral- and purchase-earned turns, excluded offered products, assigned wheel prizes to the deposit balance, confirmed the newer wheel copy is informational only, and set a hard 500 FCFA maximum while retaining the larger labels. A 5% chance implements their request that 500 FCFA be rare. The home button label is “Wheel of Fortune.”
+**Why:** the user specified referral- and purchase-earned turns, excluded offered products, assigned wheel prizes to the deposit balance, confirmed the newer wheel copy is informational only, set a hard 500 FCFA maximum while retaining the larger labels, and chose a 20% losing chance with losses landing between amounts. A 5% chance of 500 FCFA among winning turns keeps it rare. The home button label is “Wheel of Fortune.”
 
-**How to apply:** enforce spin eligibility in the paid stable-purchase transaction regardless of the displayed copy; select only from the capped payout pool, consume turns and credit prizes atomically on the server, and keep administrative grants protected and auditable.
+**How to apply:** enforce spin eligibility in the paid stable-purchase transaction regardless of the displayed copy; consume each win or loss atomically, credit only winning amounts from the capped payout pool, and animate losses to a segment divider. Keep administrative grants protected and auditable.

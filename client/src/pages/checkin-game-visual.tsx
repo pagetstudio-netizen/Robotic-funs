@@ -10,6 +10,7 @@ interface CheckinGameVisualProps {
   isClaiming: boolean;
   availableSpins: number;
   resultAmount: number | null;
+  isLossResult: boolean;
   resultMessage: string | null;
   isNoSpinsModalOpen: boolean;
   errorMessage: string | null;
@@ -33,6 +34,7 @@ export default function CheckinGameVisual({
   isClaiming,
   availableSpins,
   resultAmount,
+  isLossResult,
   resultMessage,
   isNoSpinsModalOpen,
   errorMessage,
@@ -70,8 +72,13 @@ export default function CheckinGameVisual({
       ? "La roue tourne…"
       : hasFreeSpins
         ? `${availableSpins} tour${availableSpins === 1 ? "" : "s"} gratuit${availableSpins === 1 ? "" : "s"} disponible${availableSpins === 1 ? "" : "s"}`
-        : "Aucun tour gratuit disponible pour le moment";
-  const dialogKind = resultAmount !== null ? "result" : isNoSpinsModalOpen ? "no-spins" : null;
+        : null;
+  const dialogKind =
+    resultAmount !== null || isLossResult
+      ? "result"
+      : isNoSpinsModalOpen
+        ? "no-spins"
+        : null;
   const dismissDialog = dialogKind === "result" ? onDismissResult : onDismissNoSpins;
 
   useEffect(() => {
@@ -108,11 +115,8 @@ export default function CheckinGameVisual({
             data-testid="button-back"
           >
             <ChevronLeft aria-hidden="true" />
+            <span>Retour</span>
           </Link>
-          <div className="fortune-redesign__instructions">
-            <p>Chaque investissement réussi vous donne droit à une participation au tirage au sort.</p>
-            <p>Si vous parvenez à inviter un utilisateur à s'inscrire, vous gagnez un tour de roue chanceux</p>
-          </div>
         </header>
 
         <section
@@ -191,14 +195,23 @@ export default function CheckinGameVisual({
               </button>
             </div>
             <div className="fortune-redesign__status-wrap" aria-live="polite" role="status">
-              <p className="fortune-redesign__status">
-                {statusMessage}
-              </p>
-              {resultAmount !== null && (
+              {statusMessage ? (
+                <p className="fortune-redesign__status">{statusMessage}</p>
+              ) : (
+                <div className="fortune-redesign__status-copy">
+                  <p>Chaque investissement réussi vous donne droit à une participation au tirage au sort.</p>
+                  <p>Si vous parvenez à inviter un utilisateur à s'inscrire, vous gagnez un tour de roue chanceux</p>
+                </div>
+              )}
+              {isLossResult ? (
+                <p className="fortune-redesign__result">
+                  Aucun gain sur ce tour.
+                </p>
+              ) : resultAmount !== null ? (
                 <p className="fortune-redesign__result">
                   Gain confirmé : <strong>{formatPrize(resultAmount)} FCFA</strong>
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -220,15 +233,24 @@ export default function CheckinGameVisual({
           >
             <div className="fortune-wheel-modal__content">
               <h2 id="fortune-wheel-dialog-title">
-                {dialogKind === "result" ? "Succès" : "Aucun tour disponible"}
+                {dialogKind === "result"
+                  ? isLossResult
+                    ? "Aucun gain cette fois"
+                    : "Succès"
+                  : "Aucun tour disponible"}
               </h2>
               {dialogKind === "result" ? (
                 <>
                   <p id="fortune-wheel-dialog-description" className="fortune-wheel-modal__message">
-                    {resultMessage || `Vous avez gagné ${formatPrize(resultAmount!)} FCFA !`}
+                    {resultMessage ||
+                      (isLossResult
+                        ? "Désolé, vous n'avez rien gagné cette fois-ci."
+                        : `Vous avez gagné ${formatPrize(resultAmount ?? 0)} FCFA !`)}
                   </p>
                   <p className="fortune-wheel-modal__detail">
-                    Votre gain a été crédité sur votre solde de dépôt.
+                    {isLossResult
+                      ? "La roue s'est arrêtée entre les montants. Aucun montant n'a été crédité."
+                      : "Votre gain a été crédité sur votre solde de dépôt."}
                   </p>
                 </>
               ) : (

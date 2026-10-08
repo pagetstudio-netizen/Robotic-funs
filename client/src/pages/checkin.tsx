@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   FORTUNE_WHEEL_PRIZES,
+  getFortuneWheelLossRotationDegrees,
   getFortuneWheelRotationDegrees,
 } from "@shared/fortune-wheel";
 import CheckinGameVisual from "./checkin-game-visual";
@@ -14,8 +15,10 @@ interface FortuneWheelStatus {
 
 interface ClaimResponse {
   success: boolean;
-  amount: number;
-  prizeIndex: number;
+  won: boolean;
+  amount: number | null;
+  prizeIndex: number | null;
+  lossBoundaryIndex: number | null;
   availableSpins: number;
   message?: string;
 }
@@ -33,6 +36,7 @@ export default function CheckinPage() {
   const [wheelRotationDegrees, setWheelRotationDegrees] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [resultAmount, setResultAmount] = useState<number | null>(null);
+  const [isLossResult, setIsLossResult] = useState(false);
   const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [isNoSpinsModalOpen, setIsNoSpinsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,23 +59,43 @@ export default function CheckinPage() {
     onMutate: () => {
       setErrorMessage(null);
       setResultAmount(null);
+      setIsLossResult(false);
       setResultMessage(null);
       setIsNoSpinsModalOpen(false);
     },
     onSuccess: (result) => {
-      if (
-        !Number.isInteger(result.prizeIndex) ||
-        FORTUNE_WHEEL_PRIZES[result.prizeIndex] !== result.amount
-      ) {
+      const validWin =
+        result.won === true &&
+        typeof result.prizeIndex === "number" &&
+        Number.isInteger(result.prizeIndex) &&
+        result.prizeIndex >= 0 &&
+        result.prizeIndex < FORTUNE_WHEEL_PRIZES.length &&
+        typeof result.amount === "number" &&
+        FORTUNE_WHEEL_PRIZES[result.prizeIndex] === result.amount &&
+        result.amount <= 500 &&
+        result.lossBoundaryIndex === null;
+      const validLoss =
+        result.won === false &&
+        result.amount === null &&
+        result.prizeIndex === null &&
+        typeof result.lossBoundaryIndex === "number" &&
+        Number.isInteger(result.lossBoundaryIndex) &&
+        result.lossBoundaryIndex >= 0 &&
+        result.lossBoundaryIndex < FORTUNE_WHEEL_PRIZES.length;
+
+      if (!result.success || (!validWin && !validLoss)) {
         setErrorMessage("Le résultat du tirage n'a pas pu être vérifié.");
         void refreshUser();
         void queryClient.invalidateQueries({ queryKey: ["/api/fortune-wheel/status"] });
         return;
       }
 
+      const targetRotation = result.won
+        ? getFortuneWheelRotationDegrees(result.prizeIndex as number)
+        : getFortuneWheelLossRotationDegrees(result.lossBoundaryIndex as number);
       if (spinTimer.current !== null) window.clearTimeout(spinTimer.current);
       setWheelRotationDegrees((current) =>
-        current + getFortuneWheelRotationDegrees(result.prizeIndex),
+        current + targetRotation,
       );
       setIsSpinning(true);
       const spinDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -80,8 +104,14 @@ export default function CheckinPage() {
 
       spinTimer.current = window.setTimeout(() => {
         setIsSpinning(false);
-        setResultAmount(result.amount);
-        setResultMessage(result.message || `Vous avez gagné ${formatAmount(result.amount)} FCFA !`);
+        setIsLossResult(!result.won);
+        setResultAmount(result.won ? result.amount : null);
+        setResultMessage(
+          result.message ||
+            (result.won
+              ? `Vous avez gagné ${formatAmount(result.amount ?? 0)} FCFA !`
+              : "Désolé, vous n'avez rien gagné cette fois-ci."),
+        );
         void Promise.allSettled([
           queryClient.invalidateQueries({ queryKey: ["/api/fortune-wheel/status"] }),
           queryClient.invalidateQueries({ queryKey: ["/api/transactions"] }),
@@ -119,12 +149,14 @@ export default function CheckinPage() {
       isClaiming={claimMutation.isPending || statusQuery.isLoading}
       availableSpins={availableSpins}
       resultAmount={resultAmount}
+      isLossResult={isLossResult}
       resultMessage={resultMessage}
       isNoSpinsModalOpen={isNoSpinsModalOpen}
       errorMessage={visibleError}
       onDismissNoSpins={() => setIsNoSpinsModalOpen(false)}
       onDismissResult={() => {
         setResultAmount(null);
+        setIsLossResult(false);
         setResultMessage(null);
       }}
       onPlay={() => {

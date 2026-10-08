@@ -2876,7 +2876,7 @@ export async function registerRoutes(
         success: true,
         won: true,
         amount,
-        prizeIndex,
+        prizeIndex: outcome.prizeIndex,
         lossBoundaryIndex: null,
         availableSpins: spin.availableSpins,
         message: `Vous avez gagné ${amount} FCFA !`,
