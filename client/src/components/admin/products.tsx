@@ -161,10 +161,15 @@ export default function AdminProducts() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result: { archived?: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/products/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Produit supprimé" });
+      toast({
+        title: result.archived ? "Produit retiré du catalogue" : "Produit supprimé",
+        description: result.archived
+          ? "Des achats ou commissions y sont associés. L’historique a été conservé."
+          : undefined,
+      });
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });

@@ -72,7 +72,7 @@ export interface IStorage {
   createProduct(data: Partial<Product>): Promise<Product>;
   createProducts(data: Partial<Product>[]): Promise<Product[]>;
   updateProduct(id: number, data: Partial<Product>): Promise<Product>;
-  deleteProduct(id: number): Promise<void>;
+  deleteProduct(id: number): Promise<{ archived: boolean }>;
   
   // User Products
   getUserProducts(userId: number): Promise<(UserProduct & { product: Product })[]>;
@@ -332,8 +332,33 @@ export class DatabaseStorage implements IStorage {
     return product;
   }
 
-  async deleteProduct(id: number): Promise<void> {
-    await db.delete(products).where(eq(products.id, id));
+  async deleteProduct(id: number): Promise<{ archived: boolean }> {
+    return db.transaction(async (tx) => {
+      const [product] = await tx.select({ id: products.id })
+        .from(products)
+        .where(eq(products.id, id))
+        .for("update");
+      if (!product) return { archived: false };
+
+      const linkedPurchases = await tx.select({ id: userProducts.id })
+        .from(userProducts)
+        .where(eq(userProducts.productId, id))
+        .limit(1);
+      const linkedCommissions = await tx.select({ id: referralCommissions.id })
+        .from(referralCommissions)
+        .where(eq(referralCommissions.productId, id))
+        .limit(1);
+
+      if (linkedPurchases.length > 0 || linkedCommissions.length > 0) {
+        await tx.update(products)
+          .set({ isActive: false })
+          .where(eq(products.id, id));
+        return { archived: true };
+      }
+
+      await tx.delete(products).where(eq(products.id, id));
+      return { archived: false };
+    });
   }
 
   // User Products
@@ -375,6 +400,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(products.id, productId))
         .for("update");
       if (!product) throw new Error("Produit non trouvé");
+      if (!assignedByAdmin && !product.isActive) {
+        throw new Error("Ce produit n’est plus disponible.");
+      }
 
       const [user] = await tx.select().from(users)
         .where(eq(users.id, userId))

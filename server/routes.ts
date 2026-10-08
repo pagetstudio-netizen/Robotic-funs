@@ -844,6 +844,9 @@ export async function registerRoutes(
       if (!product) {
         return res.status(404).json({ message: "Produit non trouvé" });
       }
+      if (!product.isActive) {
+        return res.status(409).json({ message: "Ce produit n’est plus disponible." });
+      }
 
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(401).json({ message: "Non authentifié" });
@@ -869,6 +872,9 @@ export async function registerRoutes(
       
       if (!product || !product.isFree) {
         return res.status(400).json({ message: "Produit non valide" });
+      }
+      if (!product.isActive) {
+        return res.status(409).json({ message: "Ce produit n’est plus disponible." });
       }
 
       const user = await storage.getUser(req.session.userId!);
@@ -3728,9 +3734,16 @@ export async function registerRoutes(
   app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(getRouteParam(req.params.id));
-      await storage.deleteProduct(id);
-      await storage.logAdminAction(req.session.userId!, "delete_product", null, `Produit ${id} supprimé`);
-      res.json({ success: true });
+      const result = await storage.deleteProduct(id);
+      await storage.logAdminAction(
+        req.session.userId!,
+        "delete_product",
+        null,
+        result.archived
+          ? `Produit ${id} retiré du catalogue, historique conservé`
+          : `Produit ${id} supprimé`,
+      );
+      res.json({ success: true, ...result });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
