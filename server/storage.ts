@@ -8,6 +8,14 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { INVITATION_TASK_KEY_PREFIX, countQualifiedDirectReferrals } from "./invitation-tasks";
+import { calculateMaturityPayout } from "./product-payout";
+import {
+  getHighestStablePurchasePrice,
+  hasPurchasedActivityLaunch,
+  hasPurchasedStableProduct,
+  isProductStockFull,
+} from "../shared/product-purchase-limit";
+import { isFirstPaidStableProductPurchase } from "./referral-commission-policy";
 import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -60,6 +68,7 @@ export interface IStorage {
   getProducts(): Promise<Product[]>;
   getAllProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
+  getProductStockCounts(productIds?: number[]): Promise<Record<number, number>>;
   createProduct(data: Partial<Product>): Promise<Product>;
   createProducts(data: Partial<Product>[]): Promise<Product[]>;
   updateProduct(id: number, data: Partial<Product>): Promise<Product>;
@@ -293,6 +302,21 @@ export class DatabaseStorage implements IStorage {
     return product || undefined;
   }
 
+  async getProductStockCounts(productIds?: number[]): Promise<Record<number, number>> {
+    if (productIds?.length === 0) return {};
+    const conditions = [
+      eq(userProducts.assignedByAdmin, false),
+      ...(productIds ? [inArray(userProducts.productId, productIds)] : []),
+    ];
+    const rows = await db.select({
+      productId: userProducts.productId,
+      count: sql<number>`count(distinct ${userProducts.userId})::int`,
+    }).from(userProducts)
+      .where(and(...conditions))
+      .groupBy(userProducts.productId);
+    return Object.fromEntries(rows.map((row) => [row.productId, Number(row.count)]));
+  }
+
   async createProduct(data: Partial<Product>): Promise<Product> {
     const [product] = await db.insert(products).values(data as any).returning();
     return product;
@@ -346,66 +370,158 @@ export class DatabaseStorage implements IStorage {
   }
 
   async purchaseProduct(userId: number, productId: number, assignedByAdmin = false): Promise<UserProduct> {
-    const product = await this.getProduct(productId);
-    if (!product) throw new Error("Produit non trouvé");
+    const purchase = await db.transaction(async (tx) => {
+      const [product] = await tx.select().from(products)
+        .where(eq(products.id, productId))
+        .for("update");
+      if (!product) throw new Error("Produit non trouvé");
 
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("Utilisateur non trouvé");
+      const [user] = await tx.select().from(users)
+        .where(eq(users.id, userId))
+        .for("update");
+      if (!user) throw new Error("Utilisateur non trouvé");
 
-    if (!product.isFree && !assignedByAdmin) {
-      const balance = parseFloat(user.balance);
-      if (balance < product.price) throw new Error("Solde insuffisant");
-      
-      // Check if this is user's first paid investment
-      const existingPaidProducts = await db.select()
-        .from(userProducts)
-        .innerJoin(products, eq(userProducts.productId, products.id))
-        .where(and(
-          eq(userProducts.userId, userId),
-          eq(products.isFree, false),
-          eq(userProducts.assignedByAdmin, false)
-        ));
-      
-      const isFirstInvestment = existingPaidProducts.length === 0;
-      
-      await this.updateUser(userId, { 
-        balance: (balance - product.price).toFixed(2),
-        hasActiveProduct: true,
-      });
-
-      await this.createTransaction({
-        userId,
-        type: "purchase",
-        amount: (-product.price).toString(),
-        description: `Achat ${product.name}`,
-      });
-
-      // Process referral commissions ONLY on first investment
-      if (isFirstInvestment) {
-        await this.processReferralCommissions(userId, product.price, productId);
+      if (!assignedByAdmin && product.productType === "activity") {
+        const priorPurchases = await tx.select({
+          purchaseProductType: userProducts.purchaseProductType,
+          currentProductType: products.productType,
+          purchasePrice: userProducts.purchasePrice,
+          currentPrice: products.price,
+          isFree: products.isFree,
+          purchaseLaunchDate: userProducts.purchaseLaunchDate,
+          purchaseLaunchTime: userProducts.purchaseLaunchTime,
+          productLaunchDate: products.launchDate,
+          productLaunchTime: products.launchTime,
+          assignedByAdmin: userProducts.assignedByAdmin,
+        }).from(userProducts)
+          .innerJoin(products, eq(userProducts.productId, products.id))
+          .where(and(
+            eq(userProducts.userId, userId),
+            eq(userProducts.assignedByAdmin, false),
+          ));
+        const stablePurchases = priorPurchases.map((row) => ({
+          productType: row.purchaseProductType ?? row.currentProductType,
+          purchasePrice: row.purchasePrice,
+          productPrice: row.currentPrice,
+          isFree: row.isFree,
+          assignedByAdmin: row.assignedByAdmin,
+        }));
+        if (!hasPurchasedStableProduct(stablePurchases)) {
+          throw new Error("Vous devez d’abord acheter un produit stable avant de pouvoir acheter un produit d’activité.");
+        }
+        const highestStablePurchasePrice = getHighestStablePurchasePrice(stablePurchases);
+        if (highestStablePurchasePrice == null) {
+          throw new Error("Impossible de vérifier le plafond d’achat lié à votre produit stable. Contactez le service client.");
+        }
+        if (product.price > highestStablePurchasePrice) {
+          throw new Error(
+            `Le prix de ce produit d’activité dépasse votre plafond de ${highestStablePurchasePrice.toLocaleString("fr-FR")} FCFA. Achetez un produit stable d’un montant supérieur ou égal pour débloquer ce produit.`,
+          );
+        }
+        if (hasPurchasedActivityLaunch(product.launchDate, product.launchTime, priorPurchases.map((row) => ({
+          productType: row.purchaseProductType ?? row.currentProductType,
+          launchDate: row.purchaseLaunchDate ?? row.productLaunchDate,
+          launchTime: row.purchaseLaunchTime ?? row.productLaunchTime,
+          assignedByAdmin: row.assignedByAdmin,
+        })))) {
+          throw new Error("Vous avez déjà acheté un produit d’activité pour ce lancement. Vous pourrez en acheter un autre au prochain lancement.");
+        }
       }
-    } else {
-      await this.updateUser(userId, { hasActiveProduct: true });
+
+      if (!assignedByAdmin && !product.isFree && product.stockLimit != null) {
+        const [countRow] = await tx.select({
+          count: sql<number>`count(distinct ${userProducts.userId})::int`,
+        }).from(userProducts).where(and(
+          eq(userProducts.productId, productId),
+          eq(userProducts.assignedByAdmin, false),
+        ));
+        const stockCount = Number(countRow?.count ?? 0);
+        if (isProductStockFull(product.stockLimit, stockCount)) {
+          throw new Error("Ce produit est complet. Toutes les places disponibles ont été prises.");
+        }
+      }
+
+      const isPaidPurchase = !product.isFree && !assignedByAdmin;
+      let isFirstStableProductPurchase = false;
+      if (isPaidPurchase) {
+        if (product.productType === "stable") {
+          const previousPurchases = await tx.select({
+            purchaseProductType: userProducts.purchaseProductType,
+            currentProductType: products.productType,
+            purchasePrice: userProducts.purchasePrice,
+            currentPrice: products.price,
+            isFree: products.isFree,
+            assignedByAdmin: userProducts.assignedByAdmin,
+          })
+          .from(userProducts)
+          .innerJoin(products, eq(userProducts.productId, products.id))
+          .where(eq(userProducts.userId, userId));
+
+          isFirstStableProductPurchase = isFirstPaidStableProductPurchase(
+            product.productType,
+            isPaidPurchase,
+            assignedByAdmin,
+            previousPurchases.map((purchase) => ({
+              productType: purchase.purchaseProductType ?? purchase.currentProductType,
+              purchasePrice: purchase.purchasePrice,
+              productPrice: purchase.currentPrice,
+              isFree: purchase.isFree,
+              assignedByAdmin: purchase.assignedByAdmin,
+            })),
+          );
+        }
+
+        const balance = Number(user.balance);
+        if (!Number.isFinite(balance) || balance < product.price) {
+          throw new Error("Solde insuffisant");
+        }
+        await tx.update(users).set({
+          balance: sql`${users.balance} - ${product.price}`,
+          hasActiveProduct: true,
+        }).where(eq(users.id, userId));
+        await tx.insert(transactions).values({
+          userId,
+          type: "purchase",
+          amount: (-product.price).toString(),
+          description: `Achat ${product.name}`,
+        });
+      } else {
+        await tx.update(users)
+          .set({ hasActiveProduct: true })
+          .where(eq(users.id, userId));
+      }
+
+      const [userProduct] = await tx.insert(userProducts).values({
+        userId,
+        productId,
+        daysRemaining: product.cycleDays,
+        assignedByAdmin,
+        lastEarningDate: new Date(),
+        purchasePrice: product.price,
+        purchaseDailyEarnings: product.dailyEarnings,
+        purchaseCycleDays: product.cycleDays,
+        purchaseTotalReturn: product.totalReturn,
+        purchaseProductName: product.name,
+        purchaseImageUrl: product.imageUrl,
+        purchaseProductType: product.productType,
+        purchaseLaunchDate: product.productType === "activity" ? product.launchDate : null,
+        purchaseLaunchTime: product.productType === "activity" ? product.launchTime : null,
+        payoutMode: "maturity",
+        purchasePrepaidEarnings: 0,
+      }).returning();
+
+      return { product, userProduct, isFirstStableProductPurchase };
+    });
+
+    if (purchase.isFirstStableProductPurchase) {
+      try {
+        await this.processReferralCommissions(userId, purchase.product.price, productId);
+      } catch (error) {
+        console.error(`Referral commission processing failed after product purchase for user ${userId}:`, error);
+      }
     }
 
-    // Anchor payout tracking to the purchase time for both daily legacy and maturity positions.
-    const [userProduct] = await db.insert(userProducts).values({
-      userId,
-      productId,
-      daysRemaining: product.cycleDays,
-      assignedByAdmin,
-      lastEarningDate: new Date(),
-      purchasePrice: product.price,
-      purchaseDailyEarnings: product.dailyEarnings,
-      purchaseCycleDays: product.cycleDays,
-      purchaseTotalReturn: product.totalReturn,
-      purchaseProductName: product.name,
-      purchaseImageUrl: product.imageUrl,
-      purchaseProductType: product.productType,
-      payoutMode: "maturity",
-    }).returning();
-
-    return userProduct;
+    return purchase.userProduct;
   }
 
   async updateUserProduct(id: number, data: Partial<UserProduct>): Promise<UserProduct> {
@@ -514,8 +630,6 @@ export class DatabaseStorage implements IStorage {
 
     const now = new Date();
     
-    const userEarnings = new Map<number, number>();
-    
     for (const { userProduct, product, user } of activeProducts) {
       try {
         const purchaseDate = userProduct.purchaseDate ? new Date(userProduct.purchaseDate) : null;
@@ -530,123 +644,94 @@ export class DatabaseStorage implements IStorage {
         const cycleDays = Number(userProduct.purchaseCycleDays ?? product.cycleDays);
         const productName = userProduct.purchaseProductName ?? product.name;
 
-        if (userProduct.payoutMode === "maturity") {
-          if (cyclesSinceLastEarning < 1 || cycleDays < 1) continue;
+        const totalReturn = Number(
+          userProduct.purchaseTotalReturn ?? product.totalReturn ?? dailyEarnings * cycleDays,
+        );
+        const accruedSoFar = Math.min(totalReturn, Math.max(0, Number(userProduct.totalEarned || 0)));
+        const prepaidEarnings = Math.min(
+          totalReturn,
+          Math.max(
+            0,
+            Number(userProduct.purchasePrepaidEarnings ?? (
+              userProduct.payoutMode === "daily" ? accruedSoFar : 0
+            )),
+          ),
+        );
+        const positionCondition = and(
+          eq(userProducts.id, userProduct.id),
+          eq(userProducts.isActive, true),
+          eq(userProducts.payoutMode, userProduct.payoutMode),
+          userProduct.lastEarningDate
+            ? eq(userProducts.lastEarningDate, userProduct.lastEarningDate)
+            : isNull(userProducts.lastEarningDate),
+        );
 
-          const cyclesToAccrue = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
-          if (cyclesToAccrue < 1) continue;
-
-          const newDaysRemaining = Math.max(0, userProduct.daysRemaining - cyclesToAccrue);
-          const newLastEarningDate = new Date(lastEarning.getTime() + cyclesToAccrue * 24 * 60 * 60 * 1000);
-          const totalReturn = Number(
-            userProduct.purchaseTotalReturn ?? product.totalReturn ?? dailyEarnings * cycleDays,
-          );
-          const accruedSoFar = Number(userProduct.totalEarned || 0);
-          const newTotalEarned = Math.min(totalReturn, accruedSoFar + dailyEarnings * cyclesToAccrue);
-          const positionCondition = and(
-            eq(userProducts.id, userProduct.id),
-            eq(userProducts.isActive, true),
-            eq(userProducts.payoutMode, "maturity"),
-            userProduct.lastEarningDate
-              ? eq(userProducts.lastEarningDate, userProduct.lastEarningDate)
-              : isNull(userProducts.lastEarningDate),
-          );
-
-          if (daysSincePurchase >= cycleDays || newDaysRemaining === 0) {
-            const maturityDate = new Date(purchaseDate.getTime() + cycleDays * 24 * 60 * 60 * 1000);
-            await db.transaction(async (tx) => {
-              const [completedPosition] = await tx.update(userProducts)
-                .set({
-                  lastEarningDate: maturityDate,
-                  daysRemaining: 0,
-                  totalEarned: totalReturn.toFixed(2),
-                  isActive: false,
-                })
-                .where(positionCondition)
-                .returning({ id: userProducts.id });
-
-              if (!completedPosition) return;
-
-              await tx.update(users).set({
-                balance: sql`${users.balance} + ${totalReturn}`,
-                todayEarnings: sql`${users.todayEarnings} + ${totalReturn}`,
-                totalEarnings: sql`${users.totalEarnings} + ${totalReturn}`,
-              }).where(eq(users.id, user.id));
-
-              await tx.insert(transactions).values({
-                userId: user.id,
-                type: "earning",
-                amount: totalReturn.toFixed(2),
-                description: `Gains à l’échéance — ${productName}`,
-              });
-            });
-          } else {
+        if (cyclesSinceLastEarning < 1 || cycleDays < 1) {
+          if (userProduct.payoutMode !== "maturity" || userProduct.purchasePrepaidEarnings == null) {
             await db.update(userProducts)
               .set({
-                lastEarningDate: newLastEarningDate,
-                daysRemaining: newDaysRemaining,
-                totalEarned: newTotalEarned.toFixed(2),
+                payoutMode: "maturity",
+                purchasePrepaidEarnings: prepaidEarnings,
               })
               .where(positionCondition);
           }
           continue;
         }
 
-        if (cyclesSinceLastEarning >= 1 && daysSincePurchase >= 1) {
-          const cyclesToCredit = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
-          const earningsPerCycle = dailyEarnings;
-          const totalEarningsForProduct = earningsPerCycle * cyclesToCredit;
+        const cyclesToAccrue = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
+        if (cyclesToAccrue < 1) continue;
 
-          const newLastEarningDate = new Date(lastEarning.getTime() + (cyclesToCredit * 24 * 60 * 60 * 1000));
+        const newDaysRemaining = Math.max(0, userProduct.daysRemaining - cyclesToAccrue);
+        const newLastEarningDate = new Date(lastEarning.getTime() + cyclesToAccrue * 24 * 60 * 60 * 1000);
+        const newTotalEarned = Math.min(totalReturn, accruedSoFar + dailyEarnings * cyclesToAccrue);
 
-          const currentTotal = userEarnings.get(user.id) || 0;
-          userEarnings.set(user.id, currentTotal + totalEarningsForProduct);
+        if (daysSincePurchase >= cycleDays || newDaysRemaining === 0) {
+          const maturityDate = new Date(purchaseDate.getTime() + cycleDays * 24 * 60 * 60 * 1000);
+          const payoutAmount = calculateMaturityPayout(totalReturn, prepaidEarnings);
+          await db.transaction(async (tx) => {
+            const [completedPosition] = await tx.update(userProducts)
+              .set({
+                payoutMode: "maturity",
+                purchasePrepaidEarnings: prepaidEarnings,
+                lastEarningDate: maturityDate,
+                daysRemaining: 0,
+                totalEarned: totalReturn.toFixed(2),
+                isActive: false,
+              })
+              .where(positionCondition)
+              .returning({ id: userProducts.id });
 
-          const newDaysRemaining = userProduct.daysRemaining - cyclesToCredit;
-          const updateData: any = {
-            lastEarningDate: newLastEarningDate,
-            daysRemaining: newDaysRemaining,
-            totalEarned: (parseFloat(userProduct.totalEarned || "0") + totalEarningsForProduct).toFixed(2),
-          };
-          
-          if (newDaysRemaining <= 0) {
-            updateData.isActive = false;
-          }
+            if (!completedPosition || payoutAmount <= 0) return;
 
-          await db.update(userProducts).set(updateData).where(eq(userProducts.id, userProduct.id));
+            await tx.update(users).set({
+              balance: sql`${users.balance} + ${payoutAmount}`,
+              todayEarnings: sql`${users.todayEarnings} + ${payoutAmount}`,
+              totalEarnings: sql`${users.totalEarnings} + ${payoutAmount}`,
+            }).where(eq(users.id, user.id));
 
-          for (let i = 0; i < cyclesToCredit; i++) {
-            await this.createTransaction({
+            await tx.insert(transactions).values({
               userId: user.id,
               type: "earning",
-              amount: earningsPerCycle.toString(),
-              description: `Gains ${productName}`,
+              amount: payoutAmount.toFixed(2),
+              description: `Gains à l’échéance — ${productName}`,
             });
-          }
+          });
+        } else {
+          await db.update(userProducts)
+            .set({
+              payoutMode: "maturity",
+              purchasePrepaidEarnings: prepaidEarnings,
+              lastEarningDate: newLastEarningDate,
+              daysRemaining: newDaysRemaining,
+              totalEarned: newTotalEarned.toFixed(2),
+            })
+            .where(positionCondition);
         }
       } catch (productError) {
         console.error(`processEarnings error for product ${userProduct.id}:`, productError);
       }
     }
 
-    for (const [userId, totalEarnings] of Array.from(userEarnings.entries())) {
-      try {
-        const freshUser = await this.getUser(userId);
-        if (freshUser) {
-          const newBalance = parseFloat(freshUser.balance || "0") + totalEarnings;
-          const newTodayEarnings = parseFloat(freshUser.todayEarnings || "0") + totalEarnings;
-          const newTotalEarnings = parseFloat(freshUser.totalEarnings || "0") + totalEarnings;
-          
-          await this.updateUser(userId, {
-            balance: newBalance.toFixed(2),
-            todayEarnings: newTodayEarnings.toFixed(2),
-            totalEarnings: newTotalEarnings.toFixed(2),
-          });
-        }
-      } catch (userError) {
-        console.error(`processEarnings user update error for user ${userId}:`, userError);
-      }
-    }
   }
 
   // Deposits

@@ -77,7 +77,6 @@ export default function OrdersPage() {
           <div className="space-y-4">
             {filteredProducts.map((up: any, index: number) => {
               const totalEarned = Number(up.totalEarned || 0);
-              const paidAtMaturity = up.payoutMode === "maturity";
               const purchaseDateTime = up.purchasedAt ? new Date(up.purchasedAt) : null;
               const purchaseDate = purchaseDateTime ? purchaseDateTime.toLocaleDateString('fr-FR') : '-';
               const purchaseTime = purchaseDateTime ? purchaseDateTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-';
@@ -125,7 +124,7 @@ export default function OrdersPage() {
                           Jours restants : <span className="text-[#2196F3] font-medium">{up.daysRemaining || 0}</span>
                         </p>
                         <p className="text-gray-600">
-                          {paidAtMaturity && up.status === "active" ? "Gains accumulés à l’échéance" : "Total gagné"} :{" "}
+                          {up.status === "active" ? "Gains accumulés (versés à l’échéance)" : "Gains versés"} :{" "}
                           <span className="text-green-600 font-bold">{totalEarned.toLocaleString()} Fcfa</span>
                         </p>
                         <p className="text-gray-600">

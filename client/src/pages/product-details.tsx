@@ -7,11 +7,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { JOHN_DEERE_PRODUCT_IMAGES } from "@/lib/john-deere-assets";
+import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
+import { isProductStockFull } from "@shared/product-purchase-limit";
 import "./product-details.css";
 
 type ProductWithClaimStatus = Product & {
   canClaimFree?: boolean;
+  stockCount?: number;
+  canPurchaseThisLaunch?: boolean;
 };
 
 const formatFcfa = (amount: number) =>
@@ -120,17 +123,25 @@ export default function ProductDetailsPage() {
   const dailyEarnings = Number(product.dailyEarnings) || 0;
   const cycleDays = Number(product.cycleDays) || 0;
   const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
-  const productIndex = products.findIndex((item) => item.id === product.id);
-  const image = product.imageUrl ||
-    JOHN_DEERE_PRODUCT_IMAGES[productIndex % JOHN_DEERE_PRODUCT_IMAGES.length] ||
-    JOHN_DEERE_PRODUCT_IMAGES[0];
+  const image = product.imageUrl || getJohnDeereProductImage(null, product.id);
   const cannotClaimFree = Boolean(product.isFree && !product.canClaimFree);
+  const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
+  const launchAlreadyPurchased = product.productType === "activity" && product.canPurchaseThisLaunch === false;
+  const purchaseBlocked = cannotClaimFree || stockFull || launchAlreadyPurchased;
 
   return (
     <main className="product-detail-page">
       <div className="product-detail-shell">
         <section className="product-detail-hero" aria-label={`Image de ${product.name}`}>
-          <img className="product-detail-image" src={image} alt={product.name} />
+          <img
+            className="product-detail-image"
+            src={image}
+            alt={product.name}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = getJohnDeereProductImage(null, product.id);
+            }}
+          />
           <button
             type="button"
             className="product-detail-back"
@@ -157,6 +168,12 @@ export default function ProductDetailsPage() {
               <span>Cycle :</span>
               <strong>{cycleDays} {cycleDays === 1 ? "jour" : "jours"}</strong>
             </div>
+            {product.stockLimit != null && (
+              <div className="product-detail-metric-row">
+                <span>Places disponibles :</span>
+                <strong>{Math.max(0, product.stockLimit - (product.stockCount || 0))} / {product.stockLimit}</strong>
+              </div>
+            )}
           </div>
 
           <p className="product-detail-note">
@@ -177,11 +194,15 @@ export default function ProductDetailsPage() {
             type="button"
             className="product-detail-buy"
             onClick={() => setConfirmationOpen(true)}
-            disabled={cannotClaimFree || purchaseMutation.isPending}
+            disabled={purchaseBlocked || purchaseMutation.isPending}
           >
             {purchaseMutation.isPending
               ? "Traitement…"
-              : cannotClaimFree
+              : stockFull
+                ? "Complet"
+                : launchAlreadyPurchased
+                  ? "Déjà acheté"
+                  : cannotClaimFree
                 ? "Déjà réclamé"
                 : product.isFree
                   ? "Réclamer"
@@ -213,7 +234,7 @@ export default function ProductDetailsPage() {
               type="button"
               className="min-h-[42px] rounded-md bg-[#086b2d] px-4 font-semibold text-white hover:bg-[#075a27] disabled:opacity-60"
               onClick={() => purchaseMutation.mutate(product)}
-              disabled={purchaseMutation.isPending || cannotClaimFree}
+              disabled={purchaseMutation.isPending || purchaseBlocked}
             >
               {purchaseMutation.isPending
                 ? "Traitement…"

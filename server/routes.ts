@@ -7,6 +7,7 @@ import { registerSchema, loginSchema, depositSchema, walletSchema, phoneNumberSc
 import { normalizeBeninPhone } from "@shared/phone";
 import { z } from "zod";
 import { isProductAvailableForCountry, isValidLaunchSchedule } from "./product-schedule";
+import { hasPurchasedActivityLaunch } from "../shared/product-purchase-limit";
 import ConnectPgSimple from "connect-pg-simple";
 import { 
   initiatePayment, 
@@ -798,6 +799,14 @@ export async function registerRoutes(
       const products = (await storage.getProducts())
         .filter(product => isProductAvailableForCountry(product, user.country));
       const userProductsList = await storage.getUserProducts(req.session.userId!);
+      const allUserProductsList = await storage.getAllUserProducts(req.session.userId!);
+      const stockCounts = await storage.getProductStockCounts(products.map((product) => product.id));
+      const activityPurchases = allUserProductsList.map(({ userProduct, product }) => ({
+        productType: userProduct.purchaseProductType ?? product.productType,
+        launchDate: userProduct.purchaseLaunchDate ?? product.launchDate,
+        launchTime: userProduct.purchaseLaunchTime ?? product.launchTime,
+        assignedByAdmin: userProduct.assignedByAdmin,
+      }));
       
       const productCounts = new Map<number, number>();
       userProductsList.forEach(up => {
@@ -816,6 +825,9 @@ export async function registerRoutes(
         isOwned: productCounts.has(p.id),
         ownedCount: productCounts.get(p.id) || 0,
         canClaimFree: p.isFree && canClaimFree,
+        stockCount: stockCounts[p.id] || 0,
+        canPurchaseThisLaunch: p.productType !== "activity"
+          || !hasPurchasedActivityLaunch(p.launchDate, p.launchTime, activityPurchases),
       }));
 
       res.json(productsWithOwnership);
@@ -905,6 +917,10 @@ export async function registerRoutes(
         daysRemaining: up.userProduct.daysRemaining,
         totalEarned: up.userProduct.totalEarned,
         payoutMode: up.userProduct.payoutMode,
+        prepaidEarnings: up.userProduct.purchasePrepaidEarnings ?? (
+          up.userProduct.payoutMode === "daily" ? up.userProduct.totalEarned : 0
+        ),
+        totalReturn: up.userProduct.purchaseTotalReturn ?? up.product.totalReturn,
         status: up.userProduct.isActive ? 'active' : 'completed',
         product: up.product
       }));
@@ -915,98 +931,14 @@ export async function registerRoutes(
     }
   });
 
-  // Collect earnings for user (manual trigger)
+  // Product earnings are only credited once the position reaches maturity.
   app.post("/api/user/collect-earnings", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(401).json({ message: "Non authentifie" });
-      }
-
-      const userProductsList = await storage.getAllUserProducts(userId);
-      const now = new Date();
-      let totalCollected = 0;
-      let productsCollected = 0;
-
-      for (const { userProduct, product } of userProductsList) {
-        try {
-          if (!userProduct.isActive || userProduct.daysRemaining <= 0 || userProduct.payoutMode === "maturity") continue;
-
-          const purchaseDate = userProduct.purchaseDate ? new Date(userProduct.purchaseDate) : null;
-          if (!purchaseDate) continue;
-
-          const lastEarning = userProduct.lastEarningDate ? new Date(userProduct.lastEarningDate) : purchaseDate;
-
-          const msSincePurchase = now.getTime() - purchaseDate.getTime();
-          const daysSincePurchase = Math.floor(msSincePurchase / (24 * 60 * 60 * 1000));
-
-          const msSinceLastEarning = now.getTime() - lastEarning.getTime();
-          const cyclesSinceLastEarning = Math.floor(msSinceLastEarning / (24 * 60 * 60 * 1000));
-
-          if (cyclesSinceLastEarning >= 1 && daysSincePurchase >= 1) {
-            const cyclesToCredit = Math.min(cyclesSinceLastEarning, userProduct.daysRemaining);
-            const earningsPerCycle = Number(userProduct.purchaseDailyEarnings ?? product.dailyEarnings);
-            const totalEarningsForProduct = earningsPerCycle * cyclesToCredit;
-
-            const newLastEarningDate = new Date(lastEarning.getTime() + (cyclesToCredit * 24 * 60 * 60 * 1000));
-
-            totalCollected += totalEarningsForProduct;
-            productsCollected++;
-
-            const newDaysRemaining = userProduct.daysRemaining - cyclesToCredit;
-            const updateData: any = {
-              lastEarningDate: newLastEarningDate,
-              daysRemaining: newDaysRemaining,
-              totalEarned: (parseFloat(userProduct.totalEarned || "0") + totalEarningsForProduct).toFixed(2),
-            };
-            
-            if (newDaysRemaining <= 0) {
-              updateData.isActive = false;
-            }
-
-            await storage.updateUserProduct(userProduct.id, updateData);
-
-            for (let i = 0; i < cyclesToCredit; i++) {
-              await storage.createTransaction({
-                userId,
-                type: "earning",
-                amount: earningsPerCycle.toString(),
-                description: `Gains ${userProduct.purchaseProductName ?? product.name}`,
-              });
-            }
-          }
-        } catch (productError) {
-          console.error(`Error processing product ${userProduct.id}:`, productError);
-        }
-      }
-
-      if (totalCollected > 0) {
-        const freshUser = await storage.getUser(userId);
-        if (freshUser) {
-          const newBalance = parseFloat(freshUser.balance || "0") + totalCollected;
-          const newTodayEarnings = parseFloat(freshUser.todayEarnings || "0") + totalCollected;
-          const newTotalEarnings = parseFloat(freshUser.totalEarnings || "0") + totalCollected;
-
-          await storage.updateUser(userId, {
-            balance: newBalance.toFixed(2),
-            todayEarnings: newTodayEarnings.toFixed(2),
-            totalEarnings: newTotalEarnings.toFixed(2),
-          });
-        }
-      }
-
-      const updatedUser = await storage.getUser(userId);
-      res.json({ 
-        success: true, 
-        collected: totalCollected,
-        productsCollected,
-        newBalance: updatedUser?.balance || "0"
-      });
-    } catch (error: any) {
-      console.error("Collect earnings error:", error);
-      res.status(500).json({ message: error.message });
-    }
+    return res.json({
+      success: true,
+      collected: 0,
+      productsCollected: 0,
+      message: "Les gains des produits sont versés uniquement à l’échéance.",
+    });
   });
 
   // Payment Channels
@@ -3594,7 +3526,11 @@ export async function registerRoutes(
   app.get("/api/admin/products/all", requireAdmin, async (req, res) => {
     try {
       const allProducts = await storage.getAllProducts();
-      res.json(allProducts);
+      const stockCounts = await storage.getProductStockCounts(allProducts.map((product) => product.id));
+      res.json(allProducts.map((product) => ({
+        ...product,
+        stockCount: stockCounts[product.id] || 0,
+      })));
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -3671,12 +3607,17 @@ export async function registerRoutes(
         const price = Number(row?.price);
         const dailyEarnings = Number(row?.dailyEarnings);
         const cycleDays = Number(row?.cycleDays);
+        const stockLimitInput = row?.stockLimit;
+        const stockLimit = stockLimitInput == null || stockLimitInput === ""
+          ? null
+          : Number(stockLimitInput);
         if (name.length < 2
           || !Number.isSafeInteger(price) || price <= 0
           || !Number.isSafeInteger(dailyEarnings) || dailyEarnings <= 0
           || !Number.isSafeInteger(cycleDays) || cycleDays <= 0
+          || (stockLimit !== null && (!Number.isSafeInteger(stockLimit) || stockLimit <= 0 || stockLimit > 2_147_483_647))
           || dailyEarnings * cycleDays > 2_147_483_647) {
-          return res.status(400).json({ message: "Chaque produit doit avoir un nom, un prix, un gain journalier et une durée valides." });
+          return res.status(400).json({ message: "Chaque produit doit avoir un nom, un prix, un gain journalier et une durée valides. La limite de places doit être un entier positif." });
         }
 
         rows.push({
@@ -3685,10 +3626,11 @@ export async function registerRoutes(
           dailyEarnings,
           cycleDays,
           totalReturn: dailyEarnings * cycleDays,
-          imageUrl: typeof row.imageUrl === "string" && row.imageUrl.trim() ? row.imageUrl.trim() : null,
+          imageUrl: null,
           productType: "activity",
           launchDate,
           launchTime,
+          stockLimit,
           isFree: false,
           isActive: true,
           sortOrder: 0,
@@ -3735,6 +3677,20 @@ export async function registerRoutes(
           return res.status(400).json({ message: "L’image du produit est invalide." });
         }
         update.imageUrl = typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl.trim() : null;
+      }
+      if (body.stockLimit !== undefined) {
+        if (existing.productType !== "activity") {
+          return res.status(400).json({ message: "La limite de places s’applique uniquement aux produits d’activité." });
+        }
+        if (body.stockLimit === null || body.stockLimit === "") {
+          update.stockLimit = null;
+        } else {
+          const stockLimit = Number(body.stockLimit);
+          if (!Number.isSafeInteger(stockLimit) || stockLimit <= 0 || stockLimit > 2_147_483_647) {
+            return res.status(400).json({ message: "La limite de places doit être un entier positif." });
+          }
+          update.stockLimit = stockLimit;
+        }
       }
       if (body.isActive !== undefined) {
         if (typeof body.isActive !== "boolean") return res.status(400).json({ message: "État du produit invalide." });

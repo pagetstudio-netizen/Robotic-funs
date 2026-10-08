@@ -4,7 +4,9 @@ import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
 import { useToast } from "@/hooks/use-toast";
+import { isProductStockFull } from "@shared/product-purchase-limit";
 import { Loader2, RefreshCw } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -21,7 +23,11 @@ import serviceIcon from "@assets/Service-2_1791379514881.png";
 import downloadIcon from "@assets/Download_1791379514913.png";
 import shareRobot from "@assets/file_000000004d8081f4bc975fdd26cf35e2_1791382630587.png";
 
-type HomeProduct = Product & { canClaimFree?: boolean };
+type HomeProduct = Product & {
+  canClaimFree?: boolean;
+  stockCount?: number;
+  canPurchaseThisLaunch?: boolean;
+};
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -427,6 +433,14 @@ export default function HomeDashboard() {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
+        .rf-product-stock {
+          max-width: 100%;
+          color: #eac35c;
+          font-size: 10px;
+          font-weight: 600;
+          line-height: 1.2;
+        }
+        .rf-product-stock.is-full { color: #ed8d79; }
         .rf-product-stats {
           display: grid;
           grid-template-columns: .8fr 1.12fr 1fr 64px;
@@ -748,7 +762,14 @@ export default function HomeDashboard() {
               const cycleDays = Number(product.cycleDays) || 0;
               const totalReturn = Number(product.totalReturn) || dailyEarnings * cycleDays;
               const displayedGain = product.isFree ? dailyEarnings : totalReturn;
-              const imageUrl = product.imageUrl;
+              const imageUrl = product.imageUrl || (
+                product.productType === "activity"
+                  ? getJohnDeereProductImage(null, product.id)
+                  : null
+              );
+              const stockFull = !product.isFree && isProductStockFull(product.stockLimit, product.stockCount || 0);
+              const launchAlreadyPurchased = product.productType === "activity"
+                && product.canPurchaseThisLaunch === false;
               return (
                 <article className="rf-product" key={product.id}>
                   <div className="rf-product-top">
@@ -758,6 +779,12 @@ export default function HomeDashboard() {
                           src={imageUrl}
                           alt={product.name}
                           loading={index > 1 ? "lazy" : "eager"}
+                          onError={(event) => {
+                            if (product.productType === "activity") {
+                              event.currentTarget.onerror = null;
+                              event.currentTarget.src = getJohnDeereProductImage(null, product.id);
+                            }
+                          }}
                         />
                       ) : (
                         <span className="rf-product-image-fallback" aria-hidden="true">RF</span>
@@ -766,6 +793,16 @@ export default function HomeDashboard() {
                     <div className="rf-product-heading">
                       {!product.isFree && <span className="rf-vip">VIP</span>}
                       <h2 className="rf-product-name" title={product.name}>{product.name}</h2>
+                      {product.productType === "activity" && product.stockLimit != null && (
+                        <span className={`rf-product-stock ${stockFull ? "is-full" : ""}`}>
+                          {stockFull
+                            ? `Complet (${product.stockCount || 0}/${product.stockLimit})`
+                            : `${product.stockCount || 0}/${product.stockLimit} places`}
+                        </span>
+                      )}
+                      {launchAlreadyPurchased && (
+                        <span className="rf-product-stock is-full">Déjà acheté pour ce lancement</span>
+                      )}
                     </div>
                   </div>
                   <div className="rf-product-stats">
@@ -787,9 +824,14 @@ export default function HomeDashboard() {
                       onClick={() => product.isFree
                         ? navigate(`/products/${product.id}`)
                         : setConfirmProduct(product)}
+                      disabled={stockFull || launchAlreadyPurchased}
                       aria-label={`${product.isFree ? "Découvrir" : "Acheter"} ${product.name}`}
                     >
-                      {product.isFree ? "Découvrir" : "Investir"}
+                      {stockFull
+                        ? "Complet"
+                        : launchAlreadyPurchased
+                          ? "Déjà acheté"
+                          : product.isFree ? "Découvrir" : "Investir"}
                     </button>
                   </div>
                 </article>

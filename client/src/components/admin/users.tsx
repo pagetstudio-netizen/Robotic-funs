@@ -551,7 +551,7 @@ export default function AdminUsers({ isSuperAdmin }: AdminUsersProps) {
                             <p className="text-sm font-medium">{up.productName}</p>
                             <p className="text-xs text-muted-foreground">
                               {up.productPrice.toLocaleString()} F - {up.dailyEarnings.toLocaleString()} F/jour calculé
-                              {" · "}{up.payoutMode === "maturity" ? "versé à l’échéance" : "versé quotidiennement"}
+                              {" · "}versé à l’échéance
                               {" · "}Jour {up.daysClaimed}/{up.totalCycle}
                               {up.isActive ? " (Actif)" : " (Termine)"}
                             </p>

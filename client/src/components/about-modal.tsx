@@ -29,7 +29,7 @@ export default function AboutModal({ open, onClose }: AboutModalProps) {
           <div className="bg-secondary rounded-lg p-4 space-y-2">
             <h4 className="font-medium text-foreground">Nos avantages :</h4>
             <ul className="space-y-1">
-              <li>- Revenus quotidiens automatiques</li>
+              <li>- Gains des produits versés à l’échéance</li>
               <li>- Automatisation industrielle et robotique</li>
               <li>- Système de parrainage attractif</li>
               <li>- Support client disponible</li>

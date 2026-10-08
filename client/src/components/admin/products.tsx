@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Loader2, TrendingUp, Plus, Trash2 } from "lucide-react";
+import { getJohnDeereProductImage } from "@/lib/john-deere-assets";
 import type { Product } from "@shared/schema";
 import EmptyState from "@/components/empty-state";
 
@@ -25,17 +26,20 @@ const productSchema = z.object({
   imageUrl: z.string().optional(),
   launchDate: z.string().optional(),
   launchTime: z.string().optional(),
+  stockLimit: z.string().optional(),
 });
 
 type ProductForm = z.infer<typeof productSchema>;
-type ActivityProductDraft = Pick<ProductForm, "name" | "price" | "dailyEarnings" | "cycleDays" | "imageUrl">;
+type ActivityProductDraft = Pick<ProductForm, "name" | "price" | "dailyEarnings" | "cycleDays" | "stockLimit">;
+type ActivityProductPayload = Omit<ActivityProductDraft, "stockLimit"> & { stockLimit: number | null };
+type AdminProduct = Product & { stockCount?: number };
 
 const emptyActivityDraft = (): ActivityProductDraft => ({
   name: "",
   price: "",
   dailyEarnings: "",
   cycleDays: "80",
-  imageUrl: "",
+  stockLimit: "",
 });
 
 export default function AdminProducts() {
@@ -49,19 +53,19 @@ export default function AdminProducts() {
   const [activityRows, setActivityRows] = useState<ActivityProductDraft[]>([emptyActivityDraft()]);
   const [activityFormError, setActivityFormError] = useState("");
 
-  const { data: products, isLoading } = useQuery<Product[]>({
+  const { data: products, isLoading } = useQuery<AdminProduct[]>({
     queryKey: ["/api/admin/products/all"],
   });
   const visibleProducts = (products || []).filter((product) => product.productType === productView);
 
   const editForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "", launchDate: "", launchTime: "" },
+    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "", launchDate: "", launchTime: "", stockLimit: "" },
   });
 
   const createForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "", launchDate: "", launchTime: "" },
+    defaultValues: { name: "", price: "", dailyEarnings: "", cycleDays: "80", imageUrl: "", launchDate: "", launchTime: "", stockLimit: "" },
   });
 
   const createMutation = useMutation({
@@ -86,7 +90,7 @@ export default function AdminProducts() {
   });
 
   const activityBatchMutation = useMutation({
-    mutationFn: async (data: { launchDate: string; launchTime: string; products: ActivityProductDraft[] }) => {
+    mutationFn: async (data: { launchDate: string; launchTime: string; products: ActivityProductPayload[] }) => {
       const response = await apiRequest("POST", "/api/admin/products/bulk-activity", data);
       if (!response.ok) {
         const result = await response.json();
@@ -177,6 +181,7 @@ export default function AdminProducts() {
       imageUrl: product.imageUrl || "",
       launchDate: product.launchDate || "",
       launchTime: product.launchTime || "",
+      stockLimit: product.stockLimit?.toString() || "",
     });
   };
 
@@ -195,7 +200,11 @@ export default function AdminProducts() {
         totalReturn: dailyEarnings * cycleDays,
         imageUrl: data.imageUrl || null,
         ...(selectedProduct.productType === "activity"
-          ? { launchDate: data.launchDate, launchTime: data.launchTime }
+          ? {
+            launchDate: data.launchDate,
+            launchTime: data.launchTime,
+            stockLimit: data.stockLimit?.trim() ? Number(data.stockLimit) : null,
+          }
           : {}),
       },
     });
@@ -222,8 +231,10 @@ export default function AdminProducts() {
       || !Number.isSafeInteger(Number(row.price)) || Number(row.price) <= 0
       || !Number.isSafeInteger(Number(row.dailyEarnings)) || Number(row.dailyEarnings) <= 0
       || !Number.isSafeInteger(Number(row.cycleDays)) || Number(row.cycleDays) <= 0
+      || (Boolean(row.stockLimit?.trim())
+        && (!Number.isSafeInteger(Number(row.stockLimit)) || Number(row.stockLimit) <= 0 || Number(row.stockLimit) > 2_147_483_647))
     )) {
-      setActivityFormError("Complétez le nom, le prix, le gain journalier et la durée de chaque produit.");
+      setActivityFormError("Complétez les informations de chaque produit et indiquez une limite de places valide ou laissez-la vide.");
       return;
     }
     setActivityFormError("");
@@ -233,7 +244,7 @@ export default function AdminProducts() {
       products: activityRows.map((row) => ({
         ...row,
         name: row.name.trim(),
-        imageUrl: row.imageUrl?.trim() || "",
+        stockLimit: row.stockLimit?.trim() ? Number(row.stockLimit) : null,
       })),
     });
   };
@@ -300,6 +311,17 @@ export default function AdminProducts() {
           )} />
         </div>
       )}
+      {showSchedule && (
+        <FormField control={form.control} name="stockLimit" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Nombre maximum de places <span className="text-muted-foreground font-normal">(facultatif)</span></FormLabel>
+            <FormControl>
+              <Input {...field} type="number" min="1" step="1" placeholder="Ex. : 30 — vide = sans limite" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+      )}
       {form.watch("price") && form.watch("dailyEarnings") && form.watch("cycleDays") && (
         <div className="bg-primary/10 rounded-lg p-3 text-sm">
           <p className="text-muted-foreground">Retour total estimé :</p>
@@ -349,7 +371,23 @@ export default function AdminProducts() {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="w-12 h-12 rounded-lg object-contain border border-border" />
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-12 h-12 rounded-lg object-contain border border-border"
+                      onError={(event) => {
+                        if (product.productType === "activity") {
+                          event.currentTarget.onerror = null;
+                          event.currentTarget.src = getJohnDeereProductImage(null, product.id);
+                        }
+                      }}
+                    />
+                  ) : product.productType === "activity" ? (
+                    <img
+                      src={getJohnDeereProductImage(null, product.id)}
+                      alt={product.name}
+                      className="w-12 h-12 rounded-lg object-cover border border-border"
+                    />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
                       <TrendingUp className="w-6 h-6 text-primary" />
@@ -372,6 +410,13 @@ export default function AdminProducts() {
                     {product.productType === "activity" && product.launchDate && product.launchTime && (
                       <p className="text-xs text-muted-foreground">
                         Lancement local : {product.launchDate} à {product.launchTime}
+                      </p>
+                    )}
+                    {product.productType === "activity" && (
+                      <p className={`text-xs ${product.stockLimit != null && (product.stockCount || 0) >= product.stockLimit ? "text-destructive" : "text-muted-foreground"}`}>
+                        {product.stockLimit == null
+                          ? `Places : ${product.stockCount || 0} — sans limite`
+                          : `Places : ${product.stockCount || 0} / ${product.stockLimit}${(product.stockCount || 0) >= product.stockLimit ? " — complet" : ""}`}
                       </p>
                     )}
                   </div>
@@ -548,11 +593,13 @@ export default function AdminProducts() {
                       required
                     />
                     <Input
-                      className="col-span-2"
-                      aria-label={`URL de l'image du produit ${index + 1}`}
-                      value={row.imageUrl}
-                      onChange={(event) => updateActivityRow(index, "imageUrl", event.target.value)}
-                      placeholder="URL de l’image (facultatif)"
+                      aria-label={`Nombre maximum de places du produit ${index + 1}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={row.stockLimit}
+                      onChange={(event) => updateActivityRow(index, "stockLimit", event.target.value)}
+                      placeholder="Places maximum (facultatif)"
                     />
                     <p className="col-span-2 text-sm text-muted-foreground">
                       Gain total à l’échéance :{" "}

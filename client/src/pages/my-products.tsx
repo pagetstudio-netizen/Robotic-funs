@@ -13,7 +13,8 @@ interface UserProduct {
   purchasedAt: string;
   daysRemaining: number;
   totalEarned: string | number;
-  payoutMode?: "daily" | "maturity";
+  prepaidEarnings?: string | number;
+  totalReturn?: string | number;
   status: string;
   product: Product | null;
 }
@@ -111,8 +112,10 @@ export default function MyProductsPage() {
               const daysRemaining = Number(up.daysRemaining) || 0;
               const daysCompleted = Math.max(0, Math.min(cycleDays, cycleDays - daysRemaining));
               const earnedSoFar = Number(up.totalEarned || 0);
+              const prepaidEarnings = Number(up.prepaidEarnings || 0);
+              const totalReturn = Number(up.totalReturn ?? up.product?.totalReturn ?? 0);
+              const remainingAtMaturity = Math.max(0, totalReturn - prepaidEarnings);
               const productName = up.product?.name || "Produit acheté";
-              const paidAtMaturity = up.payoutMode === "maturity";
 
               return (
                 <article
@@ -129,11 +132,11 @@ export default function MyProductsPage() {
                     <div className="product-metrics">
                       <div className="product-metric">
                         <strong>{formatCurrency(up.product?.dailyEarnings || 0)}</strong>
-                        <span>{paidAtMaturity ? "Gain journalier calculé" : "Revenus quotidiens"}</span>
+                        <span>Gain journalier calculé</span>
                       </div>
                       <div className="product-metric">
                         <strong>{formatCurrency(earnedSoFar)}</strong>
-                        <span>{paidAtMaturity ? "Gains accumulés" : "Revenus totaux"}</span>
+                        <span>Gains accumulés</span>
                       </div>
                     </div>
 
@@ -157,12 +160,12 @@ export default function MyProductsPage() {
                     </div>
                   </div>
                   <footer className="product-received">
-                    {paidAtMaturity && up.status === "active"
-                      ? "Gains accumulés, versés à l’échéance : "
-                      : paidAtMaturity
-                        ? "Gains versés : "
-                        : "Revenus reçus : "}
-                    {formatCurrency(earnedSoFar)}
+                    {up.status === "active"
+                      ? `Versement unique à l’échéance : ${formatCurrency(remainingAtMaturity)}`
+                      : `Gains totaux du produit : ${formatCurrency(totalReturn)}`}
+                    {prepaidEarnings > 0 && (
+                      <span> · Déjà versés avant la bascule : {formatCurrency(prepaidEarnings)}</span>
+                    )}
                   </footer>
                 </article>
               );

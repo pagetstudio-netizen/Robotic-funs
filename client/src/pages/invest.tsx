@@ -8,6 +8,7 @@ import { formatCurrency, getCountryByCode } from "@/lib/countries";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
+import { isProductStockFull } from "@shared/product-purchase-limit";
 
 import serviceIcon from "@assets/20260311_214852_1773265973964.png";
 import { getJohnDeereProductImage, ROBOTICSFUND_LOGO } from "@/lib/john-deere-assets";
@@ -17,6 +18,8 @@ interface ProductWithOwnership extends Product {
   isOwned: boolean;
   canClaimFree: boolean;
   ownedCount?: number;
+  stockCount?: number;
+  canPurchaseThisLaunch?: boolean;
 }
 
 export default function InvestPage() {
@@ -117,6 +120,9 @@ export default function InvestPage() {
         ) : displayed.length > 0 ? (
           displayed.map((product, idx) => {
             const img = getJohnDeereProductImage(product.imageUrl, idx);
+            const stockFull = isProductStockFull(product.stockLimit, product.stockCount || 0);
+            const launchAlreadyPurchased = product.productType === "activity"
+              && product.canPurchaseThisLaunch === false;
             return (
               <div
                 key={product.id}
@@ -130,6 +136,12 @@ export default function InvestPage() {
                     alt={product.name}
                     className="w-full h-full object-cover"
                     style={{ minHeight: 160 }}
+                    onError={(event) => {
+                      if (product.productType === "activity") {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = getJohnDeereProductImage(null, product.id);
+                      }
+                    }}
                   />
                 </div>
 
@@ -140,13 +152,26 @@ export default function InvestPage() {
                     <p className="font-black text-gray-900 text-base leading-tight">{product.name}</p>
                     <button
                       onClick={() => setConfirmProduct(product)}
+                      disabled={stockFull || launchAlreadyPurchased}
                       className="shrink-0 px-4 py-1.5 rounded-full text-white text-sm font-bold shadow"
-                      style={{ background: "linear-gradient(135deg, #367c2b, #25591c)" }}
+                      style={{
+                        background: "linear-gradient(135deg, #367c2b, #25591c)",
+                        opacity: stockFull || launchAlreadyPurchased ? 0.55 : 1,
+                      }}
                       data-testid={`button-purchase-${product.id}`}
                     >
-                      Acheter
+                      {stockFull ? "Complet" : launchAlreadyPurchased ? "Déjà acheté" : "Acheter"}
                     </button>
                   </div>
+                  {product.productType === "activity" && (product.stockLimit != null || launchAlreadyPurchased) && (
+                    <p className={`text-xs mb-2 ${stockFull || launchAlreadyPurchased ? "text-red-600" : "text-gray-500"}`}>
+                      {stockFull
+                        ? `Toutes les places sont prises (${product.stockCount || 0}/${product.stockLimit}).`
+                        : launchAlreadyPurchased
+                          ? "Vous pourrez acheter un autre produit au prochain lancement."
+                          : `${product.stockCount || 0}/${product.stockLimit} places prises`}
+                    </p>
+                  )}
 
                   {/* Stats */}
                   <div className="space-y-1 mt-auto">
@@ -179,6 +204,9 @@ export default function InvestPage() {
       {confirmProduct && (() => {
         const prodIdx   = (products?.findIndex(p => p.id === confirmProduct.id) ?? 0);
         const prodImg   = getJohnDeereProductImage(confirmProduct.imageUrl, prodIdx);
+        const stockFull = isProductStockFull(confirmProduct.stockLimit, confirmProduct.stockCount || 0);
+        const launchAlreadyPurchased = confirmProduct.productType === "activity"
+          && confirmProduct.canPurchaseThisLaunch === false;
         const shortage  = confirmProduct.price - balance;
         const daily     = Number(confirmProduct.dailyEarnings || 0);
         const total     = Number(confirmProduct.totalReturn  || daily * Number(confirmProduct.cycleDays || 90));
@@ -250,14 +278,18 @@ export default function InvestPage() {
                 </button>
                 <button
                   onClick={() => purchaseMutation.mutate(confirmProduct.id)}
-                  disabled={purchaseMutation.isPending}
+                  disabled={purchaseMutation.isPending || stockFull || launchAlreadyPurchased}
                   className="flex-1 py-3 rounded-2xl font-bold text-white/90 text-sm flex items-center justify-center gap-1.5 active:opacity-70 transition-opacity"
                   style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
                   data-testid="button-confirm-purchase"
                 >
                   {purchaseMutation.isPending
                     ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : "Confirmer"
+                    : stockFull
+                      ? "Complet"
+                      : launchAlreadyPurchased
+                        ? "Déjà acheté"
+                        : "Confirmer"
                   }
                 </button>
               </div>

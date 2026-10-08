@@ -57,8 +57,7 @@ export default function RulesModal({ open, onClose }: RulesModalProps) {
               <h4 className="font-medium text-foreground mb-2">3. Produits</h4>
               <ul className="space-y-1">
                 <li>- Cycle standard : 80 jours</li>
-                <li>- Gains journaliers automatiques</li>
-                <li>- Les gains sont crédités 24h après l'achat</li>
+                <li>- Les gains des produits sont crédités en une seule fois à l’échéance</li>
                 <li>- Produit gratuit : réclamez 50 FCFA/jour</li>
               </ul>
             </section>

@@ -19,3 +19,6 @@
 - [Screenshot artwork extraction](screenshot-artwork-extraction.md) — Crop distinctive artwork from original captures, isolate its silhouette, and animate surrounding layers separately.
 - [Withdrawal account editing](withdrawal-account-editing.md) — Each user has one editable primary withdrawal account; keep operators sourced from Admin-configured countries.
 - [Activity product launch clocks](activity-product-launch-clocks.md) — TG, BF, and CI share local time; BJ, CM, and NE launch one hour ahead.
+- [Activity product purchase rules](activity-product-purchase-rules.md) — Require a paid stable purchase and cap activity price at the highest single stable purchase; enforce stock and launch limits.
+- [Referral commission eligibility](referral-commission-policy.md) — Pay referral commissions only on the referred user's first paid stable-product purchase.
+- [Product payout policy](product-payout-policy.md) — Product earnings are credited once at maturity; preserve and subtract any amounts already paid on legacy positions.
