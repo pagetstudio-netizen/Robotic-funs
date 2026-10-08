@@ -1,0 +1,177 @@
+:root {
+  --button-outline: rgba(0, 0, 0, .10);
+  --badge-outline: rgba(0, 0, 0, .05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0, 0, 0, .03);
+  --elevate-2: rgba(0, 0, 0, .08);
+  --background: 0 0% 96%;
+  --foreground: 0 0% 10%;
+  --border: 0 0% 85%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --card-border: 0 0% 90%;
+  --sidebar: 16 100% 18%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 16 80% 12%;
+  --sidebar-primary: 0 0% 100%;
+  --sidebar-primary-foreground: 16 100% 18%;
+  --sidebar-accent: 16 80% 26%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 16 100% 18%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --popover-border: 0 0% 90%;
+  --primary: 16 100% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 10%;
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 16 70% 93%;
+  --accent-foreground: 16 100% 35%;
+  --destructive: 0 75% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 0 0% 85%;
+  --ring: 16 100% 35%;
+  --font-sans: "Inter", sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --button-outline: rgba(255, 255, 255, .10);
+  --badge-outline: rgba(255, 255, 255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255, 255, 255, .04);
+  --elevate-2: rgba(255, 255, 255, .09);
+  --background: 0 0% 8%;
+  --foreground: 0 0% 95%;
+  --border: 0 0% 20%;
+  --card: 0 0% 12%;
+  --card-foreground: 0 0% 95%;
+  --card-border: 0 0% 18%;
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-border: 0 0% 15%;
+  --sidebar-primary: 16 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 15%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-ring: 16 100% 50%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 0 0% 18%;
+  --primary: 16 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 18%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 55%;
+  --accent: 16 80% 45%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 0 0% 22%;
+  --ring: 16 100% 50%;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: Inter, Arial, sans-serif;
+}
+
+.popup-mockup-page {
+  position: relative;
+  width: 100%;
+  min-height: 1024px;
+  overflow: hidden;
+  background: #090d18;
+}
+
+.mockup-home-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 64%, rgba(27, 65, 61, .66), transparent 47%),
+    linear-gradient(180deg, #080b12 0%, #101421 54%, #18151a 100%);
+  color: #f8f8f8;
+}
+
+.mockup-home-banner {
+  position: absolute;
+  top: 30px;
+  right: 20px;
+  left: 20px;
+  display: flex;
+  height: 198px;
+  align-items: center;
+  border-radius: 16px;
+  padding: 22px 40px;
+  background:
+    radial-gradient(circle at 79% 38%, rgba(250, 161, 30, .9), transparent 24%),
+    linear-gradient(120deg, #05070b, #242416 65%, #9a5a16);
+  color: #f5db84;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.mockup-home-shortcuts {
+  position: absolute;
+  top: 250px;
+  right: 38px;
+  left: 38px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mockup-home-shortcuts span {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #30a878, #0a583a);
+}
+
+.mockup-home-shortcuts span:nth-child(2) { background: linear-gradient(145deg, #31b8dc, #0d556b); }
+.mockup-home-shortcuts span:nth-child(3) { background: linear-gradient(145deg, #9c70e9, #433182); }
+.mockup-home-shortcuts span:nth-child(4) { background: linear-gradient(145deg, #e4a332, #875217); }
+
+.mockup-home-products {
+  position: absolute;
+  top: 350px;
+  right: 20px;
+  left: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.mockup-home-product {
+  height: 205px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 15px;
+  background: linear-gradient(110deg, #151b27, #23212b);
+}
+
+.mockup-home-nav {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 79px;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid rgba(255, 255, 255, .13);
+  background: #18191d;
+  color: #c9c9cc;
+  font-size: 13px;
+}

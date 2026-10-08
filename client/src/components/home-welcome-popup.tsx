@@ -93,68 +93,67 @@ export default function HomeWelcomePopup() {
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <div className="home-welcome-stage" aria-busy={isLoading}>
-            <section className="home-welcome-card">
-              <img
-                className="home-welcome-illustration"
-                src={welcomeRobot}
-                alt="Robot jaune de RoboticsFund"
-              />
+            <div className="home-welcome-card" aria-hidden="true" />
+            <img
+              className="home-welcome-illustration"
+              src={welcomeRobot}
+              alt="Robot jaune de RoboticsFund"
+            />
 
-              <div className="home-welcome-body">
-                <DialogPrimitive.Title className="home-welcome-title">
-                  Dernières nouvelles
-                </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="sr-only">
-                  Informations de la plateforme et lien du groupe Telegram.
-                </DialogPrimitive.Description>
+            <div className="home-welcome-body">
+              <DialogPrimitive.Title className="home-welcome-title">
+                Dernières nouvelles
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Description className="sr-only">
+                Informations de la plateforme et lien du groupe Telegram.
+              </DialogPrimitive.Description>
 
-                <div className="home-welcome-details" aria-live="polite">
-                  <p className="home-welcome-app-name">
-                    Bienvenue chez <strong>RoboticsFund&nbsp;!</strong>
-                  </p>
-                  <p>
-                    <span>Bonus d’inscription&nbsp;:</span>{" "}
-                    <strong>{formatFcfa(settings?.signupBonus)}</strong>
-                  </p>
-                  <p>
-                    <span>Dépôt minimum&nbsp;:</span>{" "}
-                    <strong>{formatFcfa(settings?.minDeposit)}</strong>
-                  </p>
-                  <p>
-                    <span>Retrait minimum&nbsp;:</span>{" "}
-                    <strong>{formatFcfa(settings?.minWithdrawal)}</strong>
-                  </p>
-                  <p>
-                    <span>Commission d’équipe&nbsp;:</span>{" "}
-                    <strong>{formatPercent(settings?.level1Commission)}</strong>
-                  </p>
-                </div>
+              <div className="home-welcome-details" aria-live="polite">
+                <p className="home-welcome-app-name">
+                  Bienvenue chez <strong>RoboticsFund&nbsp;!</strong>
+                </p>
+                <p>
+                  <span>Bonus d’inscription&nbsp;:</span>{" "}
+                  <strong>{formatFcfa(settings?.signupBonus)}</strong>
+                </p>
+                <p>
+                  <span>Dépôt minimum&nbsp;:</span>{" "}
+                  <strong>{formatFcfa(settings?.minDeposit)}</strong>
+                </p>
+                <p>
+                  <span>Retrait minimum&nbsp;:</span>{" "}
+                  <strong>{formatFcfa(settings?.minWithdrawal)}</strong>
+                </p>
+                <p>
+                  <span>Commission d’équipe&nbsp;:</span>{" "}
+                  <strong>{formatPercent(settings?.level1Commission)}</strong>
+                </p>
               </div>
+            </div>
 
-              {canJoinGroup ? (
-                <a
-                  className="home-welcome-telegram"
-                  href={groupUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={joinLabel}
-                >
-                  <span className="home-welcome-telegram-icon" aria-hidden="true">
-                    <img src={telegramIcon} alt="" />
-                  </span>
-                  <span className="home-welcome-telegram-label">{joinLabel}</span>
-                </a>
-              ) : (
-                <button className="home-welcome-telegram is-unavailable" type="button" disabled>
-                  <span className="home-welcome-telegram-icon" aria-hidden="true">
-                    <img src={telegramIcon} alt="" />
-                  </span>
-                  <span className="home-welcome-telegram-label">
-                    {isLoading ? "Chargement du groupe Telegram…" : "Lien Telegram indisponible"}
-                  </span>
-                </button>
-              )}
-            </section>
+            {canJoinGroup ? (
+              <a
+                className="home-welcome-telegram"
+                href={groupUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={joinLabel}
+              >
+                <span className="home-welcome-telegram-icon" aria-hidden="true">
+                  <img src={telegramIcon} alt="" />
+                </span>
+                <span className="home-welcome-telegram-label">{joinLabel}</span>
+              </a>
+            ) : (
+              <button className="home-welcome-telegram is-unavailable" type="button" disabled>
+                <span className="home-welcome-telegram-icon" aria-hidden="true">
+                  <img src={telegramIcon} alt="" />
+                </span>
+                <span className="home-welcome-telegram-label">
+                  {isLoading ? "Chargement du groupe Telegram…" : "Lien Telegram indisponible"}
+                </span>
+              </button>
+            )}
 
             <DialogPrimitive.Close asChild>
               <button className="home-welcome-close" type="button" aria-label="Fermer">
