@@ -74,8 +74,12 @@ async function main() {
       if (sourceColumns.length === 0 || destinationColumns.length === 0) {
         throw new Error(`Required table is missing: ${table}`);
       }
-      const sourceShape = sourceColumns.map(({ column_name, udt_name }) => `${column_name}:${udt_name}`);
-      const destinationShape = destinationColumns.map(({ column_name, udt_name }) => `${column_name}:${udt_name}`);
+      const sourceShape = sourceColumns
+        .map(({ column_name, udt_name }) => `${column_name}:${udt_name}`)
+        .sort();
+      const destinationShape = destinationColumns
+        .map(({ column_name, udt_name }) => `${column_name}:${udt_name}`)
+        .sort();
       if (JSON.stringify(sourceShape) !== JSON.stringify(destinationShape)) {
         throw new Error(`Schema differs for table: ${table}`);
       }

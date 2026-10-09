@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { randomInt } from "node:crypto";
 import session from "express-session";
 import { storage } from "./storage";
+import { databaseUrl, pool } from "./db";
 import { registerSchema, loginSchema, depositSchema, walletSchema, phoneNumberSchema, type Product, type Withdrawal } from "@shared/schema";
 import {
   changeUserPassword,
@@ -467,7 +468,7 @@ declare module "express-session" {
 }
 
 const PgSession = ConnectPgSimple(session);
-const sessionDatabaseUrl = process.env.DATABASE_URL;
+const sessionDatabaseUrl = databaseUrl;
 const sessionSecret = process.env.SESSION_SECRET;
 
 if (!sessionDatabaseUrl) {
@@ -578,7 +579,7 @@ export async function registerRoutes(
   app.use(
     session({
       store: new PgSession({
-        conString: sessionDatabaseUrl,
+        pool,
         tableName: "session",
         createTableIfMissing: true,
         pruneSessionInterval: 60 * 60,

@@ -1,12 +1,12 @@
 ---
 name: Database hosting choice
-description: The user selected Replit-managed PostgreSQL as this project's database.
+description: The user selected Supabase as the application's primary database and authorized migrating development data.
 ---
 
-Use Replit-managed PostgreSQL (`DATABASE_URL`) as the canonical datastore rather than `SUPABASE_DATABASE_URL`. The user chose to start fresh on Replit, without importing Supabase records; preserve Supabase data.
+Use Supabase (`SUPABASE_DATABASE_URL`) as the application's primary datastore. `DATABASE_URL` remains the Replit development source/fallback. Development data was copied to Supabase, and the Replit development database was cleaned to retain only its administrator account. Production data has not been migrated or inspected.
 
-On 2026-10-07, `drizzle-kit push` stopped before applying changes and asked whether to truncate the existing five-row `countries` table to add `countries_code_unique`. Do not accept that prompt automatically.
+Never use the legacy Supabase migration script that truncates destination tables. The safe development transfer checks that destination tables are empty, copies without overwriting, and verifies row counts. Supabase currently contains the complete development copy; source development contains only the administrator and shared configuration.
 
-**Why:** The user chose Replit PostgreSQL, and truncating seeded country rows would be destructive. Schema drift in unrelated tables should not erase valid data.
+**Why:** The user explicitly chose Supabase, authorized copying the Replit development database, and confirmed deleting non-admin accounts from the Replit source only after verification.
 
-**How to apply:** Keep normal application and schema tooling on `DATABASE_URL`. If a push asks to truncate `countries`, stop and inspect the current data/constraint mismatch; apply only a safe, targeted change. Do not copy or delete Supabase records unless the user changes this decision.
+**How to apply:** Keep application runtime and Drizzle pointed at Supabase. Treat any production migration as a separate task; do not replace Supabase with development data or delete production records without explicit scope and verification.

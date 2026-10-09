@@ -65,7 +65,7 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 ### Database
-- **PostgreSQL**: Replit-managed database (connection via `DATABASE_URL`)
+- **Primary PostgreSQL**: Supabase via `SUPABASE_DATABASE_URL`; `DATABASE_URL` is a fallback and remains the Replit development source
 - **Drizzle ORM**: Type-safe database queries and schema management
 
 ### Frontend Libraries
@@ -84,13 +84,14 @@ Preferred communication style: Simple, everyday language.
 - **TypeScript**: Type checking across full stack
 
 ### Environment Variables Required
-- `DATABASE_URL`: Replit PostgreSQL connection string used for application data and sessions
+- `SUPABASE_DATABASE_URL`: Supabase PostgreSQL connection string used for application data and sessions
+- `DATABASE_URL`: fallback connection and Replit development source for the one-time data transfer
 - `SESSION_SECRET`: Secret for session encryption (required)
 
 ## Running on Replit
 
 ### Prerequisites
-- Replit provides the PostgreSQL database through `DATABASE_URL`; application runtime and Drizzle use this database directly.
+- The application and Drizzle prefer `SUPABASE_DATABASE_URL`; `DATABASE_URL` is used only when Supabase is not configured.
 - `SESSION_SECRET` is configured as a Replit Secret.
 
 ### First-time setup

@@ -1,7 +1,7 @@
 - [WestPay Integration](westpay-integration.md) — Redirect-based deposit flow + HMAC webhook; per-country API keys for withdrawals; secrets only (never in code/DB).
 - [SendavaPay integration](sendavapay-integration.md) — Payin deposit flow: backend creates+initiates, user phone auto-used, OTP/redirect handled, webhook HMAC verified.
 - [Imported database setup](imported-database-setup.md) — Preserve an existing Replit session table when applying a first-run Drizzle schema.
-- [Database hosting choice](database-hosting-choice.md) — Use Replit PostgreSQL; preserve data and never accept a Drizzle prompt to truncate seeded countries.
+- [Database hosting choice](database-hosting-choice.md) — Supabase is primary; development data was copied, while production data remains separate.
 - [Plesk GitHub deployment](plesk-github-deployment.md) — Plesk pulls a committed dist build and starts dist/index.cjs relative to the application root.
 - [Login privacy](login-privacy.md) — Do not persist passwords or phone numbers in browser storage; privacy scans classify remembered phone numbers as sensitive.
 - [Brand theme isolation](brand-theme-isolation.md) — Apply RoboticsFund branding to every route except `/robotpay`; preserve RobotPay’s original theme.

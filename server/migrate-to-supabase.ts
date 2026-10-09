@@ -121,4 +121,4 @@ async function migrate() {
   await destPool.end();
 }
 
-migrate().catch(console.error);
+console.error("This legacy migration is disabled because it truncates Supabase tables. Use server/migrate-development-to-supabase.ts, which refuses to overwrite destination data.");
