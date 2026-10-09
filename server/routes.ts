@@ -1165,6 +1165,14 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/payment-numbers/statistics", requireAdmin, async (_req, res) => {
+    try {
+      res.json(await storage.getAdminPaymentNumberStatistics());
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/admin/payment-numbers", requireAdmin, async (req, res) => {
     try {
       const { ownerName, phone, paymentLink, operatorName, country, logoUrl, isActive } = req.body;

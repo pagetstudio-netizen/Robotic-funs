@@ -20,7 +20,7 @@ import { isFirstPaidStableProductPurchase } from "./referral-commission-policy";
 import { getStablePurchaseSpinAwards } from "./fortune-wheel-policy";
 import { hasQualifyingActiveStableProduct } from "./withdrawal-product-eligibility";
 import { FORTUNE_WHEEL_DRAW_PRIZES } from "@shared/fortune-wheel";
-import { eq, and, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
+import { eq, and, asc, desc, sql, gte, lte, or, isNull, inArray, lt, ne } from "drizzle-orm";
 import { hashPassword } from "./password-utils";
 
 const DRIMPAY_STATUS_CHECK_SETTING_PREFIX = "__internal_drimpay_status_checks:";
@@ -195,6 +195,17 @@ export interface IStorage {
 
   // Payment Numbers
   getPaymentNumbers(): Promise<PaymentNumber[]>;
+  getAdminPaymentNumberStatistics(): Promise<{
+    paymentNumbers: { paymentNumberId: number; totalAmount: number; todayAmount: number }[];
+    bankers: {
+      bankerId: number;
+      fullName: string;
+      phone: string;
+      country: string;
+      totalWithdrawals: number;
+      todayWithdrawals: number;
+    }[];
+  }>;
   getPaymentNumber(id: number): Promise<PaymentNumber | undefined>;
   getPaymentNumbersByCountry(country: string): Promise<PaymentNumber[]>;
   createPaymentNumber(data: Partial<PaymentNumber>): Promise<PaymentNumber>;
@@ -1300,6 +1311,8 @@ export class DatabaseStorage implements IStorage {
   async getUserWithdrawalCountToday(userId: number): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     
     const result = await db.select({ count: sql<number>`count(*)` })
       .from(withdrawals)
@@ -1900,6 +1913,56 @@ export class DatabaseStorage implements IStorage {
   // Payment Numbers
   async getPaymentNumbers(): Promise<PaymentNumber[]> {
     return await db.select().from(paymentNumbers).orderBy(desc(paymentNumbers.createdAt));
+  }
+
+  async getAdminPaymentNumberStatistics() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [depositRows, bankerRows] = await Promise.all([
+      db.select({
+        paymentNumberId: deposits.paymentNumberId,
+        totalAmount: sql<string>`COALESCE(SUM(${deposits.amount}), 0)`,
+        todayAmount: sql<string>`COALESCE(SUM(CASE WHEN ${deposits.processedAt} >= ${today} AND ${deposits.processedAt} < ${tomorrow} THEN ${deposits.amount} ELSE 0 END), 0)`,
+      })
+        .from(deposits)
+        .where(eq(deposits.status, "approved"))
+        .groupBy(deposits.paymentNumberId),
+      db.select({
+        bankerId: users.id,
+        fullName: users.fullName,
+        phone: users.phone,
+        country: users.country,
+        totalWithdrawals: sql<string>`COALESCE(SUM(${withdrawals.amount}), 0)`,
+        todayWithdrawals: sql<string>`COALESCE(SUM(CASE WHEN ${withdrawals.processedAt} >= ${today} AND ${withdrawals.processedAt} < ${tomorrow} THEN ${withdrawals.amount} ELSE 0 END), 0)`,
+      })
+        .from(users)
+        .leftJoin(withdrawals, and(
+          eq(withdrawals.processedBy, users.id),
+          eq(withdrawals.status, "approved"),
+        ))
+        .where(eq(users.isBanker, true))
+        .groupBy(users.id, users.fullName, users.phone, users.country)
+        .orderBy(asc(users.country), asc(users.fullName)),
+    ]);
+
+    return {
+      paymentNumbers: depositRows
+        .filter((row): row is typeof row & { paymentNumberId: number } => row.paymentNumberId !== null)
+        .map(row => ({
+          paymentNumberId: row.paymentNumberId,
+          totalAmount: Number(row.totalAmount),
+          todayAmount: Number(row.todayAmount),
+        })),
+      bankers: bankerRows.map(row => ({
+        bankerId: row.bankerId,
+        fullName: row.fullName,
+        phone: row.phone,
+        country: row.country,
+        totalWithdrawals: Number(row.totalWithdrawals),
+        todayWithdrawals: Number(row.todayWithdrawals),
+      })),
+    };
   }
 
   async getPaymentNumber(id: number): Promise<PaymentNumber | undefined> {

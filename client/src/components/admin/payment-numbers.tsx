@@ -22,6 +22,24 @@ interface Country {
   isActive: boolean;
 }
 
+interface AdminPaymentNumberStatistics {
+  paymentNumbers: {
+    paymentNumberId: number;
+    totalAmount: number;
+    todayAmount: number;
+  }[];
+  bankers: {
+    bankerId: number;
+    fullName: string;
+    phone: string;
+    country: string;
+    totalWithdrawals: number;
+    todayWithdrawals: number;
+  }[];
+}
+
+const formatFcfa = (amount: number) => `${Math.round(amount).toLocaleString("fr-FR")} FCFA`;
+
 const COUNTRY_FLAGS: Record<string, string> = {
   CM: "🇨🇲", BF: "🇧🇫", TG: "🇹🇬", BJ: "🇧🇯", CI: "🇨🇮", CG: "🇨🇬",
   TD: "🇹🇩", NE: "🇳🇪", CD: "🇨🇩", CF: "🇨🇫",
@@ -40,6 +58,11 @@ export default function AdminPaymentNumbers() {
 
   const { data: numbers = [], isLoading } = useQuery<PaymentNumber[]>({
     queryKey: ["/api/admin/payment-numbers"],
+  });
+
+  const { data: statistics, isLoading: statisticsLoading } = useQuery<AdminPaymentNumberStatistics>({
+    queryKey: ["/api/admin/payment-numbers/statistics"],
+    refetchInterval: 60_000,
   });
 
   const { data: countries = [] } = useQuery<Country[]>({
@@ -157,6 +180,9 @@ export default function AdminPaymentNumbers() {
     acc[n.country].push(n);
     return acc;
   }, {} as Record<string, PaymentNumber[]>);
+  const paymentStatistics = new Map(
+    (statistics?.paymentNumbers ?? []).map((item) => [item.paymentNumberId, item]),
+  );
 
   const getCountryName = (code: string) => {
     const found = countries.find(c => c.code === code);
@@ -236,6 +262,24 @@ export default function AdminPaymentNumbers() {
                         </Button>
                       </div>
                     </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3">
+                      <div className="rounded-md bg-muted/40 px-3 py-2">
+                        <p className="text-xs text-muted-foreground">Dépôts validés aujourd’hui</p>
+                        {statisticsLoading ? <Skeleton className="mt-2 h-4 w-24" /> : (
+                          <p className="mt-1 text-sm font-semibold text-foreground">
+                            {formatFcfa(paymentStatistics.get(num.id)?.todayAmount ?? 0)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-md bg-muted/40 px-3 py-2">
+                        <p className="text-xs text-muted-foreground">Total dépôts validés</p>
+                        {statisticsLoading ? <Skeleton className="mt-2 h-4 w-24" /> : (
+                          <p className="mt-1 text-sm font-semibold text-foreground">
+                            {formatFcfa(paymentStatistics.get(num.id)?.totalAmount ?? 0)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -243,6 +287,62 @@ export default function AdminPaymentNumbers() {
           </div>
         ))
       )}
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-foreground">Retraits validés par bankier</h3>
+              <p className="text-sm text-muted-foreground">
+                Totaux cumulés et montants validés aujourd’hui
+              </p>
+            </div>
+            {statistics?.bankers && (
+              <Badge variant="secondary">{statistics.bankers.length} bankier(s)</Badge>
+            )}
+          </div>
+          {statisticsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-20" />
+              <Skeleton className="h-20" />
+            </div>
+          ) : statistics?.bankers.length ? (
+            <div className="space-y-3">
+              {statistics.bankers.map((banker) => (
+                <div key={banker.bankerId} className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-foreground">{banker.fullName}</p>
+                      <p className="text-sm text-muted-foreground">{banker.phone}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {COUNTRY_FLAGS[banker.country] || "🌍"} {getCountryName(banker.country)} ({banker.country})
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="rounded-md bg-muted/40 px-3 py-2">
+                      <p className="text-xs text-muted-foreground">Total des retraits validés</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        {formatFcfa(banker.totalWithdrawals)}
+                      </p>
+                    </div>
+                    <div className="rounded-md bg-muted/40 px-3 py-2">
+                      <p className="text-xs text-muted-foreground">Retraits validés aujourd’hui</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        {formatFcfa(banker.todayWithdrawals)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Aucun bankier n’est enregistré.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={showForm} onOpenChange={closeForm}>
         <DialogContent className="max-w-md">
