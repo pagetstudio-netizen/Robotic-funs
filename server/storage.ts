@@ -1311,8 +1311,6 @@ export class DatabaseStorage implements IStorage {
   async getUserWithdrawalCountToday(userId: number): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
     
     const result = await db.select({ count: sql<number>`count(*)` })
       .from(withdrawals)
@@ -1918,6 +1916,8 @@ export class DatabaseStorage implements IStorage {
   async getAdminPaymentNumberStatistics() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const [depositRows, bankerRows] = await Promise.all([
       db.select({
