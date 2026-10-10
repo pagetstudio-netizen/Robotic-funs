@@ -42,7 +42,7 @@ export default function LoginPage() {
     queryKey: ["/api/countries"],
   });
 
-  const selectedCountry = form.watch("country");
+  const [selectedCountry, setSelectedCountry] = useState("");
 
   useEffect(() => {
     // Remove credentials persisted by versions that stored login data locally.
@@ -52,18 +52,25 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!apiCountries || apiCountries.length === 0) return;
-    const isValid = apiCountries.some(ac => ac.code === selectedCountry && ac.isActive);
+    const isValid = apiCountries.some(
+      ac => ac.code.toUpperCase() === selectedCountry.toUpperCase() && ac.isActive,
+    );
     // Keep a remembered/selected country long enough for the server to apply
     // the administrator-only cross-country login rule.
     if (!isValid) {
       const first = apiCountries.find(ac => ac.isActive);
-      if (first) form.setValue("country", first.code);
+      if (first) {
+        setSelectedCountry(first.code);
+        form.setValue("country", first.code);
+      }
     }
   }, [apiCountries, selectedCountry, form]);
 
   const countryData = (() => {
     if (apiCountries && apiCountries.length > 0) {
-      const c = apiCountries.find(ac => ac.code === selectedCountry && ac.isActive);
+      const c = apiCountries.find(
+        ac => ac.code.toUpperCase() === selectedCountry.toUpperCase() && ac.isActive,
+      );
       if (c) return { phonePrefix: c.phonePrefix, name: c.name };
       return null;
     }
@@ -176,6 +183,7 @@ export default function LoginPage() {
         open={countryModalOpen}
         onClose={() => setCountryModalOpen(false)}
         onSelect={(code) => {
+          setSelectedCountry(code);
           form.setValue("country", code, { shouldValidate: true });
         }}
       />
