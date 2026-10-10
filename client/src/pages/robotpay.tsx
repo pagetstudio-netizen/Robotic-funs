@@ -55,8 +55,7 @@ export default function RobotPayPage() {
   const [redirectUrl, setRedirectUrl] = useState("");
   const [paymentLinkUnavailable, setPaymentLinkUnavailable] = useState(false);
   const [status, setStatus] = useState("pending");
-  const [paymentReference, setPaymentReference] = useState("");
-  const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentProof, setPaymentProof] = useState("");
   const [manualSubmitted, setManualSubmitted] = useState(false);
   const [telegramNotificationFailed, setTelegramNotificationFailed] = useState(false);
 
@@ -277,7 +276,7 @@ export default function RobotPayPage() {
       const number = operator?.manualNumber;
       if (!number) throw new Error("Numéro de paiement indisponible");
       if (!phone.trim()) throw new Error("Saisissez le numéro depuis lequel vous avez payé");
-      if (!paymentReference.trim() && !paymentMessage.trim()) {
+      if (!paymentProof.trim()) {
         throw new Error("Saisissez la référence ou le message de confirmation du paiement");
       }
       const res = await apiRequest("POST", "/api/deposits", {
@@ -289,8 +288,8 @@ export default function RobotPayPage() {
         paymentSource: "robotpay",
         paymentNumberId: number.id,
         channelName: number.paymentLink ? `${number.operatorName} - Lien de paiement` : `${number.operatorName} - ${number.phone}`,
-        reference: paymentReference.trim() || null,
-        paymentMessage: paymentMessage.trim() || null,
+        reference: null,
+        paymentMessage: paymentProof.trim(),
       });
       if (!res.ok) throw new Error((await res.json()).message || "Envoi impossible");
       return res.json();
@@ -326,7 +325,7 @@ export default function RobotPayPage() {
   const submitPhone = () => {
     if (!phone.trim()) { toast({ title: "Numéro requis", description: "Saisissez le numéro Mobile Money utilisé.", variant: "destructive" }); return; }
     if (!operator) { toast({ title: "Opérateur requis", description: "Sélectionnez votre opérateur.", variant: "destructive" }); return; }
-    if (operator.manualNumber && !paymentReference.trim() && !paymentMessage.trim()) {
+    if (operator.manualNumber && !paymentProof.trim()) {
       toast({ title: "Confirmation de paiement requise", description: "Saisissez la référence ou le message reçu après le paiement.", variant: "destructive" });
       return;
     }
@@ -364,8 +363,7 @@ export default function RobotPayPage() {
 
   const chooseOperator = (nextOperator: Operator) => {
     setOperator(nextOperator);
-    setPaymentReference("");
-    setPaymentMessage("");
+    setPaymentProof("");
     setTelegramNotificationFailed(false);
     setStep(1);
   };
@@ -434,34 +432,23 @@ export default function RobotPayPage() {
                 <div className="space-y-4 border-t border-gray-200 pt-4 text-left">
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-gray-800">
-                      Référence ou message de paiement <span className="text-red-500">*</span>
+                      Référence ou message de confirmation reçu <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      value={paymentReference}
-                      onChange={(event) => setPaymentReference(event.target.value)}
-                      maxLength={120}
-                      placeholder="Référence / ID de transaction"
-                      className="w-full rounded-lg border border-gray-300 p-3 text-sm outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-gray-800">Message reçu après le paiement</label>
                     <textarea
-                      value={paymentMessage}
-                      onChange={(event) => setPaymentMessage(event.target.value)}
-                      rows={3}
+                      value={paymentProof}
+                      onChange={(event) => setPaymentProof(event.target.value)}
+                      rows={4}
                       maxLength={2000}
-                      placeholder="Collez ici le SMS ou message de confirmation..."
+                      placeholder="Saisissez la référence ou collez le message reçu après le paiement..."
                       className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm outline-none"
                     />
-                    <p className="mt-1 text-xs text-gray-500">Renseignez au moins la référence ou le message reçu.</p>
+                    <p className="mt-1 text-xs text-gray-500">Un seul champ suffit : entrez la référence ou le message de confirmation.</p>
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-center gap-5 pt-3">
                 <button onClick={() => { setOperator(null); setStep(0); }} className="w-[43%] rounded-md bg-[#78b9df] py-3 font-semibold text-white shadow-sm">&lt; Retour</button>
-                <button onClick={submitPhone} disabled={busy || !phone.trim() || (!!operator?.manualNumber && !paymentReference.trim() && !paymentMessage.trim())} className="w-[43%] rounded-md bg-[#078ee8] py-3 font-semibold text-white shadow-sm disabled:opacity-50">{busy ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : operator?.manualNumber ? "Envoyer la demande" : "Suivant >"}</button>
+                <button onClick={submitPhone} disabled={busy || !phone.trim() || (!!operator?.manualNumber && !paymentProof.trim())} className="w-[43%] rounded-md bg-[#078ee8] py-3 font-semibold text-white shadow-sm disabled:opacity-50">{busy ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : operator?.manualNumber ? "Envoyer la demande" : "Suivant >"}</button>
               </div>
             </div>
           )}
