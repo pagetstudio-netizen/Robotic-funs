@@ -56,4 +56,4 @@ Configurer les URL de webhooks chez chaque fournisseur avec le domaine HTTPS fin
 
 Le Supabase actuellement configuré contient la copie de la base **de développement** Replit. La base de production n’a pas été migrée ni vérifiée. Ne pas brancher le site public sur ce Supabase avant d’avoir migré et contrôlé les données de production séparément.
 
-`TELEGRAM_CHAT_ID` ne figure plus dans `.replit`, mais le Secret Replit correspondant n’est pas encore configuré. Telegram restera désactivé dans un environnement tant que `TELEGRAM_CHAT_ID` n’y est pas défini. Ne pas remettre cette valeur dans Git; la configurer dans les Secrets Replit et dans les variables d’environnement Plesk si Telegram doit fonctionner.
+`TELEGRAM_CHAT_ID` est maintenant configuré dans les Secrets Replit; Plesk a son propre environnement, il faut donc y ajouter cette variable séparément pour activer Telegram. `ADMIN_PHONE`, `ADMIN_PASSWORD` et `ADMIN_PIN` ne sont actuellement pas présents dans les Secrets Replit : les configurer dans Plesk pour conserver l’accès administrateur. Ne jamais mettre leurs valeurs dans Git ni dans un fichier `.env` versionné.
