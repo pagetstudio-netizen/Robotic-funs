@@ -312,7 +312,8 @@
   white-space: nowrap;
 }
 
-.auth-screenshot .auth-country-code {
+.auth-redesign.auth-screenshot .auth-country-code {
+  display: inline;
   color: #f3f5fa;
   font-size: 3.8cqw;
   font-weight: 600;
