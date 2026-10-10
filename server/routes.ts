@@ -112,6 +112,7 @@ import {
   isTelegramConfigured,
   sendTelegramInpayError,
   sendTelegramMessage,
+  sendTelegramPaymentError,
   sendTelegramSecurityAlert,
 } from "./telegram";
 import { requestWithdrawal } from "./withdrawal-request";
@@ -608,6 +609,58 @@ export async function registerRoutes(
       },
     })
   );
+
+  const bankClosedMessage = "La banque n'est pas ouverte pour le moment.";
+  app.use((req, res, next) => {
+    const path = req.path;
+    const isPaymentPageRequest =
+      /^\/api\/deposits(?:\/|$)/.test(path) ||
+      /^\/api\/(?:payment-channels|payment-numbers|soleaspay\/services)(?:\/|$)/.test(path) ||
+      /^\/api\/deposit\/provider(?:\/|$)/.test(path) ||
+      /^\/api\/(?:drimpay|ashtechpay|sendavapay)(?:\/|$)/.test(path);
+    if (!isPaymentPageRequest) return next();
+
+    const originalJson = res.json.bind(res);
+    res.json = ((body: unknown) => {
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return originalJson(body);
+      }
+
+      const responseBody = body as Record<string, unknown>;
+      // Ashtech's 400 response is a normal next step in its OTP flow.
+      if (path === "/api/ashtechpay/collect" && responseBody.error === "otp_required") {
+        return originalJson(body);
+      }
+
+      const terminalFailure = ["rejected", "failed", "expired", "cancelled", "canceled"].includes(
+        String(responseBody.status || "").trim().toLowerCase(),
+      );
+      if (res.statusCode < 400 && !terminalFailure) return originalJson(body);
+
+      const requestBody = req.body && typeof req.body === "object"
+        ? req.body as Record<string, unknown>
+        : {};
+      const errorMessage = responseBody.message
+        ?? responseBody.error
+        ?? (terminalFailure
+          ? `Le fournisseur a refusé le paiement (statut : ${String(responseBody.status)})`
+          : `HTTP ${res.statusCode}`);
+      void sendTelegramPaymentError({
+        path,
+        method: req.method,
+        status: res.statusCode,
+        error: errorMessage,
+        userId: req.session?.userId,
+        amount: requestBody.amount,
+        country: requestBody.country,
+        operator: requestBody.operator ?? requestBody.operatorName,
+      }).catch((notificationError) => {
+        console.error("[telegram] RobotPay error notification failed:", notificationError.message);
+      });
+      return originalJson({ ...responseBody, message: bankClosedMessage });
+    }) as typeof res.json;
+    next();
+  });
 
   app.use(async (req, res, next) => {
     try {
@@ -1582,19 +1635,6 @@ export async function registerRoutes(
           return res.json({ deposit, inpayUrl: result.url, inpay: true });
         } catch (inpayError: any) {
           await storage.updateDeposit(inpayDeposit.id, { status: "rejected", processedAt: new Date() });
-          void sendTelegramInpayError({
-            operation: "Dépôt pay-in",
-            error: inpayError,
-            country: normalizedCountry,
-            amount: normalizedDeposit.amount,
-            reference: outTradeNo,
-            recordId: inpayDeposit.id,
-            orderNumber: outTradeNo,
-            requestUrl: inpayError?.requestUrl,
-            requestData: inpayError?.requestData,
-          }).catch((notificationError) => {
-            console.error("[telegram] InPay deposit error notification failed:", notificationError.message);
-          });
           console.error("[inpay] payin error:", inpayError);
           return res.status(400).json({ message: inpayError.message || "Erreur InPay", inpay: true });
         }
@@ -2050,17 +2090,6 @@ export async function registerRoutes(
         });
       }
       const message = error.message || "Erreur AshtechPay";
-      const errorUser = await storage.getUser(req.session.userId!);
-      void sendTelegramMessage(
-        [
-          "❌ <b>Erreur de dépôt</b>",
-          `Utilisateur : ${formatTelegramValue(errorUser?.fullName || "Inconnu")}`,
-          `Montant : <b>${formatTelegramValue(req.body?.amount)} XOF</b>`,
-          `Pays : ${formatTelegramValue(req.body?.country)}`,
-          `Opérateur : ${formatTelegramValue(req.body?.operator)}`,
-          `Erreur exacte : <code>${formatTelegramValue(message)}</code>`,
-        ].join("\n"),
-      ).catch((notificationError) => console.error("[telegram] deposit error notification failed:", notificationError.message));
       console.error("[ashtechpay] collect error:", message);
       res.status(400).json({ message });
     }

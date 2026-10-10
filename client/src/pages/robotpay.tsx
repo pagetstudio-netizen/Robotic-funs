@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, Copy, ExternalLink, Loader2, Phone, ShieldCheck } from "lucide-react";
@@ -12,6 +12,7 @@ import type { PaymentNumber } from "@shared/schema";
 type Provider = "ashtech" | "sendavapay" | "drimpay";
 type Operator = { id?: string; name?: string; operator?: string; slug?: string; code?: string; requiresOtp?: boolean; status?: string; provider?: Provider; manualNumber?: PaymentNumber };
 type ProviderInfo = { provider: Provider; name: string; providers?: Array<{ provider: Provider; name: string }> };
+const BANK_CLOSED_MESSAGE = "La banque n'est pas ouverte pour le moment.";
 
 function Stepper({ step }: { step: number }) {
   return (
@@ -60,7 +61,7 @@ export default function RobotPayPage() {
   const [telegramNotificationFailed, setTelegramNotificationFailed] = useState(false);
 
   const { data: countries = [] } = useQuery<ApiCountry[]>({ queryKey: ["/api/countries"] });
-  const { data: providerInfo, isLoading: providerLoading } = useQuery<ProviderInfo>({
+  const { data: providerInfo, isLoading: providerLoading, error: providerInfoError } = useQuery<ProviderInfo>({
     queryKey: ["/api/deposit/provider", country],
     queryFn: async () => {
       const res = await fetch(`/api/deposit/provider/${country}`, { credentials: "include" });
@@ -82,7 +83,7 @@ export default function RobotPayPage() {
       ? `+${phonePrefix}${phone.replace(/\D/g, "")}`
       : phone.trim();
 
-  const { data: manualNumbers = [], isLoading: manualNumbersLoading } = useQuery<PaymentNumber[]>({
+  const { data: manualNumbers = [], isLoading: manualNumbersLoading, error: manualNumbersError } = useQuery<PaymentNumber[]>({
     queryKey: ["/api/payment-numbers", country],
     queryFn: async () => {
       const res = await fetch(`/api/payment-numbers?country=${encodeURIComponent(country)}`, { credentials: "include" });
@@ -92,17 +93,27 @@ export default function RobotPayPage() {
     enabled: !!country,
   });
 
-  const { data: sendavaData, isLoading: sendavaLoading } = useQuery<{ success: boolean; data: Operator[] }>({
+  const { data: sendavaData, isLoading: sendavaLoading, error: sendavaError } = useQuery<{ success: boolean; data: Operator[] }>({
     queryKey: ["/api/sendavapay/operators", country],
-    queryFn: async () => (await fetch(`/api/sendavapay/operators/${country}`, { credentials: "include" })).json(),
+    queryFn: async () => {
+      const response = await fetch(`/api/sendavapay/operators/${country}`, { credentials: "include" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || BANK_CLOSED_MESSAGE);
+      return data;
+    },
     enabled: !!providerInfo && availableProviders.some(item => item.provider === "sendavapay") && !!country,
   });
-  const { data: ashtechData, isLoading: ashtechLoading } = useQuery<any[]>({
+  const { data: ashtechData, isLoading: ashtechLoading, error: ashtechError } = useQuery<any[]>({
     queryKey: ["/api/ashtechpay/countries"],
-    queryFn: async () => (await fetch("/api/ashtechpay/countries", { credentials: "include" })).json(),
+    queryFn: async () => {
+      const response = await fetch("/api/ashtechpay/countries", { credentials: "include" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || BANK_CLOSED_MESSAGE);
+      return data;
+    },
     enabled: !!providerInfo && availableProviders.some(item => item.provider === "ashtech"),
   });
-  const { data: drimpayData, isLoading: drimpayLoading } = useQuery<{ country: string; operators: Operator[] }>({
+  const { data: drimpayData, isLoading: drimpayLoading, error: drimpayError } = useQuery<{ country: string; operators: Operator[] }>({
     queryKey: ["/api/drimpay/operators", country],
     queryFn: async () => {
       const response = await fetch(`/api/drimpay/operators/${encodeURIComponent(country)}`, { credentials: "include" });
@@ -181,6 +192,18 @@ export default function RobotPayPage() {
       })),
   ];
   const loadingOperators = manualNumbersLoading || providerLoading || sendavaLoading || ashtechLoading || drimpayLoading;
+  const lastPaymentQueryError = useRef<unknown>(null);
+  const paymentQueryError = providerInfoError || manualNumbersError || sendavaError || ashtechError || drimpayError;
+
+  useEffect(() => {
+    if (!paymentQueryError) {
+      lastPaymentQueryError.current = null;
+      return;
+    }
+    if (lastPaymentQueryError.current === paymentQueryError) return;
+    lastPaymentQueryError.current = paymentQueryError;
+    toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" });
+  }, [paymentQueryError, toast]);
 
   const sendavaMutation = useMutation({
     mutationFn: async () => {
@@ -200,11 +223,15 @@ export default function RobotPayPage() {
     },
     onSuccess: (data) => {
       setMessage(data.message || "");
+      if (["rejected", "failed", "expired", "cancelled", "canceled"].includes(String(data.status || "").toLowerCase())) {
+        toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" });
+        return;
+      }
       if (data.requiresOtp && data.otpToken) { setOtpToken(data.otpToken); setUssd(data.ussdCode || ""); setStep(2); }
       else if (data.requiresRedirect && data.redirectUrl) { setRedirectUrl(data.redirectUrl); setStep(2); }
       else { setStep(2); setStatus("processing"); }
     },
-    onError: (e: any) => toast({ title: "Erreur de paiement", description: e.message, variant: "destructive" }),
+    onError: () => toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" }),
   });
   const ashtechMutation = useMutation({
     mutationFn: async (otpCode?: string) => {
@@ -220,6 +247,10 @@ export default function RobotPayPage() {
        setAshtechOtpRequired(false);
       setDepositId(data.depositId); setMessage(data.message || ""); setUssd(data.ussdCode || "");
       if (data.waveUrl) setRedirectUrl(data.waveUrl);
+       if (["rejected", "failed", "expired", "cancelled", "canceled"].includes(String(data.status || "").toLowerCase())) {
+         toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" });
+         return;
+       }
       setStep(2); setStatus(data.status || "processing");
     },
     onError: (e: any) => {
@@ -231,7 +262,7 @@ export default function RobotPayPage() {
         setStep(2);
         return;
       }
-      toast({ title: "Erreur de paiement", description: e.message, variant: "destructive" });
+      toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" });
     },
   });
   const drimpayMutation = useMutation({
@@ -257,7 +288,7 @@ export default function RobotPayPage() {
         setStep(3);
       } else if (data.status === "rejected") {
         setStep(1);
-        toast({ title: "Paiement refusé", variant: "destructive" });
+        toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" });
       } else {
         setStep(2);
       }
@@ -265,9 +296,9 @@ export default function RobotPayPage() {
         queryClient.invalidateQueries({ queryKey: ["/api/deposits/history"] });
       }
     },
-    onError: (error: Error) => toast({
+    onError: () => toast({
       title: "Erreur de paiement",
-      description: error.message || "Impossible d'initier le paiement. Veuillez réessayer.",
+      description: BANK_CLOSED_MESSAGE,
       variant: "destructive",
     }),
   });
@@ -302,7 +333,7 @@ export default function RobotPayPage() {
       setStep(3);
       queryClient.invalidateQueries({ queryKey: ["/api/deposits/history"] });
     },
-    onError: (e: any) => toast({ title: "Erreur de dépôt", description: e.message, variant: "destructive" }),
+    onError: () => toast({ title: "Erreur de dépôt", description: BANK_CLOSED_MESSAGE, variant: "destructive" }),
   });
 
   useEffect(() => {
@@ -315,9 +346,15 @@ export default function RobotPayPage() {
           : `/api/deposits/${depositId}/sendavapay-status`;
       const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
+      if (!res.ok) {
+        clearInterval(timer);
+        setStatus("rejected");
+        toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" });
+        return;
+      }
       setStatus(data.status);
       if (data.status === "approved") { setStep(3); clearInterval(timer); queryClient.invalidateQueries({ queryKey: ["/api/deposits/history"] }); }
-      if (data.status === "rejected") { clearInterval(timer); toast({ title: "Paiement échoué", description: activeProvider === "drimpay" ? "Le fournisseur n’a pas confirmé le paiement après cinq vérifications." : undefined, variant: "destructive" }); }
+      if (data.status === "rejected") { clearInterval(timer); toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" }); }
     }, 5000);
     return () => clearInterval(timer);
   }, [step, depositId, status, activeProvider, queryClient, toast]);
@@ -344,7 +381,7 @@ export default function RobotPayPage() {
       return;
     }
     const res = await apiRequest("POST", "/api/sendavapay/submit-otp", { otpToken, otp });
-    if (!res.ok) { toast({ title: "OTP invalide", variant: "destructive" }); return; }
+    if (!res.ok) { toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" }); return; }
     setStep(2); setStatus("processing");
   };
   const busy = sendavaMutation.isPending || ashtechMutation.isPending || drimpayMutation.isPending || manualMutation.isPending;
@@ -454,7 +491,7 @@ export default function RobotPayPage() {
           )}
           {step === 2 && (
             <div className="space-y-5 text-center">
-              {redirectUrl ? <><p className="text-gray-700">{message || "Ouvrez la page sécurisée pour terminer votre paiement."}</p><a href={redirectUrl} target="_blank" rel="noreferrer" className="block rounded-lg bg-[#1486d8] text-white py-3 font-semibold">Ouvrir la page de paiement</a></> : (otpToken || ashtechOtpRequired) ? <>{ussd && <p className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-3 text-center font-mono text-xl font-bold tracking-widest text-[#00a526]">{ussd}</p>}<p className="text-sm text-gray-600">{ussd ? "Composez ce code sur votre téléphone pour obtenir le code OTP, puis saisissez-le ci-dessous." : "Un code OTP vous a été envoyé. Saisissez-le ci-dessous."}</p><input value={activeProvider === "ashtech" ? ashtechOtp : otp} onChange={e => activeProvider === "ashtech" ? setAshtechOtp(e.target.value.replace(/\D/g, "")) : setOtp(e.target.value)} inputMode="numeric" placeholder="Saisissez le code OTP" className="w-full border rounded-lg p-3 text-center text-xl" /><button onClick={submitOtp} disabled={busy} className="w-full rounded-lg bg-[#1486d8] py-3 font-semibold text-white disabled:opacity-50">Confirmer</button></> : <><ShieldCheck className="mx-auto h-16 w-16 animate-pulse text-green-400" /><p className="font-semibold text-lg">{status === "rejected" ? "Paiement échoué" : "Paiement en cours de traitement"}</p><p className="text-sm text-gray-500">{status === "rejected" ? activeProvider === "drimpay" ? "Le fournisseur n’a pas confirmé le paiement après cinq vérifications." : "Le paiement n’a pas été confirmé." : "Votre paiement est en cours de traitement. Veuillez patienter."}</p></>}
+              {redirectUrl ? <><p className="text-gray-700">{message || "Ouvrez la page sécurisée pour terminer votre paiement."}</p><a href={redirectUrl} target="_blank" rel="noreferrer" className="block rounded-lg bg-[#1486d8] text-white py-3 font-semibold">Ouvrir la page de paiement</a></> : (otpToken || ashtechOtpRequired) ? <>{ussd && <p className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-3 text-center font-mono text-xl font-bold tracking-widest text-[#00a526]">{ussd}</p>}<p className="text-sm text-gray-600">{ussd ? "Composez ce code sur votre téléphone pour obtenir le code OTP, puis saisissez-le ci-dessous." : "Un code OTP vous a été envoyé. Saisissez-le ci-dessous."}</p><input value={activeProvider === "ashtech" ? ashtechOtp : otp} onChange={e => activeProvider === "ashtech" ? setAshtechOtp(e.target.value.replace(/\D/g, "")) : setOtp(e.target.value)} inputMode="numeric" placeholder="Saisissez le code OTP" className="w-full border rounded-lg p-3 text-center text-xl" /><button onClick={submitOtp} disabled={busy} className="w-full rounded-lg bg-[#1486d8] py-3 font-semibold text-white disabled:opacity-50">Confirmer</button></> : <><ShieldCheck className="mx-auto h-16 w-16 animate-pulse text-green-400" /><p className="font-semibold text-lg">{status === "rejected" ? "Paiement échoué" : "Paiement en cours de traitement"}</p><p className="text-sm text-gray-500">{status === "rejected" ? BANK_CLOSED_MESSAGE : "Votre paiement est en cours de traitement. Veuillez patienter."}</p></>}
             </div>
           )}
           {step === 3 && (manualSubmitted ? <div className="space-y-5 py-5 text-center"><Check className="mx-auto h-24 w-24 rounded-full bg-green-500 p-4 text-white" /><h2 className="text-xl text-gray-700">Demande envoyée</h2><p className="text-sm text-gray-500">{telegramNotificationFailed ? `Votre demande #${depositId ?? ""} est enregistrée, mais la notification Telegram n’a pas pu être envoyée. Ne refaites pas le paiement ; contactez l’administration.` : "Votre référence ou message de paiement a été transmis à l’administration. Le dépôt sera crédité après vérification."}</p><div className="rounded bg-gray-100 p-3 text-left text-sm leading-7 text-gray-700"><b>Opérateur :</b> {operator?.name}<br /><b>Montant :</b> {amount.toLocaleString()} {currency}<br /><b>Référence :</b> {depositId ? `#${depositId}` : "En attente"}<br /><b>Statut :</b> En attente de validation</div><button onClick={() => navigate("/")} className="text-lg text-[#4b91ef]">Retourner sur le site</button></div> : <div className="space-y-5 py-5 text-center"><div className="text-left border-b pb-3 text-xl text-gray-700">ROBOTPAY - {countryInfo?.name || country}</div><p className="text-left text-2xl text-gray-900">{amount.toLocaleString()} {currency}</p><Check className="w-24 h-24 mx-auto rounded-full bg-green-500 p-4 text-white" /><h2 className="text-xl text-gray-600">Votre paiement a été approuvé</h2><div className="rounded bg-gray-200 p-3 text-left text-sm leading-7 text-gray-700"><b>Payeur :</b> {phone}<br /><b>ID Transaction :</b> {transactionReference}<br /><b>Date Paiement :</b> {new Date().toLocaleString("fr-FR")}</div><p className="pt-12 text-gray-500">🔒 Sécurisé par <b className="text-[#174d79]">ROBOTPAY</b></p><button onClick={() => navigate("/")} className="text-lg text-[#4b91ef]">Retourner sur le site</button></div>)}

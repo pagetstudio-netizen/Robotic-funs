@@ -39,6 +39,46 @@ export function formatTelegramValue(value: unknown): string {
   return escapeHtml(value);
 }
 
+export type RobotPayErrorNotification = {
+  path: string;
+  method: string;
+  status: number;
+  error: unknown;
+  userId?: unknown;
+  amount?: unknown;
+  country?: unknown;
+  operator?: unknown;
+};
+
+function redactPaymentError(value: unknown): string {
+  const raw = value instanceof Error ? value.message : String(value || "Erreur inconnue");
+  return raw
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [masqué]")
+    .replace(/\b(?:dp_(?:live|sandbox)_sk_|sk_(?:live|test)_)[A-Za-z0-9_-]+/gi, "[clé masquée]")
+    .replace(/\b(api[_ -]?key|secret|token|password|authorization)\s*[:=]\s*["']?[^,\s"'<>]+/gi, "$1=[masqué]")
+    .slice(0, 1500);
+}
+
+export function buildRobotPayErrorNotification(data: RobotPayErrorNotification): string {
+  return [
+    "❌ <b>Erreur de paiement RobotPay</b>",
+    `Opération : <code>${formatTelegramValue(data.method)} ${formatTelegramValue(data.path)}</code>`,
+    `Statut HTTP : <b>${formatTelegramValue(data.status)}</b>`,
+    data.userId !== undefined ? `Utilisateur ID : <code>${formatTelegramValue(data.userId)}</code>` : "",
+    data.amount !== undefined ? `Montant : <b>${formatTelegramValue(data.amount)} XOF</b>` : "",
+    data.country ? `Pays : ${formatTelegramValue(data.country)}` : "",
+    data.operator ? `Opérateur : ${formatTelegramValue(data.operator)}` : "",
+    `Erreur réelle : <code>${formatTelegramValue(redactPaymentError(data.error))}</code>`,
+  ].filter(Boolean).join("\n");
+}
+
+export async function sendTelegramPaymentError(data: RobotPayErrorNotification): Promise<void> {
+  if (!isTelegramConfigured()) {
+    throw new Error("Le bot Telegram ou le groupe administrateur n'est pas configuré");
+  }
+  await sendTelegramMessage(buildRobotPayErrorNotification(data));
+}
+
 export type ManualDepositNotification = {
   depositId: number;
   userId: number;
