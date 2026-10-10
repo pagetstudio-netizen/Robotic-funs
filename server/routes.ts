@@ -84,7 +84,7 @@ import {
   AshtechApiError,
   verifyAshtechWebhookSignature,
 } from "./ashtechpay";
-import { resolveAshtechWebhookBaseUrl } from "./ashtech-webhook-url";
+import { resolvePaymentWebhookBaseUrl } from "./payment-webhook-url";
 import {
   createDrimPayReference,
   drimPayGetBalance,
@@ -142,8 +142,8 @@ function getPublicBaseUrl(req: Request): string {
   return `${forwardedProto}://${req.get("host")}`;
 }
 
-function getAshtechWebhookBaseUrl(req: Request): string {
-  return resolveAshtechWebhookBaseUrl({
+function getPaymentWebhookBaseUrl(req: Request): string {
+  return resolvePaymentWebhookBaseUrl({
     configuredUrl:
       process.env.ASHTECHPAY_WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL,
     fallbackUrl: getPublicBaseUrl(req),
@@ -1798,7 +1798,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Montant minimum: ${minDeposit.toLocaleString()} FCFA` });
       }
       const phone = normalizeDrimPayPhone(String(req.body?.phone || ""), countryRecord.phonePrefix);
-      const baseUrl = getPublicBaseUrl(req);
+      const baseUrl = getPaymentWebhookBaseUrl(req);
       if (!baseUrl.startsWith("https://")) {
         return res.status(400).json({ message: "DrimPay exige une URL webhook publique en HTTPS" });
       }
@@ -1947,7 +1947,7 @@ export async function registerRoutes(
       const reference = existingDeposit?.ashtechReference?.trim()
         || requestedAshtechReference
         || generatedReference;
-      const notifyBaseUrl = getAshtechWebhookBaseUrl(req);
+      const notifyBaseUrl = getPaymentWebhookBaseUrl(req);
       if (!/^https:\/\//i.test(notifyBaseUrl)) {
         return res.status(400).json({
           message: "AshtechPay exige une URL webhook publique en HTTPS",

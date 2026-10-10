@@ -265,9 +265,9 @@ export default function RobotPayPage() {
         queryClient.invalidateQueries({ queryKey: ["/api/deposits/history"] });
       }
     },
-    onError: () => toast({
+    onError: (error: Error) => toast({
       title: "Erreur de paiement",
-      description: "Impossible d'initier le paiement. Veuillez réessayer.",
+      description: error.message || "Impossible d'initier le paiement. Veuillez réessayer.",
       variant: "destructive",
     }),
   });

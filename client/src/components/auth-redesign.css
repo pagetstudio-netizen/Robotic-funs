@@ -378,7 +378,7 @@
 }
 
 .auth-redesign .auth-submit:hover {
-  background: #fff;
+  filter: brightness(1.025);
 }
 
 .auth-redesign .auth-submit:active {
