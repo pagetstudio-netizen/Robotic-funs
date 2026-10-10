@@ -11,7 +11,7 @@ import "./home-welcome-popup.css";
 interface HomePopupSettings {
   groupLink?: string;
   popupButtonLabel?: string;
-  signupBonus?: string;
+  level1Commission?: string;
   minDeposit?: string;
   minWithdrawal?: string;
   withdrawalStartHour?: string;
@@ -34,6 +34,13 @@ function formatFcfa(value?: string) {
   return Number.isFinite(amount)
     ? `${Math.round(amount).toLocaleString("fr-FR")} FCFA`
     : "— FCFA";
+}
+
+function formatPercent(value?: string) {
+  const rate = Number(value ?? "27");
+  return Number.isFinite(rate)
+    ? `${rate.toLocaleString("fr-FR")} %`
+    : "— %";
 }
 
 export default function HomeWelcomePopup() {
@@ -106,8 +113,8 @@ export default function HomeWelcomePopup() {
                   Bienvenue chez <strong>RoboticsFund&nbsp;!</strong>
                 </p>
                 <p>
-                  <span>Bonus d’inscription&nbsp;:</span>{" "}
-                  <strong>{formatFcfa(settings?.signupBonus)}</strong>
+                  <span>Commission de recommandation&nbsp;:</span>{" "}
+                  <strong>{formatPercent(settings?.level1Commission)}</strong>
                 </p>
                 <p>
                   <span>Dépôt minimum&nbsp;:</span>{" "}
