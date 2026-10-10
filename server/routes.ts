@@ -84,6 +84,7 @@ import {
   AshtechApiError,
   verifyAshtechWebhookSignature,
 } from "./ashtechpay";
+import { resolveAshtechWebhookBaseUrl } from "./ashtech-webhook-url";
 import {
   createDrimPayReference,
   drimPayGetBalance,
@@ -139,6 +140,18 @@ function getPublicBaseUrl(req: Request): string {
     .split(",")[0]
     .trim();
   return `${forwardedProto}://${req.get("host")}`;
+}
+
+function getAshtechWebhookBaseUrl(req: Request): string {
+  return resolveAshtechWebhookBaseUrl({
+    configuredUrl:
+      process.env.ASHTECHPAY_WEBHOOK_BASE_URL || process.env.PUBLIC_APP_URL,
+    fallbackUrl: getPublicBaseUrl(req),
+    requestHost: req.get("host"),
+    forwardedProto: String(req.headers["x-forwarded-proto"] || ""),
+    requestProtocol: req.protocol,
+    origin: req.get("origin"),
+  });
 }
 
 function ppayProsCallbackPayload(req: Request): Record<string, unknown> {
@@ -1934,11 +1947,7 @@ export async function registerRoutes(
       const reference = existingDeposit?.ashtechReference?.trim()
         || requestedAshtechReference
         || generatedReference;
-      const notifyBaseUrl = (
-        process.env.ASHTECHPAY_WEBHOOK_BASE_URL ||
-        process.env.PUBLIC_APP_URL ||
-        getPublicBaseUrl(req)
-      ).trim().replace(/\/+$/, "");
+      const notifyBaseUrl = getAshtechWebhookBaseUrl(req);
       if (!/^https:\/\//i.test(notifyBaseUrl)) {
         return res.status(400).json({
           message: "AshtechPay exige une URL webhook publique en HTTPS",
