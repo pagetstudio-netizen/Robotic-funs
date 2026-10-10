@@ -130,8 +130,12 @@ async function telegramRequest(method: string, body: Record<string, unknown>) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`Telegram ${method} HTTP ${response.status}`);
-  return response.json() as Promise<{ ok: boolean; result?: any }>;
+  const result = await response.json().catch(() => null) as { ok?: boolean; description?: string; result?: any } | null;
+  if (!response.ok || result?.ok === false) {
+    const description = result?.description ? `: ${result.description}` : "";
+    throw new Error(`Telegram ${method} HTTP ${response.status}${description}`);
+  }
+  return result;
 }
 
 async function handleTelegramCommand(text: string, chatId: string) {
@@ -268,17 +272,25 @@ export function startTelegramBot(): void {
         const message = update.message;
         if (!message?.text || String(message.chat?.id) !== String(process.env.TELEGRAM_CHAT_ID)) continue;
         const reply = await handleTelegramCommand(message.text, String(message.chat.id));
-        await telegramRequest("sendMessage", {
+        const adminBaseUrl = process.env.PUBLIC_APP_URL?.trim().replace(/\/+$/, "")
+          || (process.env.REPLIT_DEV_DOMAIN?.trim()
+            ? `https://${process.env.REPLIT_DEV_DOMAIN.trim()}`
+            : "");
+        const adminUrl = adminBaseUrl ? `${adminBaseUrl}/admin` : "";
+        const replyBody: Record<string, unknown> = {
           chat_id: message.chat.id,
           text: reply,
           parse_mode: "HTML",
           disable_web_page_preview: true,
-          reply_markup: {
+        };
+        if (adminUrl) {
+          replyBody.reply_markup = {
             inline_keyboard: [[
-              { text: "Ouvrir l'administration", url: `${process.env.PUBLIC_APP_URL || ""}/admin` },
+              { text: "Ouvrir l'administration", url: adminUrl },
             ]],
-          },
-        });
+          };
+        }
+        await telegramRequest("sendMessage", replyBody);
       }
     } catch (error: any) {
       console.error("[telegram] command polling failed:", error.message);
