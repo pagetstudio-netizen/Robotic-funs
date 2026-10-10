@@ -86,7 +86,7 @@ export default function RobotPayPage() {
   const { data: manualNumbers = [], isLoading: manualNumbersLoading, error: manualNumbersError } = useQuery<PaymentNumber[]>({
     queryKey: ["/api/payment-numbers", country],
     queryFn: async () => {
-      const res = await fetch(`/api/payment-numbers?country=${encodeURIComponent(country)}`, { credentials: "include" });
+      const res = await fetch(`/api/payment-numbers?country=${encodeURIComponent(country)}&source=robotpay`, { credentials: "include" });
       if (!res.ok) throw new Error("Impossible de charger les numéros de paiement");
       return res.json();
     },
@@ -96,7 +96,7 @@ export default function RobotPayPage() {
   const { data: sendavaData, isLoading: sendavaLoading, error: sendavaError } = useQuery<{ success: boolean; data: Operator[] }>({
     queryKey: ["/api/sendavapay/operators", country],
     queryFn: async () => {
-      const response = await fetch(`/api/sendavapay/operators/${country}`, { credentials: "include" });
+      const response = await fetch(`/api/sendavapay/operators/${country}?source=robotpay`, { credentials: "include" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || BANK_CLOSED_MESSAGE);
       return data;
@@ -106,7 +106,7 @@ export default function RobotPayPage() {
   const { data: ashtechData, isLoading: ashtechLoading, error: ashtechError } = useQuery<any[]>({
     queryKey: ["/api/ashtechpay/countries"],
     queryFn: async () => {
-      const response = await fetch("/api/ashtechpay/countries", { credentials: "include" });
+      const response = await fetch("/api/ashtechpay/countries?source=robotpay", { credentials: "include" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || BANK_CLOSED_MESSAGE);
       return data;
@@ -209,14 +209,14 @@ export default function RobotPayPage() {
     mutationFn: async () => {
       if (!operator?.id) throw new Error("Sélectionnez un opérateur");
       const created = await apiRequest("POST", "/api/sendavapay/create", {
-        amount, country, operatorId: operator.id, operatorName: operator.name, payerPhone: paymentPhone,
+        amount, country, operatorId: operator.id, operatorName: operator.name, payerPhone: paymentPhone, paymentSource: "robotpay",
       });
       if (!created.ok) throw new Error((await created.json()).message || "Création impossible");
       const data = await created.json();
       setDepositId(data.depositId); setPaymentToken(data.paymentToken);
       const initiated = await apiRequest("POST", "/api/sendavapay/initiate", {
         paymentToken: data.paymentToken, payerCountry: country, operatorId: operator.id,
-        depositId: data.depositId, payerPhone: paymentPhone,
+        depositId: data.depositId, payerPhone: paymentPhone, paymentSource: "robotpay",
       });
       if (!initiated.ok) throw new Error((await initiated.json()).message || "Initiation impossible");
       return initiated.json();
@@ -237,7 +237,7 @@ export default function RobotPayPage() {
     mutationFn: async (otpCode?: string) => {
       if (!operator?.name) throw new Error("Sélectionnez un opérateur");
       const res = await apiRequest("POST", "/api/ashtechpay/collect", {
-        amount, country, operator: operator.name, phone: phone.replace(/\D/g, ""),
+        amount, country, operator: operator.name, phone: phone.replace(/\D/g, ""), paymentSource: "robotpay",
         depositId: depositId || undefined, otp: otpCode || undefined,
       });
       if (!res.ok) throw new Error((await res.json()).message || "Initiation impossible");
@@ -273,6 +273,7 @@ export default function RobotPayPage() {
         country,
         operator: operator.id,
         phone: paymentPhone,
+        paymentSource: "robotpay",
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Initiation DrimPay impossible");
@@ -340,10 +341,10 @@ export default function RobotPayPage() {
     if (step !== 2 || !depositId || status === "approved" || status === "rejected") return;
     const timer = setInterval(async () => {
       const url = activeProvider === "ashtech"
-        ? `/api/deposits/${depositId}/ashtechpay-status`
+        ? `/api/deposits/${depositId}/ashtechpay-status?source=robotpay`
         : activeProvider === "drimpay"
           ? `/api/deposits/${depositId}/drimpay-status`
-          : `/api/deposits/${depositId}/sendavapay-status`;
+          : `/api/deposits/${depositId}/sendavapay-status?source=robotpay`;
       const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
       if (!res.ok) {
@@ -380,7 +381,7 @@ export default function RobotPayPage() {
       ashtechMutation.mutate(ashtechOtp.trim());
       return;
     }
-    const res = await apiRequest("POST", "/api/sendavapay/submit-otp", { otpToken, otp });
+    const res = await apiRequest("POST", "/api/sendavapay/submit-otp", { otpToken, otp, paymentSource: "robotpay" });
     if (!res.ok) { toast({ title: "Erreur de paiement", description: BANK_CLOSED_MESSAGE, variant: "destructive" }); return; }
     setStep(2); setStatus("processing");
   };

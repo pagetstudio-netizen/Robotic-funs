@@ -613,12 +613,21 @@ export async function registerRoutes(
   const bankClosedMessage = "La banque n'est pas ouverte pour le moment.";
   app.use((req, res, next) => {
     const path = req.path;
-    const isPaymentPageRequest =
+    const requestBody = req.body && typeof req.body === "object"
+      ? req.body as Record<string, unknown>
+      : {};
+    const isRobotPaySource = requestBody.paymentSource === "robotpay" || req.query.source === "robotpay";
+    const isRobotPayRequest =
+      /^\/api\/deposit\/provider(?:\/|$)/.test(path) ||
+      /^\/api\/drimpay\/(?:operators|payin)(?:\/|$)/.test(path) ||
+      /^\/api\/deposits\/\d+\/drimpay-status$/.test(path) ||
+      (isRobotPaySource && /^\/api\/(?:deposits|payment-numbers|ashtechpay|sendavapay)(?:\/|$)/.test(path));
+    const isPaymentRequest =
       /^\/api\/deposits(?:\/|$)/.test(path) ||
       /^\/api\/(?:payment-channels|payment-numbers|soleaspay\/services)(?:\/|$)/.test(path) ||
       /^\/api\/deposit\/provider(?:\/|$)/.test(path) ||
       /^\/api\/(?:drimpay|ashtechpay|sendavapay)(?:\/|$)/.test(path);
-    if (!isPaymentPageRequest) return next();
+    if (!isPaymentRequest) return next();
 
     const originalJson = res.json.bind(res);
     res.json = ((body: unknown) => {
@@ -637,9 +646,6 @@ export async function registerRoutes(
       );
       if (res.statusCode < 400 && !terminalFailure) return originalJson(body);
 
-      const requestBody = req.body && typeof req.body === "object"
-        ? req.body as Record<string, unknown>
-        : {};
       const errorMessage = responseBody.message
         ?? responseBody.error
         ?? (terminalFailure
@@ -657,7 +663,9 @@ export async function registerRoutes(
       }).catch((notificationError) => {
         console.error("[telegram] RobotPay error notification failed:", notificationError.message);
       });
-      return originalJson({ ...responseBody, message: bankClosedMessage });
+      return originalJson(isRobotPayRequest
+        ? { ...responseBody, message: bankClosedMessage }
+        : body);
     }) as typeof res.json;
     next();
   });
